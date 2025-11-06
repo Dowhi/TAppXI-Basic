@@ -7,7 +7,7 @@ export default defineConfig(({ mode }) => {
     // Para GitHub Pages: si tu repositorio se llama "tappxi-web-replica", 
     // la base debe ser "/tappxi-web-replica/". Si está en la raíz del usuario (usuario.github.io), usar "/"
     // Se puede configurar con la variable de entorno VITE_BASE_PATH
-    const base = process.env.VITE_BASE_PATH || '/TAppXI_AISTUDIO/';
+    const base = process.env.VITE_BASE_PATH || '/tappxi-web-replica/';
     
     return {
       base: mode === 'production' ? base : '/',
