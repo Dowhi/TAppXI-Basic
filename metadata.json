@@ -1,0 +1,5 @@
+{
+  "name": "TAppXI Web Replica",
+  "description": "A web-based replica of the TAppXI Android application for taxi management, featuring a futuristic neon and neumorphic design. It allows users to manage income, expenses, and work shifts with detailed statistics and reports.",
+  "requestFramePermissions": []
+}

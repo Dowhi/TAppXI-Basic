@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-ag" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TAppXI Web Replica</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-zinc-950">
+    <div id="firebase-notice" class="hidden fixed top-0 left-0 right-0 bg-red-600 text-white text-center p-2 text-sm z-50">
+      Please configure your Firebase credentials in <strong>firebaseConfig.ts</strong> to connect to the database.
+    </div>
+    <div id="root"></div>
+    
+    <!-- Firebase SDK (Compat version for simplicity in this environment) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

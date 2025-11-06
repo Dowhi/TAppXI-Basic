@@ -1,0 +1,43 @@
+﻿# Archivos protegidos - NO MODIFICAR
+# Estos archivos estÃ¡n completos y funcionando correctamente.
+# Por favor, no los modifiques sin autorizaciÃ³n explÃ­cita.
+
+# Pantallas completamente implementadas y funcionales
+screens/HomeScreen.tsx
+screens/HistoricoScreen.tsx
+screens/IncomeScreen.tsx
+screens/AddEditRaceScreen.tsx
+screens/ExpensesScreen.tsx
+screens/ShiftsScreen.tsx
+screens/CloseTurnScreen.tsx
+screens/EditTurnScreen.tsx
+screens/ResumenDiarioScreen.tsx
+screens/ResumenMensualScreen.tsx
+screens/ResumenMensualDetalladoScreen.tsx
+
+# Componentes reutilizables
+components/BackButton.tsx
+components/KineticHeader.tsx
+components/AnimatedIcon3D.tsx
+components/InfoBoxNeonGrande.tsx
+components/QuickActionTile.tsx
+components/NeumorphicCard.tsx
+
+# ConfiguraciÃ³n de servicios y tipos
+services/api.ts
+types.ts
+
+# ConfiguraciÃ³n de la aplicaciÃ³n
+App.tsx
+screens/ResumenScreen.tsx
+screens/ResumenGastosMensualScreen.tsx
+screens/ResumenMensualIngresosScreen.tsx
+types.ts
+App.tsx
+screens/ResumenScreen.tsx
+types.ts
+App.tsx
+
+
+screens/AjustesScreen.tsx
+
