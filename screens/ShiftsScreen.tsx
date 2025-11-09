@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Card from '../components/NeumorphicCard';
-import KineticHeader from '../components/KineticHeader';
-import AnimatedIcon3D from '../components/AnimatedIcon3D';
-import BackButton from '../components/BackButton';
+import ScreenTopBar from '../components/ScreenTopBar';
 import { Seccion, Turno } from '../types';
 import { getActiveTurno, addTurno, subscribeToActiveTurno, getRecentTurnos } from '../services/api';
 
@@ -112,26 +110,27 @@ const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
         }
     }
 
+    const topBar = (
+        <ScreenTopBar
+            title="Gestión de Turnos"
+            navigateTo={navigateTo}
+            backTarget={Seccion.Home}
+            className="mb-4"
+        />
+    );
+
     if (loading) {
         return (
-            <div className="space-y-4">
-                <header className="flex items-center space-x-3">
-                    <BackButton navigateTo={navigateTo} />
-                    <AnimatedIcon3D><TaxiIcon /></AnimatedIcon3D>
-                    <KineticHeader title="Gestión de Turnos" />
-                </header>
+            <div className="bg-zinc-950 min-h-screen text-zinc-100 px-3 pt-3 pb-6 space-y-4">
+                {topBar}
                 <div className="text-center p-8 text-zinc-400">Cargando...</div>
             </div>
         );
     }
 
     return (
-        <div className="space-y-4">
-             <header className="flex items-center space-x-3">
-                <BackButton navigateTo={navigateTo} />
-                <AnimatedIcon3D><TaxiIcon /></AnimatedIcon3D>
-                <KineticHeader title="Gestión de Turnos" />
-            </header>
+        <div className="bg-zinc-950 min-h-screen text-zinc-100 px-3 pt-3 pb-6 space-y-4">
+            {topBar}
             
             <Card>
                 {!turnoActivo ? (

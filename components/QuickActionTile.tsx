@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 
 interface QuickActionTileProps {
     icon: React.ReactNode;
@@ -10,14 +10,25 @@ const QuickActionTile: React.FC<QuickActionTileProps> = ({ icon, label, onClick 
     return (
         <button
             onClick={onClick}
-            className="bg-zinc-900 border border-zinc-800/80 rounded-lg p-2 flex flex-col items-center justify-center space-y-2 
-                       aspect-square transition-colors duration-150 ease-in-out active:scale-95 
-                       hover:bg-zinc-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-600 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+            className="rounded-2xl p-[1px] aspect-square transition-transform duration-150 ease-out"
+            style={{
+                backgroundImage: 'linear-gradient(135deg, rgba(0,255,148,0.85), rgba(0,224,255,0.95))',
+                boxShadow: '0 14px 32px rgba(0, 224, 255, 0.25)',
+            }}
         >
-            <div className="w-7 h-7 text-zinc-400">
-                {icon}
+            <div className="flex h-full w-full flex-col items-center justify-center gap-3 rounded-[18px] bg-[#1A1A1F]">
+                <span className="w-10 h-10 rounded-full flex items-center justify-center"
+                    style={{
+                        backgroundImage: 'linear-gradient(135deg, rgba(0,255,148,0.25), rgba(0,224,255,0.35))',
+                        color: '#00E0FF',
+                    }}
+                >
+                    <span className="w-6 h-6 flex items-center justify-center">{icon}</span>
+                </span>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9FB5D8] text-center">
+                    {label}
+                </span>
             </div>
-            <span className="text-xs text-center text-zinc-300">{label}</span>
         </button>
     );
 };

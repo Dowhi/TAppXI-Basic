@@ -2,9 +2,18 @@
 import BackButton from '../components/BackButton';
 import { Seccion } from '../types';
 
-// Icons
-const CalendarDayIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+// Icons (ahora aceptan props como className)
+const CalendarDayIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        {...props}
+    >
         <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
         <line x1="16" y1="2" x2="16" y2="6"/>
         <line x1="8" y1="2" x2="8" y2="6"/>
@@ -13,8 +22,17 @@ const CalendarDayIcon = () => (
     </svg>
 );
 
-const CalendarMonthIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+const CalendarMonthIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        {...props}
+    >
         <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
         <line x1="16" y1="2" x2="16" y2="6"/>
         <line x1="8" y1="2" x2="8" y2="6"/>
@@ -28,8 +46,17 @@ const CalendarMonthIcon = () => (
     </svg>
 );
 
-const GridIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+const GridIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        {...props}
+    >
         <rect x="3" y="3" width="7" height="7"/>
         <rect x="14" y="3" width="7" height="7"/>
         <rect x="3" y="14" width="7" height="7"/>
@@ -37,8 +64,17 @@ const GridIcon = () => (
     </svg>
 );
 
-const CalendarYearIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+const CalendarYearIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        {...props}
+    >
         <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
         <line x1="16" y1="2" x2="16" y2="6"/>
         <line x1="8" y1="2" x2="8" y2="6"/>
@@ -52,96 +88,68 @@ interface ResumenScreenProps {
 }
 
 const ResumenScreen: React.FC<ResumenScreenProps> = ({ navigateTo }) => {
+    const ItemCard: React.FC<{
+        title: string;
+        description?: string;
+        onClick: () => void;
+        Icon: React.FC<React.SVGProps<SVGSVGElement>>;
+    }> = ({ title, description, onClick, Icon }) => (
+        <button
+            type="button"
+            onClick={onClick}
+            className="w-full text-left bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 flex items-center gap-3 transition-all hover:border-cyan-400 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+        >
+            {/* Contenedor del ícono: ahora h-8 w-8, centrado verticalmente */}
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-800/70 text-cyan-400">
+                <Icon className="w-5 h-5" />
+            </span>
+            <span className="flex-1 space-y-1">
+                <span className="block text-zinc-100 font-semibold text-base leading-tight">{title}</span>
+                {description && (
+                    <span className="block text-zinc-400 text-sm leading-snug">{description}</span>
+                )}
+            </span>
+        </button>
+    );
+
     return (
-        <div className="space-y-6">
-            <header className="flex items-center space-x-3">
-                <BackButton navigateTo={navigateTo} />
-                <h1 className="text-zinc-100 text-xl font-bold">ResÃºmenes</h1>
+        <div className="bg-zinc-950 min-h-screen text-zinc-100 font-sans px-3 py-4 space-y-6">
+            <header className="bg-yellow-400 rounded-lg px-3 py-1.5 flex items-center">
+                <BackButton navigateTo={navigateTo} className="p-2 text-zinc-900 hover:text-zinc-700 transition-colors" />
+                <h1 className="flex-1 text-first text-zinc-900 font-bold text-base">Resúmenes</h1>
             </header>
 
-            {/* ResÃºmenes por perÃ­odo */}
-            <div>
-                <h2 className="text-zinc-100 text-lg font-bold mb-4">ResÃºmenes por perÃ­odo</h2>
+            <section className="space-y-4">
                 <div className="space-y-3">
-                    {/* Resumen Diario */}
-                    <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700 hover:bg-zinc-750 transition-shadow cursor-pointer" onClick={() => navigateTo(Seccion.ResumenDiario)}>
-                        <div className="flex items-start space-x-4">
-                            <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center text-blue-400">
-                                <CalendarDayIcon />
-                            </div>
-                            <div className="flex-1">
-                                <h3 className="text-zinc-100 font-bold text-base mb-1">Resumen Diario</h3>
-                                <p className="text-zinc-400 text-sm">Consulta los ingresos y gastos del dÃ­a</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Resumen Mensual */}
-                    <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700 hover:bg-zinc-750 transition-shadow cursor-pointer" onClick={() => navigateTo(Seccion.ResumenMensualIngresos)}>
-                        <div className="flex items-start space-x-4">
-                            <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center text-blue-400">
-                                <CalendarMonthIcon />
-                            </div>
-                            <div className="flex-1">
-                                <h3 className="text-zinc-100 font-bold text-base mb-1">Resumen Mensual</h3>
-                                <p className="text-zinc-400 text-sm">Consulta los ingresos y gastos del mes</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Resumen Mensual Detallado */}
-                    <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700 hover:bg-zinc-750 transition-shadow cursor-pointer" onClick={() => navigateTo(Seccion.ResumenMensualDetallado)}>
-                        <div className="flex items-start space-x-4">
-                            <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center text-blue-400">
-                                <GridIcon />
-                            </div>
-                            <div className="flex-1">
-                                <h3 className="text-zinc-100 font-bold text-base mb-1">
-                                    Resumen Mensual<br />
-                                    <span className="font-bold">Detallado</span>
-                                </h3>
-                                <p className="text-zinc-400 text-sm">Consulta el detalle de ingresos y gastos del mes</p>
-                            </div>
-                        </div>
-                    </div>
+                    <ItemCard
+                        title="Resumen Diario"
+                        onClick={() => navigateTo(Seccion.ResumenDiario)}
+                        Icon={CalendarDayIcon}
+                    />
+                    <ItemCard
+                        title="Resumen Mensual"
+                        onClick={() => navigateTo(Seccion.ResumenMensualIngresos)}
+                        Icon={CalendarMonthIcon}
+                    />
+                    <ItemCard
+                        title="Resumen Mensual Detallado"
+                        onClick={() => navigateTo(Seccion.ResumenMensualDetallado)}
+                        Icon={GridIcon}
+                    />
+                    <ItemCard
+                        title="Resumen de Gastos Mensual"
+                        onClick={() => navigateTo(Seccion.ResumenGastosMensual)}
+                        Icon={CalendarMonthIcon}
+                    />
+                    <ItemCard
+                        title="Resumen Anual"
+                        onClick={() => navigateTo(Seccion.ResumenMensual)}
+                        Icon={CalendarYearIcon}
+                    />
                 </div>
-            </div>
-
-            {/* ResÃºmenes anuales */}
-            <div>
-                <h2 className="text-zinc-100 text-lg font-bold mb-4">ResÃºmenes anuales</h2>
-                <div className="space-y-3">
-                    {/* Resumen Anual */}
-                    <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700 hover:bg-zinc-750 transition-shadow cursor-pointer" onClick={() => navigateTo(Seccion.ResumenMensual)}>
-                        <div className="flex items-start space-x-4">
-                            <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center text-blue-400">
-                                <CalendarYearIcon />
-                            </div>
-                            <div className="flex-1">
-                                <h3 className="text-zinc-100 font-bold text-base mb-1">Resumen Anual</h3>
-                                <p className="text-zinc-400 text-sm">Consulta los ingresos y gastos del aÃ±o</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Resumen de Gastos Mensual */}
-                    <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700 hover:bg-zinc-750 transition-shadow cursor-pointer" onClick={() => navigateTo(Seccion.ResumenGastosMensual)}>
-                        <div className="flex items-start space-x-4">
-                            <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center text-blue-400">
-                                <CalendarMonthIcon />
-                            </div>
-                            <div className="flex-1">
-                                <h3 className="text-zinc-100 font-bold text-base mb-1">Resumen de Gastos Mensual</h3>
-                                <p className="text-zinc-400 text-sm">Consulta el detalle de gastos del mes</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            </section>
         </div>
     );
 };
 
 export default ResumenScreen;
-
-

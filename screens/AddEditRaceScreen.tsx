@@ -1,14 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Seccion, CarreraVista } from '../types';
-import { getCarrera, addCarrera, updateCarrera, deleteCarrera } from '../services/api';
-import KineticHeader from '../components/KineticHeader';
+import { getCarrera, addCarrera, updateCarrera, deleteCarrera, getValesDirectory, ValeDirectoryEntry } from '../services/api';
+import ScreenTopBar from '../components/ScreenTopBar';
 
-// Icons
-const ArrowBackIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-        <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"></path>
-    </svg>
-);
 const DeleteIcon = () => <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>;
 const EuroIcon: React.FC<{className?: string}> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M15 18.5c-2.51 0-4.68-1.42-5.76-3.5H15v-2H8.58c-.05-.33-.08-.66-.08-1s.03-.67.08-1H15V9H9.24C10.32 6.92 12.5 5.5 15 5.5c1.61 0 3.09.59 4.23 1.57L21 5.3C19.41 3.87 17.3 3 15 3c-3.92 0-7.24 2.51-8.48 6H3v2h3.06c-.04.33-.06.66-.06 1s.02.67.06 1H3v2h3.52c1.24 3.49 4.56 6 8.48 6 2.31 0 4.41-.87 6-2.3l-1.78-1.77C18.09 17.91 16.61 18.5 15 18.5z"/></svg>;
 const CreditCardIcon: React.FC<{className?: string}> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>;
@@ -80,6 +74,33 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
     const [cobradoManuallySet, setCobradoManuallySet] = useState(false);
     const [isLoading, setIsLoading] = useState(isEditing);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showTaximetroKeyboard, setShowTaximetroKeyboard] = useState(false);
+    const [tempTaximetroValue, setTempTaximetroValue] = useState('');
+    const [showCobradoKeyboard, setShowCobradoKeyboard] = useState(false);
+    const [tempCobradoValue, setTempCobradoValue] = useState('');
+    const [showValeModal, setShowValeModal] = useState(false);
+    const [valeForm, setValeForm] = useState({
+        despacho: '',
+        numeroAlbaran: '',
+        empresa: '',
+        codigoEmpresa: '',
+        autoriza: '',
+    });
+    const [valeFormTouched, setValeFormTouched] = useState(false);
+    const [valeDirectory, setValeDirectory] = useState<ValeDirectoryEntry[]>([]);
+    const [empresaManuallyEdited, setEmpresaManuallyEdited] = useState(false);
+
+    const isValeFormComplete = useMemo(() => {
+        return Object.values(valeForm).every((value) => value.trim().length > 0);
+    }, [valeForm]);
+
+    const valeSuggestions = useMemo(() => {
+        const codigo = valeForm.codigoEmpresa.trim().toLowerCase();
+        if (!codigo) return [];
+        return valeDirectory
+            .filter((entry) => entry.codigoEmpresa.toLowerCase().includes(codigo))
+            .slice(0, 5);
+    }, [valeForm.codigoEmpresa, valeDirectory]);
 
     useEffect(() => {
         const fetchRaceData = async (id: string) => {
@@ -89,8 +110,27 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                 setTaximetro(race.taximetro.toFixed(2));
                 setCobrado(race.cobrado.toFixed(2));
                 setFormaPago(race.formaPago);
-                setEmisora(race.emisora);
+                setEmisora(race.formaPago === 'Vales' ? true : race.emisora);
                 setAeropuerto(race.aeropuerto);
+                if (race.formaPago === 'Vales' && race.valeInfo) {
+                    setValeForm({
+                        despacho: race.valeInfo.despacho || '',
+                        numeroAlbaran: race.valeInfo.numeroAlbaran || '',
+                        empresa: race.valeInfo.empresa || '',
+                        codigoEmpresa: race.valeInfo.codigoEmpresa || '',
+                        autoriza: race.valeInfo.autoriza || '',
+                    });
+                    setEmpresaManuallyEdited(false);
+                } else {
+                    setValeForm({
+                        despacho: '',
+                        numeroAlbaran: '',
+                        empresa: '',
+                        codigoEmpresa: '',
+                        autoriza: '',
+                    });
+                    setEmpresaManuallyEdited(false);
+                }
                 
                 if (race.cobrado !== race.taximetro) {
                     setCobradoManuallySet(true);
@@ -107,12 +147,225 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
         }
     }, [raceId, isEditing, navigateTo]);
 
+    useEffect(() => {
+        let isMounted = true;
+        const loadValeDirectory = async () => {
+            try {
+                const entries = await getValesDirectory();
+                if (!isMounted) return;
+                setValeDirectory(entries);
+            } catch (error) {
+                console.error('Error cargando el directorio de vales:', error);
+            }
+        };
+        loadValeDirectory();
+        return () => {
+            isMounted = false;
+        };
+    }, []);
+
+    const handlePaymentSelection = (option: CarreraVista['formaPago']) => {
+        setFormaPago(option);
+        setEmisora(prev => (option === 'Vales' ? true : prev));
+        if (option === 'Vales') {
+            setValeFormTouched(false);
+            setShowValeModal(true);
+        } else {
+            setShowValeModal(false);
+        }
+    };
+
     const handleTaximetroChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
         setTaximetro(value);
         if (!cobradoManuallySet) {
             setCobrado(value);
         }
+    };
+
+    const handleValeInputChange = (field: keyof typeof valeForm, value: string) => {
+        if (field === 'empresa') {
+            setEmpresaManuallyEdited(true);
+            setValeForm((prev) => ({
+                ...prev,
+                empresa: value,
+            }));
+            return;
+        }
+
+        if (field === 'codigoEmpresa') {
+            let autoFilledEmpresa = false;
+            setValeForm((prev) => {
+                const next = {
+                    ...prev,
+                    codigoEmpresa: value,
+                };
+
+                const trimmed = value.trim();
+                if (!trimmed) {
+                    if (!empresaManuallyEdited) {
+                        next.empresa = '';
+                        autoFilledEmpresa = true;
+                    }
+                } else {
+                    const match = valeDirectory.find((entry) =>
+                        entry.codigoEmpresa.toLowerCase().startsWith(trimmed.toLowerCase())
+                    );
+                    if (
+                        match &&
+                        (!empresaManuallyEdited ||
+                            prev.empresa.trim().length === 0 ||
+                            prev.codigoEmpresa !== trimmed)
+                    ) {
+                        next.empresa = match.empresa;
+                        autoFilledEmpresa = true;
+                    }
+                }
+
+                return next;
+            });
+            if (autoFilledEmpresa) {
+                setEmpresaManuallyEdited(false);
+            }
+            return;
+        }
+
+        setValeForm((prev) => ({
+            ...prev,
+            [field]: value,
+        }));
+    };
+
+    const handleValeRegister = () => {
+        setValeFormTouched(true);
+        const sanitized = {
+            despacho: valeForm.despacho.trim(),
+            numeroAlbaran: valeForm.numeroAlbaran.trim(),
+            empresa: valeForm.empresa.trim(),
+            codigoEmpresa: valeForm.codigoEmpresa.trim(),
+            autoriza: valeForm.autoriza.trim(),
+        };
+        const hasEmpty = Object.values(sanitized).some((value) => value.length === 0);
+        if (hasEmpty) {
+            return;
+        }
+        setValeForm(sanitized);
+        setEmpresaManuallyEdited(false);
+        setShowValeModal(false);
+    };
+
+    const handleValeSuggestionSelect = (entry: ValeDirectoryEntry) => {
+        setValeForm((prev) => ({
+            ...prev,
+            codigoEmpresa: entry.codigoEmpresa,
+            empresa: entry.empresa,
+        }));
+        setEmpresaManuallyEdited(false);
+    };
+
+    const handleTaximetroClick = () => {
+        setTempTaximetroValue(taximetro);
+        setShowTaximetroKeyboard(true);
+    };
+
+    const handleNumberKeyPress = (num: string) => {
+        setTempTaximetroValue(prev => {
+            // Si está vacío o es 0, reemplazar
+            if (prev === '' || prev === '0') {
+                return num;
+            }
+            // Agregar el número
+            return prev + num;
+        });
+    };
+
+    const handleDecimalPoint = () => {
+        setTempTaximetroValue(prev => {
+            // Si ya tiene punto decimal, no hacer nada
+            if (prev.includes('.')) {
+                return prev;
+            }
+            // Si está vacío, agregar "0."
+            if (prev === '') {
+                return '0.';
+            }
+            // Agregar el punto
+            return prev + '.';
+        });
+    };
+
+    const handleBackspace = () => {
+        setTempTaximetroValue(prev => {
+            if (prev.length <= 1) {
+                return '';
+            }
+            return prev.slice(0, -1);
+        });
+    };
+
+    const handleClear = () => {
+        setTempTaximetroValue('');
+    };
+
+    const handleTaximetroOk = () => {
+        const value = tempTaximetroValue || '0';
+        setTaximetro(value);
+        if (!cobradoManuallySet) {
+            setCobrado(value);
+        }
+        setShowTaximetroKeyboard(false);
+    };
+
+    const handleCobradoClick = () => {
+        setTempCobradoValue(cobrado);
+        setCobradoManuallySet(true);
+        setShowCobradoKeyboard(true);
+    };
+
+    const handleCobradoNumberKeyPress = (num: string) => {
+        setTempCobradoValue(prev => {
+            // Si está vacío o es 0, reemplazar
+            if (prev === '' || prev === '0') {
+                return num;
+            }
+            // Agregar el número
+            return prev + num;
+        });
+    };
+
+    const handleCobradoDecimalPoint = () => {
+        setTempCobradoValue(prev => {
+            // Si ya tiene punto decimal, no hacer nada
+            if (prev.includes('.')) {
+                return prev;
+            }
+            // Si está vacío, agregar "0."
+            if (prev === '') {
+                return '0.';
+            }
+            // Agregar el punto
+            return prev + '.';
+        });
+    };
+
+    const handleCobradoBackspace = () => {
+        setTempCobradoValue(prev => {
+            if (prev.length <= 1) {
+                return '';
+            }
+            return prev.slice(0, -1);
+        });
+    };
+
+    const handleCobradoClear = () => {
+        setTempCobradoValue('');
+    };
+
+    const handleCobradoOk = () => {
+        const value = tempCobradoValue || '0';
+        setCobrado(value);
+        setCobradoManuallySet(true);
+        setShowCobradoKeyboard(false);
     };
 
     const handleCobradoFocus = () => {
@@ -138,6 +391,26 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
             return;
         }
 
+        const sanitizedValeInfo = {
+            despacho: valeForm.despacho.trim(),
+            numeroAlbaran: valeForm.numeroAlbaran.trim(),
+            empresa: valeForm.empresa.trim(),
+            codigoEmpresa: valeForm.codigoEmpresa.trim(),
+            autoriza: valeForm.autoriza.trim(),
+        };
+        const isValePayment = formaPago === 'Vales';
+
+        if (isValePayment) {
+            const hasEmpty = Object.values(sanitizedValeInfo).some((value) => value.length === 0);
+            if (hasEmpty) {
+                setValeFormTouched(true);
+                setShowValeModal(true);
+                alert('Completa todos los datos del vale antes de registrar.');
+                return;
+            }
+            setValeForm(sanitizedValeInfo);
+        }
+
         setIsSubmitting(true);
         const carreraData = {
             taximetro: taximetroValue,
@@ -145,6 +418,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
             formaPago,
             emisora,
             aeropuerto,
+            valeInfo: isValePayment ? sanitizedValeInfo : null,
         };
         try {
             if (isEditing && raceId) {
@@ -177,42 +451,59 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
         }
     };
 
-    const handleBack = () => {
-        navigateTo(Seccion.VistaCarreras);
-    };
+    const headerTitle = isEditing ? 'Editar Carrera' : 'Introducir Carrera';
+    const topBar = (
+        <ScreenTopBar
+            title={headerTitle}
+            navigateTo={navigateTo}
+            backTarget={Seccion.VistaCarreras}
+            className="mb-4"
+            rightSlot={
+                isEditing ? (
+                    <button
+                        onClick={handleDelete}
+                        className="p-1.5 text-zinc-900 hover:text-red-600 transition-colors"
+                        aria-label="Eliminar carrera"
+                    >
+                        <DeleteIcon />
+                    </button>
+                ) : (
+                    <div className="w-6" />
+                )
+            }
+        />
+    );
 
     if (isLoading) {
-        return <div className="text-center text-zinc-400">Cargando datos de la carrera...</div>;
+        return (
+            <div className="bg-zinc-950 min-h-screen text-zinc-100 px-3 pt-3 pb-6 space-y-4">
+                {topBar}
+                <div className="text-center text-zinc-400">Cargando datos de la carrera...</div>
+            </div>
+        );
     }
 
     return (
-        <div className="space-y-4 relative">
-            {/* Flecha fija en la esquina superior izquierda */}
-                    <button 
-                onClick={handleBack}
-                aria-label="Volver"
-                className="fixed top-4 left-4 p-2.5 text-white bg-zinc-900/70 border border-zinc-700 rounded-full z-50 shadow-md hover:bg-zinc-900/80 transition-colors focus:outline-none"
-                style={{ zIndex: 999 }}
-                    >
-                <ArrowBackIcon className="w-5 h-5 text-white" />
-                    </button>
-            <header className="flex justify-between items-center">
-                <div className="w-10" />
-                <KineticHeader title={isEditing ? 'Editar Carrera' : 'Introducir Carrera'} />
-                {isEditing ? (
-                    <button onClick={handleDelete} className="p-2 text-zinc-400 hover:text-red-500 transition-colors" aria-label="Delete race">
-                        <DeleteIcon />
-                    </button>
-                ) : <div className="w-10" /> }
-            </header>
+        <div className="bg-zinc-950 min-h-screen text-zinc-100 px-3 pt-3 pb-24 space-y-4">
+            {topBar}
             
             <FormCard title="Detalles de la Carrera">
                 <div className="grid grid-cols-2 gap-4">
                     <FormField label="Taxímetro">
-                        <TextInput type="number" value={taximetro} onChange={handleTaximetroChange} placeholder="0.00" />
+                        <button
+                            onClick={handleTaximetroClick}
+                            className="w-full p-2 border border-zinc-700 bg-zinc-800/50 rounded-md text-left text-sm text-zinc-100 hover:border-blue-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        >
+                            {taximetro || <span className="text-zinc-500">0.00</span>}
+                        </button>
                             </FormField>
                     <FormField label="Cobrado">
-                        <TextInput type="number" value={cobrado} onFocus={handleCobradoFocus} onChange={handleCobradoChange} placeholder="0.00" />
+                        <button
+                            onClick={handleCobradoClick}
+                            className="w-full p-2 border border-zinc-700 bg-zinc-800/50 rounded-md text-left text-sm text-zinc-100 hover:border-blue-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        >
+                            {cobrado || <span className="text-zinc-500">0.00</span>}
+                        </button>
                          {cobrado && taximetro && cobradoValue !== taximetroValue && (
                             <p className={`text-xs mt-1.5 ${propinaValue >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                                 {propinaValue >= 0 ? `Propina: ${propinaValue.toFixed(2)}€` : `Diferencia: ${propinaValue.toFixed(2)}€`}
@@ -221,11 +512,25 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                             </FormField>
                     <FormField label="Forma de Pago" className="col-span-2">
                          <div className="grid grid-cols-4 gap-2">
-                            <PaymentOption label="Efectivo" icon={<EuroIcon />} selected={formaPago === 'Efectivo'} onClick={() => setFormaPago('Efectivo')} />
-                            <PaymentOption label="Tarjeta" icon={<CreditCardIcon />} selected={formaPago === 'Tarjeta'} onClick={() => setFormaPago('Tarjeta')} />
-                            <PaymentOption label="Bizum" icon={<BizumIcon />} selected={formaPago === 'Bizum'} onClick={() => setFormaPago('Bizum')} />
-                            <PaymentOption label="Vales" icon={<ValesIcon />} selected={formaPago === 'Vales'} onClick={() => setFormaPago('Vales')} />
+                            <PaymentOption label="Efectivo" icon={<EuroIcon />} selected={formaPago === 'Efectivo'} onClick={() => handlePaymentSelection('Efectivo')} />
+                            <PaymentOption label="Tarjeta" icon={<CreditCardIcon />} selected={formaPago === 'Tarjeta'} onClick={() => handlePaymentSelection('Tarjeta')} />
+                            <PaymentOption label="Bizum" icon={<BizumIcon />} selected={formaPago === 'Bizum'} onClick={() => handlePaymentSelection('Bizum')} />
+                            <PaymentOption label="Vales" icon={<ValesIcon />} selected={formaPago === 'Vales'} onClick={() => handlePaymentSelection('Vales')} />
                                 </div>
+                                {formaPago === 'Vales' && (
+                                    <div className="mt-3 space-y-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowValeModal(true)}
+                                            className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-3 py-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            {isValeFormComplete ? 'Editar datos del vale' : 'Registrar datos del vale'}
+                                        </button>
+                                        <p className={`text-xs ${isValeFormComplete ? 'text-emerald-400' : 'text-amber-300'}`}>
+                                            {isValeFormComplete ? 'Datos del vale registrados.' : 'Faltan datos del vale por completar.'}
+                                        </p>
+                                    </div>
+                                )}
                             </FormField>
                             
                     <div className="col-span-2 flex justify-around items-center pt-2">
@@ -240,6 +545,352 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                     {isSubmitting ? 'Guardando...' : (isEditing ? 'Guardar Cambios' : 'Añadir Carrera')}
                 </PrimaryButton>
             </div>
+
+            {showValeModal && (
+                <div
+                    className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50 md:items-center"
+                    onClick={() => setShowValeModal(false)}
+                >
+                    <div
+                        className="bg-zinc-900 w-full max-w-md rounded-t-2xl md:rounded-2xl shadow-2xl border border-zinc-800 p-5"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold text-zinc-100">Datos del Vale</h3>
+                            <button
+                                type="button"
+                                onClick={() => setShowValeModal(false)}
+                                className="text-zinc-400 hover:text-zinc-200 transition-colors"
+                                aria-label="Cerrar"
+                            >
+                                &times;
+                            </button>
+                        </div>
+
+                        <div className="space-y-3">
+                            <div>
+                                <label className="block text-xs uppercase tracking-wide text-zinc-400 mb-1">Despacho</label>
+                                <TextInput
+                                    value={valeForm.despacho}
+                                    onChange={(e) => handleValeInputChange('despacho', e.target.value)}
+                                    placeholder="Introduce el despacho"
+                                />
+                                {valeFormTouched && valeForm.despacho.trim().length === 0 && (
+                                    <p className="text-xs text-red-400 mt-1">Este campo es obligatorio.</p>
+                                )}
+                            </div>
+                            <div>
+                                <label className="block text-xs uppercase tracking-wide text-zinc-400 mb-1">Nº de Albarán</label>
+                                <TextInput
+                                    value={valeForm.numeroAlbaran}
+                                    onChange={(e) => handleValeInputChange('numeroAlbaran', e.target.value)}
+                                    placeholder="Introduce el número de albarán"
+                                />
+                                {valeFormTouched && valeForm.numeroAlbaran.trim().length === 0 && (
+                                    <p className="text-xs text-red-400 mt-1">Este campo es obligatorio.</p>
+                                )}
+                            </div>
+                            <div>
+                                <label className="block text-xs uppercase tracking-wide text-zinc-400 mb-1">Nº Empresa</label>
+                                <TextInput
+                                    value={valeForm.codigoEmpresa}
+                                    onChange={(e) => handleValeInputChange('codigoEmpresa', e.target.value)}
+                                    placeholder="Introduce el número de empresa"
+                                />
+                                {valeFormTouched && valeForm.codigoEmpresa.trim().length === 0 && (
+                                    <p className="text-xs text-red-400 mt-1">Este campo es obligatorio.</p>
+                                )}
+                                {valeSuggestions.length > 0 && (
+                                    <div className="mt-1 bg-zinc-800 border border-zinc-700 rounded-lg overflow-hidden">
+                                        {valeSuggestions.map((suggestion) => (
+                                            <button
+                                                key={`${suggestion.codigoEmpresa}-${suggestion.empresa}`}
+                                                type="button"
+                                                onClick={() => handleValeSuggestionSelect(suggestion)}
+                                                className="w-full px-3 py-2 text-left text-xs text-zinc-200 hover:bg-zinc-700 transition-colors flex justify-between gap-2"
+                                            >
+                                                <span className="font-semibold">{suggestion.codigoEmpresa}</span>
+                                                <span className="text-zinc-400 truncate">{suggestion.empresa || 'Sin nombre'}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            <div>
+                                <label className="block text-xs uppercase tracking-wide text-zinc-400 mb-1">Empresa</label>
+                                <TextInput
+                                    value={valeForm.empresa}
+                                    onChange={(e) => handleValeInputChange('empresa', e.target.value)}
+                                    placeholder="Introduce la empresa"
+                                />
+                                {valeFormTouched && valeForm.empresa.trim().length === 0 && (
+                                    <p className="text-xs text-red-400 mt-1">Este campo es obligatorio.</p>
+                                )}
+                            </div>
+                            <div>
+                                <label className="block text-xs uppercase tracking-wide text-zinc-400 mb-1">Autoriza</label>
+                                <TextInput
+                                    value={valeForm.autoriza}
+                                    onChange={(e) => handleValeInputChange('autoriza', e.target.value)}
+                                    placeholder="Persona que autoriza"
+                                />
+                                {valeFormTouched && valeForm.autoriza.trim().length === 0 && (
+                                    <p className="text-xs text-red-400 mt-1">Este campo es obligatorio.</p>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="mt-5 flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setShowValeModal(false)}
+                                className="w-1/2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-sm font-semibold px-3 py-2 rounded-lg transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleValeRegister}
+                                className="w-1/2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-3 py-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                                Registrar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Teclado Numérico para Taxímetro */}
+            {showTaximetroKeyboard && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50" onClick={() => setShowTaximetroKeyboard(false)}>
+                    <div className="bg-zinc-900 w-full max-w-md rounded-t-2xl shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                        {/* Pantalla de visualización */}
+                        <div className="bg-zinc-800 p-6 border-b border-zinc-700">
+                            <div className="text-zinc-400 text-sm mb-2">Taxímetro</div>
+                            <div className="text-white text-4xl font-bold text-right min-h-[60px] flex items-center justify-end">
+                                {tempTaximetroValue || '0.00'}
+                            </div>
+                        </div>
+
+                        {/* Teclado Numérico */}
+                        <div className="p-4">
+                            <div className="grid grid-cols-3 gap-3 mb-3">
+                                {/* Fila 1 */}
+                                <button
+                                    onClick={() => handleNumberKeyPress('7')}
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                >
+                                    7
+                                </button>
+                                <button
+                                    onClick={() => handleNumberKeyPress('8')}
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                >
+                                    8
+                                </button>
+                                <button
+                                    onClick={() => handleNumberKeyPress('9')}
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                >
+                                    9
+                                </button>
+                                
+                                {/* Fila 2 */}
+                                <button
+                                    onClick={() => handleNumberKeyPress('4')}
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                >
+                                    4
+                                </button>
+                                <button
+                                    onClick={() => handleNumberKeyPress('5')}
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                >
+                                    5
+                                </button>
+                                <button
+                                    onClick={() => handleNumberKeyPress('6')}
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                >
+                                    6
+                                </button>
+                                
+                                {/* Fila 3 */}
+                                <button
+                                    onClick={() => handleNumberKeyPress('1')}
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                >
+                                    1
+                                </button>
+                                <button
+                                    onClick={() => handleNumberKeyPress('2')}
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                >
+                                    2
+                                </button>
+                                <button
+                                    onClick={() => handleNumberKeyPress('3')}
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                >
+                                    3
+                                </button>
+                                
+                                {/* Fila 4 */}
+                                <button
+                                    onClick={handleClear}
+                                    className="bg-red-600 hover:bg-red-700 text-white text-lg font-bold py-4 rounded-lg transition-colors active:bg-red-800"
+                                >
+                                    C
+                                </button>
+                                <button
+                                    onClick={() => handleNumberKeyPress('0')}
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                >
+                                    0
+                                </button>
+                                <button
+                                    onClick={handleBackspace}
+                                    className="bg-zinc-700 hover:bg-zinc-600 text-white text-xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-500"
+                                >
+                                    ⌫
+                                </button>
+                            </div>
+                            
+                            {/* Fila de punto decimal y OK */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <button
+                                    onClick={handleDecimalPoint}
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                >
+                                    .
+                                </button>
+                                <button
+                                    onClick={handleTaximetroOk}
+                                    className="bg-green-600 hover:bg-green-700 text-white text-xl font-bold py-4 rounded-lg transition-colors active:bg-green-800"
+                                >
+                                    OK
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Teclado Numérico para Cobrado */}
+            {showCobradoKeyboard && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50" onClick={() => setShowCobradoKeyboard(false)}>
+                    <div className="bg-zinc-900 w-full max-w-md rounded-t-2xl shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                        {/* Pantalla de visualización */}
+                        <div className="bg-zinc-800 p-6 border-b border-zinc-700">
+                            <div className="text-zinc-400 text-sm mb-2">Cobrado</div>
+                            <div className="text-white text-4xl font-bold text-right min-h-[60px] flex items-center justify-end">
+                                {tempCobradoValue || '0.00'}
+                            </div>
+                        </div>
+
+                        {/* Teclado Numérico */}
+                        <div className="p-4">
+                            <div className="grid grid-cols-3 gap-3 mb-3">
+                                {/* Fila 1 */}
+                                <button
+                                    onClick={() => handleCobradoNumberKeyPress('7')}
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                >
+                                    7
+                                </button>
+                                <button
+                                    onClick={() => handleCobradoNumberKeyPress('8')}
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                >
+                                    8
+                                </button>
+                                <button
+                                    onClick={() => handleCobradoNumberKeyPress('9')}
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                >
+                                    9
+                                </button>
+                                
+                                {/* Fila 2 */}
+                                <button
+                                    onClick={() => handleCobradoNumberKeyPress('4')}
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                >
+                                    4
+                                </button>
+                                <button
+                                    onClick={() => handleCobradoNumberKeyPress('5')}
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                >
+                                    5
+                                </button>
+                                <button
+                                    onClick={() => handleCobradoNumberKeyPress('6')}
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                >
+                                    6
+                                </button>
+                                
+                                {/* Fila 3 */}
+                                <button
+                                    onClick={() => handleCobradoNumberKeyPress('1')}
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                >
+                                    1
+                                </button>
+                                <button
+                                    onClick={() => handleCobradoNumberKeyPress('2')}
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                >
+                                    2
+                                </button>
+                                <button
+                                    onClick={() => handleCobradoNumberKeyPress('3')}
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                >
+                                    3
+                                </button>
+                                
+                                {/* Fila 4 */}
+                                <button
+                                    onClick={handleCobradoClear}
+                                    className="bg-red-600 hover:bg-red-700 text-white text-lg font-bold py-4 rounded-lg transition-colors active:bg-red-800"
+                                >
+                                    C
+                                </button>
+                                <button
+                                    onClick={() => handleCobradoNumberKeyPress('0')}
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                >
+                                    0
+                                </button>
+                                <button
+                                    onClick={handleCobradoBackspace}
+                                    className="bg-zinc-700 hover:bg-zinc-600 text-white text-xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-500"
+                                >
+                                    ⌫
+                                </button>
+                            </div>
+                            
+                            {/* Fila de punto decimal y OK */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <button
+                                    onClick={handleCobradoDecimalPoint}
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                >
+                                    .
+                                </button>
+                                <button
+                                    onClick={handleCobradoOk}
+                                    className="bg-green-600 hover:bg-green-700 text-white text-xl font-bold py-4 rounded-lg transition-colors active:bg-green-800"
+                                >
+                                    OK
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

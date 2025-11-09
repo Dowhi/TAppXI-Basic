@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import BackButton from '../components/BackButton';
 import { Seccion, Turno, CarreraVista } from '../types';
 import { getTurnosByDate, getCarrerasByDate, getGastosByDate } from '../services/api';
@@ -7,12 +7,6 @@ import { getTurnosByDate, getCarrerasByDate, getGastosByDate } from '../services
 const CalendarIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
         <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
-    </svg>
-);
-
-const EditIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
     </svg>
 );
 
@@ -38,6 +32,8 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
     const [carreras, setCarreras] = useState<CarreraVista[]>([]);
     const [gastosTotal, setGastosTotal] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+    const datePickerRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         const loadData = async () => {
@@ -59,6 +55,21 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
         };
         loadData();
     }, [selectedDate]);
+
+    useEffect(() => {
+        if (!isDatePickerOpen) return;
+
+        const handleOutsideClick = (event: MouseEvent) => {
+            if (datePickerRef.current && !datePickerRef.current.contains(event.target as Node)) {
+                setIsDatePickerOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleOutsideClick);
+        return () => {
+            document.removeEventListener('mousedown', handleOutsideClick);
+        };
+    }, [isDatePickerOpen]);
 
     // Calcular estadísticas por turno
     const turnosConEstadisticas = useMemo(() => {
@@ -86,6 +97,10 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
             const sumaEmisora = carrerasDelTurno
                 .filter(c => c.emisora === true)
                 .reduce((sum, c) => sum + (c.cobrado || 0), 0);
+            const cVales = carrerasDelTurno.filter(c => c.formaPago === 'Vales').length;
+            const sumaVales = carrerasDelTurno
+                .filter(c => c.formaPago === 'Vales')
+                .reduce((sum, c) => sum + (c.cobrado || 0), 0);
 
             return {
                 ...turno,
@@ -95,6 +110,8 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
                 cEmisora,
                 sumaTarjetas,
                 sumaEmisora,
+                cVales,
+                sumaVales,
                 turnoIndex: index + 1
             };
         });
@@ -110,6 +127,18 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
         };
     }, [carreras, gastosTotal]);
 
+    const selectedDateISO = useMemo(() => {
+        const year = selectedDate.getFullYear();
+        const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+        const day = String(selectedDate.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }, [selectedDate]);
+
+    const balanceClass = useMemo(
+        () => (totalDia.balance >= 0 ? 'text-emerald-300' : 'text-rose-300'),
+        [totalDia.balance]
+    );
+
     const formatDate = (date: Date): string => {
         return date.toLocaleDateString('es-ES', {
             day: '2-digit',
@@ -122,6 +151,7 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
         const newDate = new Date(selectedDate);
         newDate.setDate(newDate.getDate() + days);
         setSelectedDate(newDate);
+        setIsDatePickerOpen(false);
     };
 
     const formatTime = (date: Date | undefined): string => {
@@ -133,30 +163,55 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
     };
 
     return (
-        <div className="space-y-2">
-            {/* Header Amarillo */}
-            <div className="bg-yellow-400 py-2 px-3 rounded-lg flex items-center justify-between">
-                <BackButton 
-                    navigateTo={navigateTo} 
+        <div className="bg-zinc-950 min-h-screen text-zinc-100 font-sans px-3 py-4 space-y-3">
+            <header className="relative bg-yellow-400 rounded-lg px-3 py-1.5 flex items-center">
+                <BackButton
+                    navigateTo={navigateTo}
                     targetPage={Seccion.Resumen}
                     className="p-2 text-zinc-900 hover:text-zinc-700 transition-colors"
                 />
-                <h1 className="text-zinc-900 font-bold text-base flex-1 text-center">Resumen Diario</h1>
-                <div className="w-8"></div> {/* Espaciador para mantener el título centrado */}
-            </div>
+                <h1 className="flex-1 text-center text-zinc-900 font-bold text-base">Resumen Diario</h1>
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => setIsDatePickerOpen((prev) => !prev)}
+                        className="text-zinc-900 hover:text-zinc-700 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 rounded"
+                        aria-label="Seleccionar fecha"
+                    >
+                        <CalendarIcon />
+                    </button>
+                </div>
+                {isDatePickerOpen && (
+                    <div
+                        ref={datePickerRef}
+                        className="absolute right-3 top-full mt-2 w-56 bg-zinc-900 border border-zinc-700 rounded-lg p-3 shadow-lg space-y-2 z-20"
+                    >
+                        <span className="block text-xs text-zinc-400 uppercase tracking-wide">Selecciona un día</span>
+                        <input
+                            type="date"
+                            value={selectedDateISO}
+                            onChange={(e) => {
+                                if (!e.target.value) return;
+                                setSelectedDate(new Date(`${e.target.value}T00:00:00`));
+                                setIsDatePickerOpen(false);
+                            }}
+                            className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                        />
+                    </div>
+                )}
+            </header>
 
-            {/* Barra de Navegación de Fecha */}
-            <div className="bg-white rounded-lg py-1.5 px-3 flex items-center justify-between">
-                <button 
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl py-1.5 px-3 flex items-center justify-between">
+                <button
                     onClick={() => changeDate(-1)}
-                    className="text-zinc-900 hover:bg-gray-100 rounded p-1"
+                    className="text-zinc-100 hover:bg-zinc-800 rounded p-1"
                 >
                     <ArrowLeftIcon />
                 </button>
-                <span className="text-zinc-900 font-medium">{formatDate(selectedDate)}</span>
-                <button 
+                <span className="text-zinc-100 font-medium">{formatDate(selectedDate)}</span>
+                <button
                     onClick={() => changeDate(1)}
-                    className="text-zinc-900 hover:bg-gray-100 rounded p-1"
+                    className="text-zinc-100 hover:bg-zinc-800 rounded p-1"
                 >
                     <ArrowRightIcon />
                 </button>
@@ -166,17 +221,14 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
                 <div className="text-center p-8 text-zinc-400">Cargando...</div>
             ) : (
                 <>
-                    {/* Resumen por Turno */}
                     {turnosConEstadisticas.map((turno) => (
                         <div key={turno.id} className="bg-blue-900 rounded-lg p-4 relative">
-                            {/* Badge Turno Centrado */}
                             <div className="flex justify-center mb-2">
                                 <div className="bg-white rounded px-3 py-1 border border-blue-900">
                                     <span className="text-blue-900 text-sm font-bold">Turno {turno.turnoIndex || 1}</span>
                                 </div>
                             </div>
 
-                            {/* Contenido del Turno */}
                             <div className="space-y-1.5 text-white text-sm">
                                 <div className="flex justify-between">
                                     <span>Carreras:</span>
@@ -190,6 +242,12 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
                                     <span>C. Emisora:</span>
                                     <span className="font-semibold">{turno.cEmisora}</span>
                                 </div>
+                                {turno.cVales > 0 && (
+                                    <div className="flex justify-between">
+                                        <span>C. Vales:</span>
+                                        <span className="font-semibold">{turno.cVales}</span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between">
                                     <span>Suma Tarjetas:</span>
                                     <span className="font-semibold">{turno.sumaTarjetas.toFixed(2)}</span>
@@ -198,6 +256,12 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
                                     <span>Suma Emisora:</span>
                                     <span className="font-semibold">{turno.sumaEmisora.toFixed(2)}</span>
                                 </div>
+                                {turno.cVales > 0 && (
+                                    <div className="flex justify-between">
+                                        <span>Suma Vales:</span>
+                                        <span className="font-semibold">{turno.sumaVales.toFixed(2)}</span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between">
                                     <span>Km inicial:</span>
                                     <span className="font-semibold">{turno.kilometrosInicio}</span>
@@ -216,7 +280,6 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
                                 </div>
                             </div>
 
-                            {/* Total del Turno */}
                             <div className="mt-2 bg-white rounded border border-blue-900 p-2">
                                 <div className="flex justify-between items-center">
                                     <span className="text-blue-900 font-bold">TOTAL</span>
@@ -226,14 +289,13 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
                         </div>
                     ))}
 
-                    {/* Total del Día */}
                     {turnosConEstadisticas.length > 0 && (
                         <div className="bg-blue-900 rounded-lg p-4">
                             <div className="flex justify-between items-center">
                                 <span className="text-white font-bold">TOTAL DÍA</span>
                                 <div className="flex gap-4">
                                     <span className="text-white font-semibold">{totalDia.ingresos.toFixed(2)}</span>
-                                    <span className="text-red-400 font-semibold">{totalDia.gastos.toFixed(2)}</span>
+                                    <span className="text-red-300 font-semibold">{totalDia.gastos.toFixed(2)}</span>
                                     <span className="text-white font-semibold">{totalDia.balance.toFixed(2)}</span>
                                 </div>
                             </div>

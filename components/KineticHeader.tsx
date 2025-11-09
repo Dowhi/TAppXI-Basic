@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 
 interface KineticHeaderProps {
     title: string;
@@ -6,7 +6,7 @@ interface KineticHeaderProps {
 
 const KineticHeader: React.FC<KineticHeaderProps> = ({ title }) => {
     return (
-        <h1 className="text-2xl font-bold text-zinc-100 tracking-tight">
+        <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
             {title}
         </h1>
     );

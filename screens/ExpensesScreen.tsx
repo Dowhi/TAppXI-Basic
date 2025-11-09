@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Seccion, Proveedor, Concepto, Taller } from '../types';
-import KineticHeader from '../components/KineticHeader';
-import BackButton from '../components/BackButton';
+import ScreenTopBar from '../components/ScreenTopBar';
 import { addGasto, getProveedores, getConceptos, getTalleres, addProveedor, addConcepto, addTaller } from '../services/api';
 
 // Icons
@@ -67,7 +66,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
     // Estados para Actividad
     const [proveedorName, setProveedorName] = useState('');
     const [conceptoName, setConceptoName] = useState('');
-    const [soportaIVA, setSoportaIVA] = useState('');
+    const [soportaIVA, setSoportaIVA] = useState<boolean>(true);
     const [ivaPorcentaje, setIvaPorcentaje] = useState('21');
     const [baseImponible, setBaseImponible] = useState('');
     const [ivaImporte, setIvaImporte] = useState('');
@@ -208,7 +207,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
         const total = parseFloat(importeTotal) || 0;
         const iva = parseFloat(ivaPorcentaje) || 21;
         
-        if (soportaIVA === 'Sí' || soportaIVA === 'Si') {
+        if (soportaIVA) {
             // Con IVA: Base = Total / (1 + IVA/100)
             const base = total / (1 + iva / 100);
             setBaseImponible(base.toFixed(2));
@@ -426,12 +425,8 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
     };
 
     return (
-        <div className="bg-zinc-950 -m-4 p-4 min-h-screen text-zinc-100 font-sans">
-            <header className="flex justify-between items-center mb-4">
-                <BackButton navigateTo={navigateTo} />
-                <KineticHeader title="Gastos" />
-                <div className="w-10" />
-            </header>
+        <div className="bg-zinc-950 min-h-screen text-zinc-100 font-sans px-3 pt-3 pb-6">
+            <ScreenTopBar title="Gastos" navigateTo={navigateTo} backTarget={Seccion.Home} className="mb-4" />
             
             <div className="space-y-3 max-w-sm mx-auto">
                 <FormCard title="Encabezado de Factura">
@@ -571,11 +566,15 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                             
                             <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                                 <FormField label="¿Soporta IVA?">
-                                    <SelectInput value={soportaIVA} onChange={(e) => setSoportaIVA(e.target.value)}>
-                                        <option value="">Seleccionar</option>
-                                        <option value="Sí">Sí</option>
-                                        <option value="No">No</option>
-                                    </SelectInput>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            checked={soportaIVA}
+                                            onChange={(e) => setSoportaIVA(e.target.checked)}
+                                            className="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-blue-500 focus:ring-blue-500"
+                                        />
+                                        <span className="text-sm text-zinc-300">{soportaIVA ? 'Sí' : 'No'}</span>
+                                    </div>
                                 </FormField>
                                 <FormField label="Iva (%)">
                                     <TextInput 

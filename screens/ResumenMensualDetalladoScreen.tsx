@@ -195,7 +195,7 @@ const ResumenMensualDetalladoScreen: React.FC<ResumenMensualDetalladoScreenProps
                     targetPage={Seccion.Resumen}
                     className="p-2 text-white hover:text-zinc-300 transition-colors"
                 />
-                <h1 className="text-white font-bold text-lg flex-1 text-center">Resumen Mensual Detallado</h1>
+                <h1 className="text-white font-bold text-lg flex-1 text-center">Mensual Detallado</h1>
                 <div className="w-10"></div> {/* Espaciador */}
             </div>
 

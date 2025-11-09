@@ -1,11 +1,11 @@
-﻿export enum Seccion {
+export enum Seccion {
     Home = "Home",
     Turnos = "Turnos",
     Carreras = "Carreras",
     Gastos = "Gastos",
-    Estadisticas = "Estadísticas",
+    Estadisticas = "Estad�sticas",
     Informes = "Informes",
-    Configuracion = "Configuración",
+    Configuracion = "Configuraci�n",
     VistaCarreras = "Vista Carreras",
     IntroducirCarrera = "Introducir Carrera",
     EditarCarrera = "Editar Carrera",
@@ -21,7 +21,8 @@
     ResumenMensualDetallado = "Resumen Mensual Detallado",
     ResumenGastosMensual = "Resumen de Gastos Mensual",
     ResumenMensualIngresos = "Resumen Mensual Ingresos",
-    Historico = "Histórico",
+    Historico = "Hist�rico",
+    ConfiguracionDescansos = "Configuración Descansos",
 }
 
 
@@ -38,6 +39,14 @@ export interface CarrerasResumen {
     pendienteValor: number;
 }
 
+export interface ValeInfo {
+    despacho: string;
+    numeroAlbaran: string;
+    empresa: string;
+    codigoEmpresa: string;
+    autoriza: string;
+}
+
 export interface CarreraVista {
     id: string; // Firestore document ID
     taximetro: number;
@@ -47,6 +56,7 @@ export interface CarreraVista {
     aeropuerto: boolean;
     fechaHora: Date;
     turnoId?: string; // ID del turno al que pertenece esta carrera
+    valeInfo?: ValeInfo | null;
 }
 
 export interface Gasto {

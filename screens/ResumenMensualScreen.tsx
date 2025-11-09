@@ -23,12 +23,6 @@ const PDFIcon = () => (
     </svg>
 );
 
-const CurrencyIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-        <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c2.16-.43 3.5-1.77 3.5-3.6 0-2.13-1.87-3.29-4.7-4.15z"/>
-    </svg>
-);
-
 interface ResumenMensualScreenProps {
     navigateTo: (page: Seccion) => void;
 }
@@ -256,7 +250,7 @@ const ResumenMensualScreen: React.FC<ResumenMensualScreenProps> = ({ navigateTo 
             {/* Tabla */}
             <div className="bg-white overflow-hidden">
                 {/* Header de la Tabla */}
-                <div className="bg-blue-900 grid grid-cols-4 py-2.5 px-4 text-white font-bold text-sm">
+                <div className="bg-blue-900 grid grid-cols-4 py-1.5 px-4 text-white font-bold text-sm">
                     <div className="flex items-center">Mes</div>
                     <div className="text-right flex items-center justify-end">Ingresos</div>
                     <div className="text-right flex items-center justify-end">Gastos</div>
@@ -271,7 +265,7 @@ const ResumenMensualScreen: React.FC<ResumenMensualScreenProps> = ({ navigateTo 
                         {datosMensuales.map((dato, index) => (
                             <div 
                                 key={index}
-                                className={`grid grid-cols-4 py-2.5 px-4 text-sm border-b border-gray-200 ${
+                                className={`grid grid-cols-4 py-1.5 px-4 text-sm border-b border-gray-200 ${
                                     index % 2 === 0 ? 'bg-gray-50' : 'bg-white'
                                 }`}
                             >
@@ -283,11 +277,8 @@ const ResumenMensualScreen: React.FC<ResumenMensualScreenProps> = ({ navigateTo 
                         ))}
 
                         {/* Fila de Totales */}
-                        <div className="bg-gray-200 grid grid-cols-4 py-3 px-4 text-sm font-semibold border-t-2 border-gray-300">
-                            <div className="flex items-center gap-2">
-                                <div className="text-blue-600">
-                                    <CurrencyIcon />
-                                </div>
+                        <div className="bg-gray-200 grid grid-cols-4 py-2 px-4 text-sm font-semibold border-t-2 border-gray-300">
+                            <div className="flex items-center">
                                 <span className="text-zinc-900 font-bold">Total</span>
                             </div>
                             <div className="text-blue-600 text-right font-bold flex items-center justify-end">{totales.ingresosTotal.toFixed(2)} €</div>

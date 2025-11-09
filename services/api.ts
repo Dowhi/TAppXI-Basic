@@ -1,9 +1,13 @@
-
+﻿
 import { db } from '../firebaseConfig';
 import { CarreraVista, Gasto, Turno, Proveedor, Concepto, Taller } from '../types';
 
 // Type for data sent to Firestore (without id)
 export type CarreraData = Omit<CarreraVista, 'id'>;
+export interface ValeDirectoryEntry {
+    codigoEmpresa: string;
+    empresa: string;
+}
 
 const carrerasCollection = db.collection('carreras');
 const gastosCollection = db.collection('gastos');
@@ -12,11 +16,22 @@ const talleresCollection = db.collection('talleres');
 const proveedoresCollection = db.collection('proveedores');
 const conceptosCollection = db.collection('conceptos');
 const ajustesCollection = db.collection('ajustes');
+const breakConfigurationsCollection = db.collection('breakConfigurations');
+const excepcionesCollection = db.collection('excepciones');
 
 // --- Converters ---
 
 const docToCarrera = (doc: any): CarreraVista => {
     const data = doc.data();
+    const valeInfo = data.valeInfo
+        ? {
+            despacho: data.valeInfo.despacho || '',
+            numeroAlbaran: data.valeInfo.numeroAlbaran || '',
+            empresa: data.valeInfo.empresa || '',
+            codigoEmpresa: data.valeInfo.codigoEmpresa || '',
+            autoriza: data.valeInfo.autoriza || '',
+        }
+        : null;
     return {
         id: doc.id,
         taximetro: data.taximetro,
@@ -26,6 +41,7 @@ const docToCarrera = (doc: any): CarreraVista => {
         aeropuerto: data.aeropuerto,
         fechaHora: data.fechaHora.toDate(), // Convert Firestore Timestamp to JS Date
         turnoId: data.turnoId || undefined, // ID del turno relacionado
+        valeInfo,
     };
 };
 
@@ -83,6 +99,27 @@ export const getCarrera = async (id: string): Promise<CarreraVista | null> => {
     return doc.exists ? docToCarrera(doc) : null;
 };
 
+export const getValesDirectory = async (): Promise<ValeDirectoryEntry[]> => {
+    const snapshot = await carrerasCollection.where('formaPago', '==', 'Vales').get();
+    const directoryMap = new Map<string, string>();
+
+    snapshot.docs.forEach((doc: any) => {
+        const data = doc.data();
+        const codigoEmpresa = data?.valeInfo?.codigoEmpresa ? String(data.valeInfo.codigoEmpresa).trim() : '';
+        if (!codigoEmpresa) {
+            return;
+        }
+        if (!directoryMap.has(codigoEmpresa)) {
+            directoryMap.set(codigoEmpresa, String(data.valeInfo?.empresa || '').trim());
+        }
+    });
+
+    return Array.from(directoryMap.entries()).map(([codigoEmpresa, empresa]) => ({
+        codigoEmpresa,
+        empresa,
+    }));
+};
+
 type CarreraInputData = Omit<CarreraData, 'fechaHora'> & { fechaHora?: Date; turnoId?: string };
 
 export const addCarrera = async (carrera: CarreraInputData) => {
@@ -104,6 +141,12 @@ export const addCarrera = async (carrera: CarreraInputData) => {
         // @ts-ignore
         fechaHora: carrera.fechaHora ? firebase.firestore.Timestamp.fromDate(carrera.fechaHora) : firebase.firestore.FieldValue.serverTimestamp()
     };
+
+    if (carrera.valeInfo && carrera.formaPago === 'Vales') {
+        dataToAdd.valeInfo = carrera.valeInfo;
+    } else {
+        dataToAdd.valeInfo = null;
+    }
 
     // Agregar turnoId si existe
     if (turnoId) {
@@ -142,7 +185,21 @@ export const addGasto = async (gasto: Omit<Gasto, 'id'>) => {
 };
 
 export const updateCarrera = async (id: string, carrera: Partial<CarreraInputData>) => {
-    await carrerasCollection.doc(id).update(carrera);
+    const updates: any = { ...carrera };
+    if ('formaPago' in updates) {
+        if (updates.formaPago === 'Vales') {
+            if (updates.valeInfo) {
+                updates.valeInfo = updates.valeInfo;
+            } else {
+                updates.valeInfo = null;
+            }
+        } else {
+            updates.valeInfo = null;
+        }
+    } else if ('valeInfo' in updates && updates.valeInfo === undefined) {
+        delete updates.valeInfo;
+    }
+    await carrerasCollection.doc(id).update(updates);
 };
 
 export const deleteCarrera = (id: string) => {
@@ -625,23 +682,26 @@ export const subscribeToActiveTurno = (
 
 export interface Ajustes {
     temaOscuro: boolean;
-    tamañoFuente: number;
+    tamanoFuente: number;
     letraDescanso: string;
     objetivoDiario: number;
 }
 
 export const saveAjustes = async (ajustes: Ajustes): Promise<void> => {
     try {
-        // Obtener el documento de ajustes (si existe)
         const ajustesSnapshot = await ajustesCollection.limit(1).get();
-        
+        const dataToSave = {
+            ...ajustes,
+            // escribir ambos nombres de campo por compatibilidad
+            tamanoFuente: ajustes.tamanoFuente,
+            "tam\u00f1oFuente": ajustes.tamanoFuente,
+        } as any;
+
         if (!ajustesSnapshot.empty) {
-            // Actualizar el documento existente
             const docId = ajustesSnapshot.docs[0].id;
-            await ajustesCollection.doc(docId).update(ajustes);
+            await ajustesCollection.doc(docId).set(dataToSave, { merge: true });
         } else {
-            // Crear un nuevo documento
-            await ajustesCollection.add(ajustes);
+            await ajustesCollection.add(dataToSave);
         }
     } catch (error) {
         console.error('Error guardando ajustes:', error);
@@ -655,9 +715,156 @@ export const getAjustes = async (): Promise<Ajustes | null> => {
         if (snapshot.empty) {
             return null;
         }
-        return snapshot.docs[0].data() as Ajustes;
+
+        const raw = snapshot.docs[0].data() as any;
+        return {
+            temaOscuro: raw.temaOscuro ?? false,
+            tamanoFuente: raw.tamanoFuente ?? raw['tam\u00f1oFuente'] ?? 14,
+            letraDescanso: raw.letraDescanso ?? '',
+            objetivoDiario: raw.objetivoDiario ?? 100,
+        };
     } catch (error) {
         console.error('Error obteniendo ajustes:', error);
         return null;
     }
 };
+
+export interface BreakConfiguration {
+    startDate: string;
+    startDayLetter: string;
+    weekendPattern: string;
+    userBreakLetter: string;
+    updatedAt: Date | null;
+}
+
+export const saveBreakConfiguration = async (config: Omit<BreakConfiguration, 'updatedAt'>): Promise<void> => {
+    try {
+        const snapshot = await breakConfigurationsCollection.limit(1).get();
+        const dataToSave = {
+            startDate: config.startDate,
+            startDayLetter: config.startDayLetter,
+            weekendPattern: config.weekendPattern,
+            userBreakLetter: config.userBreakLetter,
+            // @ts-ignore
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        };
+
+        if (!snapshot.empty) {
+            const docId = snapshot.docs[0].id;
+            await breakConfigurationsCollection.doc(docId).set(dataToSave, { merge: true });
+        } else {
+            await breakConfigurationsCollection.add(dataToSave);
+        }
+    } catch (error) {
+        console.error('Error guardando configuracion de descansos:', error);
+        throw error;
+    }
+};
+
+export const getBreakConfiguration = async (): Promise<BreakConfiguration | null> => {
+    try {
+        const snapshot = await breakConfigurationsCollection.limit(1).get();
+        if (snapshot.empty) {
+            return null;
+        }
+
+        const data = snapshot.docs[0].data() as any;
+        return {
+            startDate: data.startDate ?? '',
+            startDayLetter: data.startDayLetter ?? 'A',
+            weekendPattern: data.weekendPattern ?? 'Sabado: AC / Domingo: BD',
+            userBreakLetter: data.userBreakLetter ?? 'A',
+            updatedAt: data.updatedAt ? data.updatedAt.toDate() : null,
+        };
+    } catch (error) {
+        console.error('Error obteniendo configuracion de descansos:', error);
+        return null;
+    }
+};
+
+// --- Excepciones de Descanso ---
+
+export interface Excepcion {
+    id: string;
+    fechaDesde: Date;
+    fechaHasta: Date;
+    tipo: string;
+    aplicaPar: boolean;
+    aplicaImpar: boolean;
+    descripcion?: string;
+    nuevaLetra?: string;
+    createdAt: Date;
+}
+
+export type ExcepcionData = Omit<Excepcion, 'id' | 'createdAt'>;
+
+const docToExcepcion = (doc: any): Excepcion => {
+    const data = doc.data();
+    return {
+        id: doc.id,
+        fechaDesde: data.fechaDesde.toDate(),
+        fechaHasta: data.fechaHasta.toDate(),
+        tipo: data.tipo,
+        aplicaPar: data.aplicaPar || false,
+        aplicaImpar: data.aplicaImpar || false,
+        descripcion: data.descripcion || '',
+        nuevaLetra: data.nuevaLetra || undefined,
+        createdAt: data.createdAt.toDate(),
+    };
+};
+
+export const addExcepcion = async (excepcion: ExcepcionData): Promise<string> => {
+    const dataToAdd: any = {
+        // @ts-ignore
+        fechaDesde: firebase.firestore.Timestamp.fromDate(excepcion.fechaDesde),
+        // @ts-ignore
+        fechaHasta: firebase.firestore.Timestamp.fromDate(excepcion.fechaHasta),
+        tipo: excepcion.tipo,
+        aplicaPar: excepcion.aplicaPar,
+        aplicaImpar: excepcion.aplicaImpar,
+        descripcion: excepcion.descripcion || '',
+        // @ts-ignore
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    
+    if (excepcion.nuevaLetra) {
+        dataToAdd.nuevaLetra = excepcion.nuevaLetra;
+    }
+    
+    const docRef = await excepcionesCollection.add(dataToAdd);
+    return docRef.id;
+};
+
+export const getExcepciones = async (): Promise<Excepcion[]> => {
+    const snapshot = await excepcionesCollection.orderBy('createdAt', 'desc').get();
+    return snapshot.docs.map(docToExcepcion);
+};
+
+export const updateExcepcion = async (id: string, excepcion: ExcepcionData): Promise<void> => {
+    const dataToUpdate: any = {
+        // @ts-ignore
+        fechaDesde: firebase.firestore.Timestamp.fromDate(excepcion.fechaDesde),
+        // @ts-ignore
+        fechaHasta: firebase.firestore.Timestamp.fromDate(excepcion.fechaHasta),
+        tipo: excepcion.tipo,
+        aplicaPar: excepcion.aplicaPar,
+        aplicaImpar: excepcion.aplicaImpar,
+        descripcion: excepcion.descripcion || '',
+    };
+    
+    if (excepcion.nuevaLetra) {
+        dataToUpdate.nuevaLetra = excepcion.nuevaLetra;
+    } else {
+        // Si no hay nuevaLetra, eliminarla del documento
+        dataToUpdate.nuevaLetra = firebase.firestore.FieldValue.delete();
+    }
+    
+    await excepcionesCollection.doc(id).update(dataToUpdate);
+};
+
+export const deleteExcepcion = async (id: string): Promise<void> => {
+    await excepcionesCollection.doc(id).delete();
+};
+
+
+

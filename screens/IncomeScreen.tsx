@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import { Seccion, CarrerasResumen, CarreraVista, Turno } from '../types';
-import KineticHeader from '../components/KineticHeader';
-import BackButton from '../components/BackButton';
+import ScreenTopBar from '../components/ScreenTopBar';
 import { subscribeToCarreras, subscribeToGastos, subscribeToActiveTurno, getAjustes } from '../services/api';
 
 // Icons
@@ -9,6 +8,8 @@ const VisibilityIcon: React.FC<{className?: string}> = ({ className }) => <svg x
 const VisibilityOffIcon: React.FC<{className?: string}> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/></svg>;
 const EuroIcon: React.FC<{className?: string}> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M15 18.5c-2.51 0-4.68-1.42-5.76-3.5H15v-2H8.58c-.05-.33-.08-.66-.08-1s.03-.67.08-1H15V9H9.24C10.32 6.92 12.5 5.5 15 5.5c1.61 0 3.09.59 4.23 1.57L21 5.3C19.41 3.87 17.3 3 15 3c-3.92 0-7.24 2.51-8.48 6H3v2h3.06c-.04.33-.06.66-.06 1s.02.67.06 1H3v2h3.52c1.24 3.49 4.56 6 8.48 6 2.31 0 4.41-.87 6-2.3l-1.78-1.77C18.09 17.91 16.61 18.5 15 18.5z"/></svg>;
 const CreditCardIcon: React.FC<{className?: string}> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>;
+const BizumIcon: React.FC<{className?: string}> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>;
+const ValesIcon: React.FC<{className?: string}> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2h-2v2h2V4zM9 18H4v-2h5v2zm0-4H4v-2h5v2zm0-4H4V8h5v2zm7 8h-5v-2h5v2zm0-4h-5v-2h5v2zm0-4h-5V8h5v2z"/></svg>;
 // Icono de Emisora/Antena - nuevo diseño más reconocible
 const CellTowerIcon: React.FC<{className?: string}> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 611.999 611.999" fill="currentColor" className={className}>
@@ -103,7 +104,26 @@ const IncomeScreen: React.FC<IncomeScreenProps> = ({ navigateTo, navigateToEditR
         setLoading(true);
         setError(null);
         const unsubscribe = subscribeToCarreras((data) => {
-            setCarreras(data);
+            // Filtrar carreras: solo las del turno activo (si existe) o las del día actual
+            let carrerasFiltradas = data;
+            
+            if (turnoActivo) {
+                // Si hay turno activo, filtrar por turnoId
+                carrerasFiltradas = data.filter(c => c.turnoId === turnoActivo.id);
+            } else {
+                // Si no hay turno activo, filtrar por fecha del día actual
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const tomorrow = new Date(today);
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                
+                carrerasFiltradas = data.filter(c => {
+                    const fechaCarrera = new Date(c.fechaHora);
+                    return fechaCarrera >= today && fechaCarrera < tomorrow;
+                });
+            }
+            
+            setCarreras(carrerasFiltradas);
             setLoading(false);
             setError(null);
         }, (error) => {
@@ -112,7 +132,7 @@ const IncomeScreen: React.FC<IncomeScreenProps> = ({ navigateTo, navigateToEditR
             setLoading(false);
         });
         return () => unsubscribe();
-    }, []);
+    }, [turnoActivo]);
 
     // Real-time subscription to gastos - carga desde la base de datos
     useEffect(() => {
@@ -253,20 +273,45 @@ const IncomeScreen: React.FC<IncomeScreenProps> = ({ navigateTo, navigateToEditR
     const getPaymentIconComponent = (formaPago: CarreraVista['formaPago']): React.FC<{ className?: string }> => {
         if (hideValues) return EuroIcon;
         switch (formaPago) {
+            case 'Bizum': return BizumIcon;
+            case 'Vales': return ValesIcon;
             case 'Tarjeta': return CreditCardIcon;
             case 'Efectivo': default: return EuroIcon;
         }
     };
 
+    const getPaymentColorClass = (formaPago: CarreraVista['formaPago']): string => {
+        switch (formaPago) {
+            case 'Efectivo':
+                return 'text-emerald-400';
+            case 'Tarjeta':
+                return 'text-blue-400';
+            case 'Bizum':
+                return 'text-purple-400';
+            case 'Vales':
+                return 'text-amber-300';
+            default:
+                return 'text-zinc-300';
+        }
+    };
+
     return (
-        <div className="space-y-2 pb-24">
-            <header className="flex justify-between items-center mb-2">
-                <BackButton navigateTo={navigateTo} />
-                <KineticHeader title="Carreras" />
-                <button onClick={() => setHideValues(!hideValues)} className="p-2 text-zinc-300 hover:text-white transition-colors">
-                    {hideValues ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                </button>
-            </header>
+        <div className="bg-zinc-950 min-h-screen text-zinc-100 px-3 pt-3 pb-24 space-y-4">
+            <ScreenTopBar
+                title="Ingresos"
+                navigateTo={navigateTo}
+                backTarget={Seccion.Home}
+                className="mb-2"
+                rightSlot={
+                    <button
+                        onClick={() => setHideValues(!hideValues)}
+                        className="p-1.5 text-zinc-900 hover:text-zinc-700 transition-colors"
+                        aria-label="Ocultar/mostrar valores"
+                    >
+                        {hideValues ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                    </button>
+                }
+            />
 
             <section className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-2 space-y-2">
                 <div className="flex space-x-2">
@@ -305,7 +350,7 @@ const IncomeScreen: React.FC<IncomeScreenProps> = ({ navigateTo, navigateToEditR
                             return (
                                 <div key={carrera.id} onClick={() => navigateToEditRace(carrera.id)} className="bg-zinc-900 border border-zinc-800 rounded-lg p-2 flex items-center text-center cursor-pointer hover:bg-zinc-800 transition-colors">
                                     <span className="flex-1 font-bold text-zinc-100 text-sm">{hideValues ? '****' : `${carrera.cobrado.toFixed(2)}€`}</span>
-                                    <span className="flex-1 text-blue-400 flex justify-center items-center">
+                                    <span className={`flex-1 flex justify-center items-center ${getPaymentColorClass(carrera.formaPago)}`}>
                                         <PaymentIcon className="w-4 h-4" />
                                     </span>
                                     <span className="flex-1 text-emerald-400 text-xs">{propina > 0 ? (hideValues ? '****' : `${propina.toFixed(2)}€`) : ''}</span>

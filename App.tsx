@@ -1,4 +1,4 @@
-﻿import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Seccion } from './types';
 import HomeScreen from './screens/HomeScreen';
 import IncomeScreen from './screens/IncomeScreen';
@@ -15,9 +15,13 @@ import ResumenMensualDetalladoScreen from './screens/ResumenMensualDetalladoScre
 import ResumenGastosMensualScreen from './screens/ResumenGastosMensualScreen';
 import ResumenMensualIngresosScreen from './screens/ResumenMensualIngresosScreen';
 import AjustesScreen from './screens/AjustesScreen';
+import StatisticsScreen from './screens/StatisticsScreen';
+import CalendarScreen from './screens/CalendarScreen';
+import BreakConfigurationScreen from './screens/BreakConfigurationScreen';
+import ReportsScreen from './screens/ReportsScreen';
 
 const HomeIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor">
+    <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px" fill="currentColor">
         <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8h5z"/>
     </svg>
 );
@@ -77,6 +81,14 @@ const App: React.FC = () => {
                 return <ResumenMensualIngresosScreen navigateTo={navigateTo} />;
             case Seccion.AjustesGenerales:
                 return <AjustesScreen navigateTo={navigateTo} />;
+            case Seccion.Estadisticas:
+                return <StatisticsScreen navigateTo={navigateTo} />;
+            case Seccion.Calendario:
+                return <CalendarScreen navigateTo={navigateTo} />;
+            case Seccion.ConfiguracionDescansos:
+                return <BreakConfigurationScreen navigateTo={navigateTo} />;
+            case Seccion.Informes:
+                return <ReportsScreen navigateTo={navigateTo} />;
             default:
                 return <HomeScreen navigateTo={navigateTo} />;
         }
@@ -84,14 +96,14 @@ const App: React.FC = () => {
 
     return (
         <div className="bg-zinc-950 min-h-screen text-zinc-50 font-sans">
-            <main className="container mx-auto p-4 max-w-2xl pb-24">
+            <main className="w-full pb-24">
                 {renderPage()}
             </main>
             {currentPage !== Seccion.Home && (
                 <div className="fixed bottom-1 left-1/2 -translate-x-1/2 z-50">
                     <button
                         onClick={() => navigateTo(Seccion.Home)}
-                        className="bg-zinc-800 text-zinc-300 w-14 h-14 rounded-full flex items-center justify-center shadow-lg border border-zinc-700 hover:bg-zinc-700 transition-colors active:scale-90"
+                        className="text-zinc-300 p-2 hover:text-cyan-300 transition-transform active:scale-90 focus:outline-none"
                         aria-label="Go to Home page"
                     >
                         <HomeIcon />
@@ -103,6 +115,7 @@ const App: React.FC = () => {
 };
 
 export default App;
+
 
 
 
