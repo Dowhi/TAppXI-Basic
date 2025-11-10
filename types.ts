@@ -57,6 +57,7 @@ export interface CarreraVista {
     fechaHora: Date;
     turnoId?: string; // ID del turno al que pertenece esta carrera
     valeInfo?: ValeInfo | null;
+    notas?: string | null;
 }
 
 export interface Gasto {
@@ -114,4 +115,5 @@ export interface Turno {
     kilometrosInicio: number;
     fechaFin?: Date;
     kilometrosFin?: number;
+    numero?: number;
 }

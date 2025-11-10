@@ -42,6 +42,7 @@ const docToCarrera = (doc: any): CarreraVista => {
         fechaHora: data.fechaHora.toDate(), // Convert Firestore Timestamp to JS Date
         turnoId: data.turnoId || undefined, // ID del turno relacionado
         valeInfo,
+        notas: data.notas || null,
     };
 };
 
@@ -148,6 +149,12 @@ export const addCarrera = async (carrera: CarreraInputData) => {
         dataToAdd.valeInfo = null;
     }
 
+    if (carrera.notas) {
+        dataToAdd.notas = carrera.notas;
+    } else {
+        dataToAdd.notas = null;
+    }
+
     // Agregar turnoId si existe
     if (turnoId) {
         dataToAdd.turnoId = turnoId;
@@ -198,6 +205,9 @@ export const updateCarrera = async (id: string, carrera: Partial<CarreraInputDat
         }
     } else if ('valeInfo' in updates && updates.valeInfo === undefined) {
         delete updates.valeInfo;
+    }
+    if ('notas' in updates) {
+        updates.notas = updates.notas ? updates.notas : null;
     }
     await carrerasCollection.doc(id).update(updates);
 };

@@ -27,6 +27,13 @@ const TextInput: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = (props)
     <input {...props} className={`w-full p-2 border border-zinc-700 bg-zinc-800/50 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm text-zinc-100 placeholder:text-zinc-500 ${props.className}`} />
 );
 
+const TextArea: React.FC<React.TextareaHTMLAttributes<HTMLTextAreaElement>> = ({ className = '', ...rest }) => (
+    <textarea
+        {...rest}
+        className={`w-full min-h-[90px] p-2 border border-zinc-700 bg-zinc-800/50 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm text-zinc-100 placeholder:text-zinc-500 resize-y ${className}`}
+    />
+);
+
 const CheckboxField: React.FC<{ label: string; checked: boolean; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; }> = ({ label, checked, onChange }) => (
     <label className="flex items-center gap-2 cursor-pointer">
         <input type="checkbox" checked={checked} onChange={onChange} className="w-4 h-4 text-blue-600 bg-zinc-700 border-zinc-600 rounded focus:ring-blue-500" />
@@ -89,6 +96,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
     const [valeFormTouched, setValeFormTouched] = useState(false);
     const [valeDirectory, setValeDirectory] = useState<ValeDirectoryEntry[]>([]);
     const [empresaManuallyEdited, setEmpresaManuallyEdited] = useState(false);
+    const [notas, setNotas] = useState('');
 
     const isValeFormComplete = useMemo(() => {
         return Object.values(valeForm).every((value) => value.trim().length > 0);
@@ -112,6 +120,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                 setFormaPago(race.formaPago);
                 setEmisora(race.formaPago === 'Vales' ? true : race.emisora);
                 setAeropuerto(race.aeropuerto);
+                setNotas(race.notas || '');
                 if (race.formaPago === 'Vales' && race.valeInfo) {
                     setValeForm({
                         despacho: race.valeInfo.despacho || '',
@@ -317,7 +326,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
     };
 
     const handleCobradoClick = () => {
-        setTempCobradoValue(cobrado);
+        setTempCobradoValue('');
         setCobradoManuallySet(true);
         setShowCobradoKeyboard(true);
     };
@@ -399,6 +408,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
             autoriza: valeForm.autoriza.trim(),
         };
         const isValePayment = formaPago === 'Vales';
+        const sanitizedNotas = notas.trim();
 
         if (isValePayment) {
             const hasEmpty = Object.values(sanitizedValeInfo).some((value) => value.length === 0);
@@ -419,6 +429,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
             emisora,
             aeropuerto,
             valeInfo: isValePayment ? sanitizedValeInfo : null,
+            notas: sanitizedNotas.length > 0 ? sanitizedNotas : null,
         };
         try {
             if (isEditing && raceId) {
@@ -545,6 +556,14 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                     {isSubmitting ? 'Guardando...' : (isEditing ? 'Guardar Cambios' : 'Añadir Carrera')}
                 </PrimaryButton>
             </div>
+
+            <FormCard title="Notas">
+                <TextArea
+                    value={notas}
+                    onChange={(e) => setNotas(e.target.value)}
+                    placeholder="Añade observaciones adicionales sobre la carrera"
+                />
+            </FormCard>
 
             {showValeModal && (
                 <div

@@ -32,6 +32,17 @@ const WalletIcon = () => (
 );
 
 // Quick Action Icons — mismo estilo
+const TaxiIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M4 11h16l-1.5-5A2 2 0 0 0 16.61 4H7.39A2 2 0 0 0 5.5 6z" />
+    <path d="M6 11v9" />
+    <path d="M18 11v9" />
+    <path d="M2 16h20" />
+    <path d="M7 16v5" />
+    <path d="M17 16v5" />
+  </svg>
+);
+
 const ListIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <line x1="8" y1="6" x2="21" y2="6" />
@@ -106,7 +117,7 @@ const PauseCircleIcon = () => (
   </svg>
 );
 
-// --- COMPONENTE PRINCIPAL ---
+// --- COMPONENTE PRINCIPAL (REPLICADO DE LA FOTO) ---
 
 interface HomeScreenProps {
   navigateTo: (page: Seccion, id?: string) => void;
@@ -160,16 +171,14 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
   const balance = ingresos - gastos;
 
   const quickActions = [
-    { label: 'Ingresos', icon: <ListIcon />, action: () => navigateTo(turnoActivo ? Seccion.VistaCarreras : Seccion.Turnos) },
-    { label: 'Gastos', icon: <AttachMoneyIcon />, action: () => navigateTo(Seccion.Gastos) },
-    { label: 'Turnos', icon: <ScheduleIcon />, action: () => navigateTo(Seccion.Turnos) },
+    { label: 'Ingresos', icon: <TrendingUpIcon />, action: () => navigateTo(turnoActivo ? Seccion.VistaCarreras : Seccion.Turnos) },
+    { label: 'Gastos', icon: <TrendingDownIcon />, action: () => navigateTo(Seccion.Gastos) },
     { label: 'Histórico', icon: <HistoryIcon />, action: () => navigateTo(Seccion.Historico) },
-    { label: 'Estadísticas', icon: <AssessmentIcon />, action: () => navigateTo(Seccion.Estadisticas) },
-    { label: 'Calendario', icon: <CalendarIcon />, action: () => navigateTo(Seccion.Calendario) },
+    { label: 'Estadíst...', icon: <AssessmentIcon />, action: () => navigateTo(Seccion.Estadisticas) },
+    { label: 'Calenda...', icon: <CalendarIcon />, action: () => navigateTo(Seccion.Calendario) },
     { label: 'Resumen', icon: <AssessmentIcon />, action: () => navigateTo(Seccion.Resumen) },
-    { label: 'Informes', icon: <AssessmentIcon />, action: () => navigateTo(Seccion.Informes) },
+    { label: 'Informes', icon: <AssignmentIcon />, action: () => navigateTo(Seccion.Informes) },
     { label: 'Ajustes', icon: <SettingsIcon />, action: () => navigateTo(Seccion.AjustesGenerales) },
-    { label: 'Recordatorios', icon: <AssignmentIcon />, action: () => navigateTo(Seccion.Recordatorios) },
   ];
 
   const formatCurrency = (value: number): string => `${value.toFixed(2).replace('.', ',')} €`;
@@ -182,7 +191,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
     year: 'numeric',
   });
 
-  // Componente inline para acción rápida (estilo coherente)
+  const formattedDateCapitalized = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+
+  // Componente inline para acción rápida (estilo coherente con la foto)
   const QuickActionItem: React.FC<{ icon: React.ReactNode; label: string; onClick: () => void }> = ({
     icon,
     label,
@@ -190,58 +201,97 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
   }) => (
     <button
       onClick={onClick}
-      className="flex flex-col items-center justify-center p-3 rounded-xl bg-[#15151B] border border-[#1F2A37] hover:bg-[#1A1A1F] transition-colors duration-200 group"
+      className="flex flex-col items-center justify-center py-3 rounded-xl bg-[#2A3347] hover:bg-[#3B455A] transition-colors duration-200 group"
     >
-      <div className="text-[#00D4FF] mb-2 group-hover:text-[#00E0FF] transition-colors">{icon}</div>
-      <span className="text-[#A4B7D6] text-xs font-medium text-center leading-tight group-hover:text-[#E6F1FF] transition-colors">
+      <div className="text-[#00D4FF] mb-1 group-hover:text-[#00F0FF] transition-colors">{icon}</div>
+      <span className="text-white text-xs font-semibold text-center leading-tight truncate w-full px-1">
         {label}
       </span>
     </button>
   );
 
   return (
-    <div className="min-h-screen px-4 py-6 font-sans" style={{ backgroundColor: '#0F0F12', color: '#E6F1FF' }}>
+    <div
+      className="min-h-screen px-4 py-6 font-sans"
+      style={{
+        background: 'linear-gradient(180deg, #08A8D7 0%, #072639 28%, #090B13 100%)',
+        color: '#E6F1FF',
+      }}
+    >
       {loading ? (
         <div className="text-center py-12 text-[#7A8FA9] text-lg">Cargando datos...</div>
       ) : (
-        <div className="space-y-7 max-w-6xl mx-auto">
-          {/* --- TRES BOX EN UNA SOLA FILA, SIEMPRE --- */}
-          <div className="flex gap-4 w-full">
-            <div className="flex-1 min-w-0 bg-[#15151B] rounded-xl p-5 border border-[#1F2A37] flex items-center shadow-sm">
-              <div className="text-blue-400 mr-4 flex-shrink-0">
-                <TrendingUpIcon />
-              </div>
-              <div>
-                <p className="text-[#7A8FA9] text-xs uppercase tracking-widest font-medium">Ingresos</p>
-                <p className="text-xl font-semibold text-[#E6F1FF] mt-1">{formatCurrency(ingresos)}</p>
-              </div>
+        <div className="space-y-6 max-w-xl mx-auto">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-[#5FE3FF]">
+              <span className="block">
+                <TaxiIcon />
+              </span>
+              <span className="text-2xl font-extrabold tracking-wide">TAppXI</span>
             </div>
-            <div className="flex-1 min-w-0 bg-[#15151B] rounded-xl p-5 border border-[#1F2A37] flex items-center shadow-sm">
-              <div className="text-red-400 mr-4 flex-shrink-0">
-                <TrendingDownIcon />
-              </div>
-              <div>
-                <p className="text-[#7A8FA9] text-xs uppercase tracking-widest font-medium">Gastos</p>
-                <p className="text-xl font-semibold text-[#E6F1FF] mt-1">{formatCurrency(gastos)}</p>
-              </div>
-            </div>
-            <div className="flex-1 min-w-0 bg-[#15151B] rounded-xl p-5 border border-[#1F2A37] flex items-center shadow-sm">
-              <div className="text-emerald-400 mr-4 flex-shrink-0">
-                <WalletIcon />
-              </div>
-              <div>
-                <p className="text-[#7A8FA9] text-xs uppercase tracking-widest font-medium">Balance</p>
-                <p className="text-xl font-semibold text-[#E6F1FF] mt-1">{formatCurrency(balance)}</p>
-              </div>
-            </div>
+            <button
+              onClick={() => navigateTo(Seccion.AjustesGenerales)}
+              className="p-2 rounded-full bg-black/20 text-[#5FE3FF] hover:bg-black/30 transition-colors"
+              aria-label="Ir a ajustes"
+            >
+              <SettingsIcon />
+            </button>
           </div>
 
-          {/* --- TURNO ACTIVO --- */}
+          {/* Tarjetas principales (Ingresos, Gastos, Balance) */}
+          <div className="flex gap-3 w-full">
+            {[
+              {
+                label: 'Ingresos',
+                value: formatCurrency(ingresos),
+                color: '#00D4FF',
+                iconBg: '#0A0D14',
+                icon: <TrendingUpIcon />,
+              },
+              {
+                label: 'Gastos',
+                value: formatCurrency(gastos),
+                color: '#FF3DD0',
+                iconBg: '#0A0D14',
+                icon: <TrendingDownIcon />,
+              },
+              {
+                label: 'Balance',
+                value: formatCurrency(balance),
+                color: '#00FF94',
+                iconBg: '#0A0D14',
+                icon: <WalletIcon />,
+              },
+            ].map((card) => (
+              <div
+                key={card.label}
+                className="flex-1 min-w-0 rounded-xl px-4 py-4 bg-[#0A0D14] border border-black/60 shadow-[0_8px_20px_rgba(0,0,0,0.5)] flex flex-col items-center gap-2"
+              >
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center"
+                  style={{ backgroundColor: card.iconBg, color: card.color }}
+                >
+                  {card.icon}
+                </div>
+                <p className="text-[11px] uppercase tracking-wide" style={{ color: card.color }}>
+                  {card.label}
+                </p>
+                <p className="text-base tracking-tight" style={{ color: card.color }}>
+                  {card.value}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Estado del turno (como en la foto) */}
           {turnoActivo ? (
-            <div className="bg-[#1A1A1F] rounded-2xl p-6 border border-[#1F2A37]">
+            <div className="bg-[#1A1A1F] rounded-3xl p-6 border border-[#1F2A37] shadow-[0_18px_50px_rgba(0,0,0,0.45)]">
               <div className="flex justify-between items-start mb-5">
                 <div>
-                  <h2 className="text-[#00D4FF] text-sm font-bold tracking-wide uppercase">Turno Activo</h2>
+                  <h2 className="text-[#46D7FF] text-sm font-bold tracking-wide uppercase">
+                    {`Turno ${turnoActivo.numero ?? 1}`}
+                  </h2>
                   <p className="text-[#A4B7D6] text-sm mt-1">
                     {turnoActivo.fechaInicio.toLocaleDateString('es-ES', {
                       weekday: 'short',
@@ -256,19 +306,19 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 text-sm">
-                <div>
-                  <p className="text-[#00D4FF] text-xs font-semibold uppercase tracking-wider">Kms. Inicio</p>
+              <div className="grid grid-cols-3 gap-4 mb-6 text-sm">
+                <div className="text-center">
+                  <p className="text-[#00D4FF] text-xs uppercase tracking-wider">Kms Inic.</p>
                   <p className="text-[#E6F1FF] mt-1">{turnoActivo.kilometrosInicio}</p>
                 </div>
-                <div>
-                  <p className="text-[#00D4FF] text-xs font-semibold uppercase tracking-wider">Hora Inicio</p>
+                <div className="text-center">
+                  <p className="text-[#00D4FF] text-xs uppercase tracking-wider">H. Inicio</p>
                   <p className="text-[#E6F1FF] mt-1">
                     {turnoActivo.fechaInicio.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
-                <div>
-                  <p className="text-[#00D4FF] text-xs font-semibold uppercase tracking-wider">Carreras</p>
+                <div className="text-center">
+                  <p className="text-[#00D4FF] text-xs uppercase tracking-wider">Carreras</p>
                   <p className="text-[#E6F1FF] mt-1">{carrerasDelTurno.length}</p>
                 </div>
               </div>
@@ -281,19 +331,17 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
               </button>
             </div>
           ) : (
-            <div className="bg-[#1A1A1F] rounded-2xl p-8 border border-[#1F2A37] text-center">
-              <div className="inline-block p-3 rounded-full bg-[#15151B] mb-4">
-                <div className="text-[#00E0FF]">
-                  <PauseCircleIcon />
-                </div>
+            <div className="bg-[#11131D] rounded-3xl px-6 py-8 border border-black/60 text-center shadow-[0_20px_65px_rgba(0,0,0,0.45)]">
+              <div className="mx-auto mb-5 w-14 h-14 rounded-full flex items-center justify-center bg-[#2B0F49] text-[#FF3DD0]">
+                <PauseCircleIcon />
               </div>
-              <p className="text-[#A4B7D6] text-xs tracking-widest uppercase mb-2">{formattedDate}</p>
-              <h3 className="text-[#E6F1FF] font-semibold text-base mb-1">No hay turno activo</h3>
-              <p className="text-[#5E6A86] text-sm">Inicia un turno para comenzar</p>
+              <p className="text-[#46D7FF] text-lg font-semibold mb-1">{formattedDateCapitalized}</p>
+              <h3 className="text-[#FF3DD0] font-bold text-lg tracking-wide mb-3 uppercase">NO HAY TURNO ACTIVO</h3>
+              <p className="text-[#E6F1FF] text-base leading-relaxed">Inicia un nuevo turno para comenzar</p>
             </div>
           )}
 
-          {/* --- ACCESOS DIRECTOS: SIEMPRE 4 COLUMNAS --- */}
+          {/* Accesos directos en 2 filas de 4 (como en la foto) */}
           <div className="grid grid-cols-4 gap-3">
             {quickActions.map((action, index) => (
               <QuickActionItem key={index} icon={action.icon} label={action.label} onClick={action.action} />
