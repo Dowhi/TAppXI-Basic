@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect, useMemo } from 'react';
-import BackButton from '../components/BackButton';
+import ScreenTopBar from '../components/ScreenTopBar';
 import { Seccion } from '../types';
 import { getGastosByMonth } from '../services/api';
 
@@ -85,39 +85,35 @@ const ResumenGastosMensualScreen: React.FC<ResumenGastosMensualScreenProps> = ({
     }, [gastos]);
 
     return (
-        <div className="space-y-0 bg-white min-h-screen flex flex-col">
-            {/* Header Azul Oscuro */}
-            <div className="bg-blue-900 py-2 px-3 flex items-center">
-                <BackButton 
-                    navigateTo={navigateTo} 
-                    targetPage={Seccion.Resumen}
-                    className="p-2 text-white hover:text-zinc-300 transition-colors"
-                />
-                <h1 className="text-white font-bold text-base flex-1 text-center">Resumen de Gastos</h1>
-                <div className="w-10"></div>
-            </div>
+        <div className="bg-zinc-950 min-h-screen flex flex-col p-3 space-y-1.5">
+            <ScreenTopBar
+                title="Resumen de Gastos"
+                navigateTo={navigateTo}
+                backTarget={Seccion.Resumen}
+                className="rounded-xl shadow-md"
+            />
 
             {/* Navegación de Fecha */}
-            <div className="bg-white py-2 px-4 flex items-center justify-between border-b border-gray-200">
+            <div className="bg-zinc-900 py-1 px-4 flex items-center justify-between border border-zinc-800 rounded-xl">
                 <button 
                     onClick={() => changeMonth(-1)}
-                    className="text-zinc-900 hover:bg-gray-100 rounded p-1"
+                    className="text-cyan-300 hover:bg-zinc-800 rounded p-1 transition-colors"
                 >
                     <ArrowLeftIcon />
                 </button>
-                <span className="text-zinc-900 font-bold text-base">
+                <span className="text-zinc-100 font-semibold text-base tracking-wide">
                     {meses[selectedMonth]} {selectedYear}
                 </span>
                 <button 
                     onClick={() => changeMonth(1)}
-                    className="text-zinc-900 hover:bg-gray-100 rounded p-1"
+                    className="text-cyan-300 hover:bg-zinc-800 rounded p-1 transition-colors"
                 >
                     <ArrowRightIcon />
                 </button>
             </div>
 
             {/* Header de la Tabla */}
-            <div className="bg-blue-900 grid grid-cols-12 py-2.5 px-4 text-white font-bold text-sm">
+            <div className="bg-[#14225A] grid grid-cols-12 py-1.5 px-4 text-white font-bold text-sm rounded-xl">
                 <div className="col-span-2 text-center">Día</div>
                 <div className="col-span-2 text-center">€</div>
                 <div className="col-span-4 text-center">Concepto</div>
@@ -125,7 +121,7 @@ const ResumenGastosMensualScreen: React.FC<ResumenGastosMensualScreenProps> = ({
             </div>
 
             {/* Lista de Gastos - Área con scroll */}
-            <div className="bg-white flex-1 overflow-y-auto">
+            <div className="bg-zinc-900 flex-1 overflow-y-auto rounded-xl border border-zinc-800">
                 {loading ? (
                     <div className="text-center py-8 text-zinc-400">Cargando...</div>
                 ) : gastosOrdenados.length === 0 ? (
@@ -135,14 +131,14 @@ const ResumenGastosMensualScreen: React.FC<ResumenGastosMensualScreenProps> = ({
                         {gastosOrdenados.map((gasto, index) => (
                             <div 
                                 key={gasto.id}
-                                className={`grid grid-cols-12 py-3 px-4 text-sm border-b border-gray-200 ${
-                                    index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                className={`grid grid-cols-12 py-1.5 px-4 text-sm border-b border-zinc-800 ${
+                                    index % 2 === 0 ? 'bg-zinc-900' : 'bg-zinc-950'
                                 }`}
                             >
-                                <div className="col-span-2 text-zinc-900">{formatDate(gasto.fecha)}</div>
-                                <div className="col-span-2 text-right text-red-600 font-medium">{formatCurrency(gasto.importe || 0)}</div>
-                                <div className="col-span-4 text-zinc-900">{gasto.concepto || '-'}</div>
-                                <div className="col-span-4 text-zinc-900">{gasto.proveedor || '-'}</div>
+                                <div className="col-span-2 text-zinc-100 text-center">{formatDate(gasto.fecha)}</div>
+                                <div className="col-span-2 text-red-400 font-medium text-center">{formatCurrency(gasto.importe || 0)}</div>
+                                <div className="col-span-4 text-zinc-100 text-center">{gasto.concepto || '-'}</div>
+                                <div className="col-span-4 text-zinc-100 text-center">{gasto.proveedor || '-'}</div>
                             </div>
                         ))}
                     </>
@@ -150,9 +146,9 @@ const ResumenGastosMensualScreen: React.FC<ResumenGastosMensualScreenProps> = ({
             </div>
 
             {/* Barra de Total - Fija en la parte inferior */}
-            <div className="bg-blue-900 py-3 px-4 flex items-center justify-between">
+            <div className="bg-[#14225A] py-2 px-4 flex items-center justify-between rounded-xl">
                 <span className="text-white font-bold text-sm">Total del Mes:</span>
-                <span className="text-red-600 font-bold text-sm">{formatCurrency(totalMes)}€</span>
+                <span className="text-red-400 font-bold text-sm">{formatCurrency(totalMes)}€</span>
             </div>
         </div>
     );

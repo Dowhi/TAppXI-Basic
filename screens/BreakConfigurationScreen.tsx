@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
+import ScreenTopBar from '../components/ScreenTopBar';
 import { Seccion } from '../types';
 import { addExcepcion, getExcepciones, deleteExcepcion, updateExcepcion, getBreakConfiguration, saveBreakConfiguration, Excepcion } from '../services/api';
 
@@ -261,23 +262,12 @@ const BreakConfigurationScreen: React.FC<BreakConfigurationScreenProps> = ({ nav
 
     return (
         <div className="bg-zinc-950 min-h-screen flex flex-col">
-            {/* Header */}
-            <div className="bg-zinc-900 flex items-center py-3 px-2 border-b border-zinc-700 flex-shrink-0">
-                <button
-                    onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        navigateTo(Seccion.Calendario);
-                    }}
-                    className="text-white mr-4 hover:text-cyan-400 transition-colors p-2 -ml-2 cursor-pointer z-10"
-                    aria-label="Volver al calendario"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" pointerEvents="none">
-                        <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
-                    </svg>
-                </button>
-                <h1 className="text-white text-lg font-semibold flex-1 text-center -ml-8">Configuración de Descansos</h1>
-            </div>
+            <ScreenTopBar
+                title="Configuración Descansos"
+                navigateTo={navigateTo}
+                backTarget={Seccion.Calendario}
+                className="rounded-none border-b border-yellow-300/40"
+            />
 
             {/* Main Content */}
             <div className="flex-1 overflow-y-auto px-1 pt-1 space-y-2">

@@ -15,9 +15,6 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
 
     const [temaOscuro, setTemaOscuro] = useState<boolean>(isDark);
     const [tamanoFuente, setTamanoFuente] = useState<number>(fontSize);
-    const [letraDescanso, setLetraDescanso] = useState<string>(
-        localStorage.getItem("letraDescanso") || ""
-    );
     const [objetivoDiario, setObjetivoDiario] = useState<number>(
         parseFloat(localStorage.getItem("objetivoDiario") || "100")
     );
@@ -35,13 +32,11 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                     setTheme(ajustes.temaOscuro ?? false);
                     setTamanoFuente(fetchedTamano);
                     setFontSize(fetchedTamano);
-                    setLetraDescanso(ajustes.letraDescanso ?? "");
                     setObjetivoDiario(ajustes.objetivoDiario ?? 100);
 
                     localStorage.setItem("temaOscuro", (ajustes.temaOscuro ?? false).toString());
                     localStorage.setItem("tamanoFuente", fetchedTamano.toString());
                     localStorage.removeItem("tam\\u00f1oFuente");
-                    localStorage.setItem("letraDescanso", ajustes.letraDescanso ?? "");
                     localStorage.setItem("objetivoDiario", (ajustes.objetivoDiario ?? 100).toString());
                 }
             } catch (err) {
@@ -60,7 +55,7 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
             await saveAjustes({
                 temaOscuro,
                 tamanoFuente,
-                letraDescanso,
+                letraDescanso: "",
                 objetivoDiario,
             });
 
@@ -70,7 +65,6 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
             localStorage.setItem("temaOscuro", temaOscuro.toString());
             localStorage.setItem("tamanoFuente", tamanoFuente.toString());
             localStorage.removeItem("tam\\u00f1oFuente");
-            localStorage.setItem("letraDescanso", letraDescanso);
             localStorage.setItem("objetivoDiario", objetivoDiario.toString());
 
             setGuardado(true);
@@ -103,13 +97,13 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
     };
 
     return (
-        <div className="bg-zinc-950 min-h-screen text-zinc-100 px-3 pt-3 pb-24 space-y-6">
+        <div className="bg-zinc-950 min-h-screen text-zinc-100 px-3 pt-3 pb-24 space-y-2">
             <ScreenTopBar title="Ajustes" navigateTo={navigateTo} backTarget={Seccion.Home} />
 
-            <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
+            <div className="bg-zinc-800 rounded-lg p-2.5 border border-zinc-700">
                 <div className="flex items-center justify-between">
                     <div className="flex-1">
-                        <h3 className="text-zinc-100 font-bold text-base mb-1">Tema Oscuro</h3>
+                        <h3 className="text-zinc-100 font-bold text-base mb-0.5">Tema Oscuro</h3>
                         <p className="text-zinc-400 text-sm">Activar o desactivar el tema oscuro</p>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
@@ -127,10 +121,10 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                 </div>
             </div>
 
-            <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
-                <div className="mb-3">
-                    <h3 className="text-zinc-100 font-bold text-base mb-1">Tamano de Fuente</h3>
-                    <p className="text-zinc-400 text-sm mb-2">
+            <div className="bg-zinc-800 rounded-lg p-2.5 border border-zinc-700">
+                <div className="mb-2">
+                    <h3 className="text-zinc-100 font-bold text-base mb-0.5">Tamano de Fuente</h3>
+                    <p className="text-zinc-400 text-sm mb-1.5">
                         Ajusta el tamano de la fuente: {tamanoFuente}px
                     </p>
                 </div>
@@ -153,34 +147,9 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                 </div>
             </div>
 
-            <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
-                <div className="mb-3">
-                    <h3 className="text-zinc-100 font-bold text-base mb-1">Letra de Descanso</h3>
-                    <p className="text-zinc-400 text-sm mb-2">Introduce la letra de descanso (A-F)</p>
-                </div>
-                <div className="flex items-center space-x-3">
-                    <input
-                        type="text"
-                        value={letraDescanso}
-                        onChange={(e) => {
-                            const value = e.target.value.toUpperCase();
-                            if (value === "" || /^[A-F]$/.test(value)) {
-                                setLetraDescanso(value);
-                            }
-                        }}
-                        placeholder="A-F"
-                        maxLength={1}
-                        className="w-20 bg-zinc-700 text-zinc-100 border border-zinc-600 rounded-lg px-4 py-2 text-center text-lg font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
-                    />
-                    <div className="flex-1">
-                        <p className="text-zinc-400 text-xs">Selecciona una letra de A a F</p>
-                    </div>
-                </div>
-            </div>
-
-            <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
-                <div className="mb-3">
-                    <h3 className="text-zinc-100 font-bold text-base mb-1">Objetivo Diario</h3>
+            <div className="bg-zinc-800 rounded-lg p-2.5 border border-zinc-700">
+                <div className="mb-2">
+                    <h3 className="text-zinc-100 font-bold text-base mb-0.5">Objetivo Diario</h3>
                     <p className="text-zinc-400 text-sm">Establece tu objetivo diario de ingresos</p>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -196,7 +165,7 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                 </div>
             </div>
 
-            <div className="flex flex-col items-center pb-4 space-y-2">
+            <div className="flex flex-col items-center pb-2 space-y-1.5">
                 {error && (
                     <div className="bg-red-500/20 border border-red-500 text-red-400 px-4 py-2 rounded-lg text-sm">
                         {error}
@@ -205,7 +174,7 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                 <button
                     onClick={handleGuardar}
                     disabled={guardando}
-                    className={`bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-colors flex items-center gap-2 ${
+                    className={`bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-8 rounded-lg transition-colors flex items-center gap-2 ${
                         guardado ? "bg-green-600 hover:bg-green-700" : ""
                     } ${guardando ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
@@ -237,10 +206,10 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                 </button>
             </div>
 
-            <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
+            <div className="bg-zinc-800 rounded-lg p-2.5 border border-zinc-700">
                 <div className="flex items-center justify-between">
                     <div className="flex-1">
-                        <h3 className="text-zinc-100 font-bold text-base mb-1">Backup en Google Drive</h3>
+                        <h3 className="text-zinc-100 font-bold text-base mb-0.5">Backup en Google Drive</h3>
                         <p className="text-zinc-400 text-sm">Realiza una copia de seguridad en Google Drive</p>
                     </div>
                     <button
@@ -252,10 +221,10 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                 </div>
             </div>
 
-            <div className="bg-zinc-800 rounded-lg p-4 border border-red-500/50">
+            <div className="bg-zinc-800 rounded-lg p-2.5 border border-red-500/50">
                 <div className="flex items-center justify-between">
                     <div className="flex-1">
-                        <h3 className="text-red-400 font-bold text-base mb-1">Eliminacion Total de Datos</h3>
+                        <h3 className="text-red-400 font-bold text-base mb-0.5">Eliminacion Total de Datos</h3>
                         <p className="text-zinc-400 text-sm">Elimina permanentemente todos los datos de la aplicacion</p>
                     </div>
                     <button

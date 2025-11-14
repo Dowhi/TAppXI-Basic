@@ -305,10 +305,10 @@ const IncomeScreen: React.FC<IncomeScreenProps> = ({ navigateTo, navigateToEditR
                 rightSlot={
                     <button
                         onClick={() => setHideValues(!hideValues)}
-                        className="p-1.5 text-zinc-900 hover:text-zinc-700 transition-colors"
-                        aria-label="Ocultar/mostrar valores"
+                        className="p-1.5 text-zinc-900 hover:text-zinc-700 transition-colors focus:outline-none"
+                        aria-label={hideValues ? "Mostrar valores" : "Ocultar valores"}
                     >
-                        {hideValues ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                        {hideValues ? <VisibilityOffIcon className="w-5 h-5" /> : <VisibilityIcon className="w-5 h-5" />}
                     </button>
                 }
             />
@@ -319,13 +319,13 @@ const IncomeScreen: React.FC<IncomeScreenProps> = ({ navigateTo, navigateToEditR
                     <ResumenBoxGrande title="TOTAL" value={hideValues ? '****' : resumen.total} valueNumeric={parseFloat(resumen.total)} />
                 </div>
                 <div className="flex space-x-2 bg-zinc-900 border border-zinc-800 rounded-lg p-2">
-                    <ResumenBox title="Carr." value={resumen.carreras} />
-                    <ResumenBox title="Tarjeta" value={resumen.tarjeta} />
-                    <ResumenBox title="H.Inic." value={resumen.horaInicio} />
-                    <ResumenBox title="H.Trab" value={resumen.horaTrabajo} />
+                    <ResumenBox title="Carr." value={hideValues ? '****' : resumen.carreras} />
+                    <ResumenBox title="Tarjeta" value={hideValues ? '****' : resumen.tarjeta} />
+                    <ResumenBox title="H.Inic." value={hideValues ? '****' : resumen.horaInicio} />
+                    <ResumenBox title="H.Trab" value={hideValues ? '****' : resumen.horaTrabajo} />
                 </div>
                  <div className="flex space-x-2 bg-zinc-900 border border-zinc-800 rounded-lg p-2">
-                    <ResumenBox title="Kms. Ini" value={resumen.kmsInicio} />
+                    <ResumenBox title="Kms. Ini" value={hideValues ? '****' : resumen.kmsInicio} />
                     {parseFloat(resumen.propina) > 0 && <ResumenBox title="Propina" value={hideValues ? '****' : resumen.propina} />}
                     <ResumenBox title="Tarjeta" value={hideValues ? '****' : resumen.totalTarjeta} />
                 </div>
@@ -360,7 +360,7 @@ const IncomeScreen: React.FC<IncomeScreenProps> = ({ navigateTo, navigateToEditR
                                     <span className="flex-1 text-blue-400 flex justify-center items-center">
                                         {carrera.aeropuerto ? <FlightTakeoffIcon className="w-5 h-5 text-blue-400" /> : null}
                                     </span>
-                                    <span className="flex-1 text-xs text-zinc-400">{carrera.fechaHora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
+                                    <span className="flex-1 text-xs text-zinc-400">{hideValues ? '****' : carrera.fechaHora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
                                 </div>
                             )
                         })}

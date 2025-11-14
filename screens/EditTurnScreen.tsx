@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Card from '../components/NeumorphicCard';
 import KineticHeader from '../components/KineticHeader';
-import BackButton from '../components/BackButton';
+import ScreenTopBar from '../components/ScreenTopBar';
 import { Seccion, Turno } from '../types';
 import { getTurno, updateTurno } from '../services/api';
 
@@ -145,41 +145,24 @@ const EditTurnScreen: React.FC<EditTurnScreenProps> = ({ navigateTo, turnoId }) 
         }
     };
 
-    if (loading) {
-        return (
-            <div className="space-y-4">
-                <header className="flex items-center space-x-3">
-                    <BackButton navigateTo={navigateTo} targetPage={Seccion.Turnos} />
-                    <KineticHeader title="Editar Turno" />
-                </header>
+    const renderContent = () => {
+        if (loading) {
+            return (
                 <div className="text-center p-8 text-zinc-400">Cargando turno...</div>
-            </div>
-        );
-    }
+            );
+        }
 
-    if (!turno) {
-        return (
-            <div className="space-y-4">
-                <header className="flex items-center space-x-3">
-                    <BackButton navigateTo={navigateTo} targetPage={Seccion.Turnos} />
-                    <KineticHeader title="Editar Turno" />
-                </header>
+        if (!turno) {
+            return (
                 <Card>
                     <div className="text-center p-4 text-zinc-400">
                         {error || "Turno no encontrado"}
                     </div>
                 </Card>
-            </div>
-        );
-    }
+            );
+        }
 
-    return (
-        <div className="space-y-4">
-            <header className="flex items-center space-x-3">
-                <BackButton navigateTo={navigateTo} targetPage={Seccion.Turnos} />
-                <KineticHeader title="Editar Turno" />
-            </header>
-
+        return (
             <Card>
                 <div className="space-y-4">
                     <div>
@@ -261,6 +244,19 @@ const EditTurnScreen: React.FC<EditTurnScreenProps> = ({ navigateTo, turnoId }) 
                     </div>
                 </div>
             </Card>
+        );
+    };
+
+    return (
+        <div className="bg-zinc-950 min-h-screen text-zinc-100 px-3 py-4 space-y-4">
+            <ScreenTopBar
+                title="Editar Turno"
+                navigateTo={navigateTo}
+                backTarget={Seccion.Turnos}
+            />
+
+            <KineticHeader title="Editar Turno" />
+            {renderContent()}
         </div>
     );
 };

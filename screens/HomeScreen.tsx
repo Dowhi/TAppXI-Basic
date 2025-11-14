@@ -212,7 +212,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
 
   return (
     <div
-      className="min-h-screen px-4 py-6 font-sans"
+      className="min-h-screen px-2 py-4 font-sans"
       style={{
         background: 'linear-gradient(180deg, #08A8D7 0%, #072639 28%, #090B13 100%)',
         color: '#E6F1FF',
@@ -240,24 +240,24 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
           </div>
 
           {/* Tarjetas principales (Ingresos, Gastos, Balance) */}
-          <div className="flex gap-3 w-full">
+          <div className="flex gap-2 w-full">
             {[
               {
-                label: 'Ingresos',
+                label: "Ingresos",
                 value: formatCurrency(ingresos),
                 color: '#00D4FF',
                 iconBg: '#0A0D14',
                 icon: <TrendingUpIcon />,
               },
               {
-                label: 'Gastos',
+                label: "Gastos",
                 value: formatCurrency(gastos),
                 color: '#FF3DD0',
                 iconBg: '#0A0D14',
                 icon: <TrendingDownIcon />,
               },
               {
-                label: 'Balance',
+                label: "Balance",
                 value: formatCurrency(balance),
                 color: '#00FF94',
                 iconBg: '#0A0D14',
@@ -266,18 +266,18 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
             ].map((card) => (
               <div
                 key={card.label}
-                className="flex-1 min-w-0 rounded-xl px-4 py-4 bg-[#0A0D14] border border-black/60 shadow-[0_8px_20px_rgba(0,0,0,0.5)] flex flex-col items-center gap-2"
+                className="flex-1 min-w-0 rounded-xl px-2 py-1 bg-[#0A0D14] border border-black/60 shadow-[0_8px_20px_rgba(0,0,0,0.5)] flex flex-col items-center gap-1"
               >
                 <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center"
+                  className="w-8 h-5 rounded-lg flex items-center justify-center"
                   style={{ backgroundColor: card.iconBg, color: card.color }}
                 >
                   {card.icon}
                 </div>
-                <p className="text-[11px] uppercase tracking-wide" style={{ color: card.color }}>
+                <p className="text-[14px] uppercase tracking-wide" style={{ color: card.color }}>
                   {card.label}
                 </p>
-                <p className="text-base tracking-tight" style={{ color: card.color }}>
+                <p className="text-[17px] tracking-tight" style={{ color: card.color }}>
                   {card.value}
                 </p>
               </div>
@@ -292,7 +292,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
                   <h2 className="text-[#46D7FF] text-sm font-bold tracking-wide uppercase">
                     {`Turno ${turnoActivo.numero ?? 1}`}
                   </h2>
-                  <p className="text-[#A4B7D6] text-sm mt-1">
+                  <p className="text-[#A4B7D6] uppercase tracking-wide">
                     {turnoActivo.fechaInicio.toLocaleDateString('es-ES', {
                       weekday: 'short',
                       day: '2-digit',
@@ -306,26 +306,26 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4 mb-6 text-sm">
+              <div className="grid grid-cols-3 gap-5 mb-3 text-sm">
                 <div className="text-center">
-                  <p className="text-[#00D4FF] text-xs uppercase tracking-wider">Kms Inic.</p>
-                  <p className="text-[#E6F1FF] mt-1">{turnoActivo.kilometrosInicio}</p>
+                  <p className="text-[#00D4FF] text-xs font-semibold uppercase tracking-wider">Kms Inic.</p>
+                  <p className="text-[#E6F1FF] text-xl mt-1">{turnoActivo.kilometrosInicio}</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-[#00D4FF] text-xs uppercase tracking-wider">H. Inicio</p>
-                  <p className="text-[#E6F1FF] mt-1">
+                  <p className="text-[#00D4FF] text-xs font-semibold uppercase tracking-wider">H. Inicio</p>
+                  <p className="text-[#E6F1FF] text-xl mt-1">
                     {turnoActivo.fechaInicio.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
                 <div className="text-center">
-                  <p className="text-[#00D4FF] text-xs uppercase tracking-wider">Carreras</p>
+                  <p className="text-[#00D4FF] text-xs font-semibold uppercase tracking-wider">Carreras</p>
                   <p className="text-[#E6F1FF] mt-1">{carrerasDelTurno.length}</p>
                 </div>
               </div>
 
               <button
                 onClick={() => navigateTo(Seccion.VistaCarreras)}
-                className="w-full py-3 bg-gradient-to-r from-[#00FF94] to-[#00C6FF] rounded-xl font-semibold text-[#0F0F12] text-sm shadow-md hover:opacity-95 transition-opacity"
+                className="w-full py-2 bg-gradient-to-r from-[#00FF94] to-[#00C6FF] rounded-xl font-semibold text-[#0F0F12] text-sm shadow-md hover:opacity-95 transition-opacity"
               >
                 Ver Detalles
               </button>
@@ -342,7 +342,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
           )}
 
           {/* Accesos directos en 2 filas de 4 (como en la foto) */}
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-4 gap-1">
             {quickActions.map((action, index) => (
               <QuickActionItem key={index} icon={action.icon} label={action.label} onClick={action.action} />
             ))}

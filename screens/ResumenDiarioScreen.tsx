@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import BackButton from '../components/BackButton';
+import ScreenTopBar from '../components/ScreenTopBar';
 import { Seccion, Turno, CarreraVista } from '../types';
 import { getTurnosByDate, getCarrerasByDate, getGastosByDate } from '../services/api';
 
@@ -164,23 +164,23 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
 
     return (
         <div className="bg-zinc-950 min-h-screen text-zinc-100 font-sans px-3 py-4 space-y-3">
-            <header className="relative bg-yellow-400 rounded-lg px-3 py-1.5 flex items-center">
-                <BackButton
+            <div className="relative">
+                <ScreenTopBar
+                    title="Resumen Diario"
                     navigateTo={navigateTo}
-                    targetPage={Seccion.Resumen}
-                    className="p-2 text-zinc-900 hover:text-zinc-700 transition-colors"
+                    backTarget={Seccion.Resumen}
+                    className="mb-3"
+                    rightSlot={
+                        <button
+                            type="button"
+                            onClick={() => setIsDatePickerOpen((prev) => !prev)}
+                            className="p-1.5 text-zinc-900 hover:text-zinc-700 transition-colors rounded"
+                            aria-label="Seleccionar fecha"
+                        >
+                            <CalendarIcon />
+                        </button>
+                    }
                 />
-                <h1 className="flex-1 text-center text-zinc-900 font-bold text-base">Resumen Diario</h1>
-                <div className="flex items-center gap-2">
-                    <button
-                        type="button"
-                        onClick={() => setIsDatePickerOpen((prev) => !prev)}
-                        className="text-zinc-900 hover:text-zinc-700 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 rounded"
-                        aria-label="Seleccionar fecha"
-                    >
-                        <CalendarIcon />
-                    </button>
-                </div>
                 {isDatePickerOpen && (
                     <div
                         ref={datePickerRef}
@@ -199,7 +199,7 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
                         />
                     </div>
                 )}
-            </header>
+            </div>
 
             <div className="bg-zinc-900 border border-zinc-800 rounded-xl py-1.5 px-3 flex items-center justify-between">
                 <button

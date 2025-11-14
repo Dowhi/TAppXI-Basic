@@ -1,5 +1,5 @@
 ﻿import React from 'react';
-import BackButton from '../components/BackButton';
+import ScreenTopBar from '../components/ScreenTopBar';
 import { Seccion } from '../types';
 
 // Icons (ahora aceptan props como className)
@@ -114,10 +114,11 @@ const ResumenScreen: React.FC<ResumenScreenProps> = ({ navigateTo }) => {
 
     return (
         <div className="bg-zinc-950 min-h-screen text-zinc-100 font-sans px-3 py-4 space-y-6">
-            <header className="bg-yellow-400 rounded-lg px-3 py-1.5 flex items-center">
-                <BackButton navigateTo={navigateTo} className="p-2 text-zinc-900 hover:text-zinc-700 transition-colors" />
-                <h1 className="flex-1 text-first text-zinc-900 font-bold text-base">Resúmenes</h1>
-            </header>
+            <ScreenTopBar
+                title="Resúmenes"
+                navigateTo={navigateTo}
+                backTarget={Seccion.Home}
+            />
 
             <section className="space-y-4">
                 <div className="space-y-3">

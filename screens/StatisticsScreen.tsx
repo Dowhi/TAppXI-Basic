@@ -46,30 +46,45 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
         const loadData = async () => {
             setLoading(true);
             try {
-                const data: DayData[] = [];
-                const current = new Date(dateRange.start);
-                
-                while (current <= dateRange.end) {
-                    try {
-                        const carreras = await getCarrerasByDate(current);
-                        const gastos = await getGastosByDate(current);
-                        const ingresos = carreras.reduce((sum, c) => sum + (c.cobrado || 0), 0);
-                        
-                        data.push({
-                            date: new Date(current),
-                            ingresos,
-                            gastos,
-                            balance: ingresos - gastos,
-                            numCarreras: carreras.length
-                        });
-                    } catch (error) {
-                        console.error(`Error cargando datos para ${current.toISOString()}:`, error);
-                    }
-                    
-                    current.setDate(current.getDate() + 1);
+                const dates: Date[] = [];
+                const cursor = new Date(dateRange.start);
+
+                while (cursor <= dateRange.end) {
+                    dates.push(new Date(cursor));
+                    cursor.setDate(cursor.getDate() + 1);
                 }
-                
-                setDayData(data);
+
+                const results = await Promise.all(
+                    dates.map(async (date) => {
+                        try {
+                            const [carreras, gastos] = await Promise.all([
+                                getCarrerasByDate(date),
+                                getGastosByDate(date),
+                            ]);
+
+                            const ingresos = carreras.reduce((sum, c) => sum + (c.cobrado || 0), 0);
+
+                            return {
+                                date,
+                                ingresos,
+                                gastos,
+                                balance: ingresos - gastos,
+                                numCarreras: carreras.length,
+                            } as DayData;
+                        } catch (error) {
+                            console.error(`Error cargando datos para ${date.toISOString()}:`, error);
+                            return {
+                                date,
+                                ingresos: 0,
+                                gastos: 0,
+                                balance: 0,
+                                numCarreras: 0,
+                            } as DayData;
+                        }
+                    })
+                );
+
+                setDayData(results);
             } catch (error) {
                 console.error('Error cargando estadísticas:', error);
             } finally {
@@ -317,11 +332,11 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
             <ScreenTopBar title="Estadísticas" navigateTo={navigateTo} backTarget={Seccion.Home} className="flex-shrink-0" />
 
             {/* Selector de período */}
-            <div className="bg-zinc-900 px-2 py-3 border border-zinc-800 rounded-lg">
+            <div className="bg-zinc-900 px-1 py-2 border border-zinc-800 rounded-lg">
                 <div className="flex gap-2">
                     <button
                         onClick={() => setSelectedPeriod('week')}
-                        className={`flex-1 py-2 px-4 rounded-lg font-semibold text-sm transition-all ${
+                        className={`flex-1 py-2 px-3 rounded-lg font-semibold text-sm transition-all ${
                             selectedPeriod === 'week'
                                 ? 'bg-cyan-500 text-white'
                                 : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
@@ -361,27 +376,29 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                 ) : (
                     <>
                         {/* Resumen de Totales */}
-                        <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
-                            <h2 className="text-cyan-400 text-lg font-bold mb-4">Resumen del Período</h2>
-                            <div className="grid grid-cols-3 gap-3">
-                                <div className="bg-zinc-800 rounded-lg p-3">
-                                    <div className="text-zinc-400 text-xs mb-1">Total Ingresos</div>
-                                    <div className="text-green-400 text-xl font-bold">
+                        <div className="bg-zinc-900 rounded-xl p-2 border border-zinc-800">
+                            <h2 className="text-cyan-400 text-lg font-bold mb-3">Resumen del Período</h2>
+                            <div className="grid grid-cols-3 gap-1">
+                                <div className="bg-zinc-800 rounded-lg p-1 flex flex-col items-center justify-center">
+                                    <div className="text-zinc-400 text-xs mb-1 text-center">Ingresos</div>
+                                    <div className="text-green-400 text-lg  w-full text-center whitespace-nowrap">
                                         {stats.totalIngresos.toFixed(2)}€
                                     </div>
                                 </div>
-                                <div className="bg-zinc-800 rounded-lg p-3">
-                                    <div className="text-zinc-400 text-xs mb-1">Total Gastos</div>
-                                    <div className="text-red-400 text-xl font-bold">
+                                <div className="bg-zinc-800 rounded-lg p-1 flex flex-col items-center justify-center">
+                                    <div className="text-zinc-400 text-xs mb-1 text-center">Gastos</div>
+                                    <div className="text-red-400 text-lg  w-full text-center whitespace-nowrap">
                                         {stats.totalGastos.toFixed(2)}€
                                     </div>
                                 </div>
-                                <div className="bg-zinc-800 rounded-lg p-3">
-                                    <div className="text-zinc-400 text-xs mb-1">Balance</div>
-                                    <div className={`text-xl font-bold ${
-                                        stats.totalBalance >= 0 ? 'text-green-400' : 'text-red-400'
-                                    }`}>
-                                        {stats.totalBalance >= 0 ? '+' : ''}{stats.totalBalance.toFixed(2)}€
+                                <div className="bg-zinc-800 rounded-lg p-1 flex flex-col items-center justify-center">
+                                    <div className="text-zinc-400 text-xs mb-1 text-center">Balance</div>
+                                    <div
+                                        className={`text-lg  w-full text-first whitespace-nowrap ${
+                                            stats.totalBalance >= 0 ? 'text-green-400' : 'text-red-400'
+                                        }`}
+                                    >
+                                        {stats.totalBalance.toFixed(2)}€
                                     </div>
                                 </div>
                             </div>
@@ -513,4 +530,3 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
 };
 
 export default StatisticsScreen;
-

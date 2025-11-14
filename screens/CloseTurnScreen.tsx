@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Seccion, Turno } from '../types';
 import KineticHeader from '../components/KineticHeader';
-import BackButton from '../components/BackButton';
+import ScreenTopBar from '../components/ScreenTopBar';
 import { getActiveTurno, closeTurno, subscribeToActiveTurno } from '../services/api';
 
 interface CloseTurnScreenProps {
@@ -71,25 +71,13 @@ const CloseTurnScreen: React.FC<CloseTurnScreenProps> = ({ navigateTo }) => {
         }
     };
 
-    if (loading) {
-        return (
-            <div className="space-y-4">
-                <header className="flex items-center space-x-3">
-                    <BackButton navigateTo={navigateTo} targetPage={Seccion.VistaCarreras} />
-                    <KineticHeader title="Cerrar Turno" />
-                </header>
-                <div className="text-center p-8 text-zinc-400">Cargando turno activo...</div>
-            </div>
-        );
-    }
+    const renderContent = () => {
+        if (loading) {
+            return <div className="text-center p-8 text-zinc-400">Cargando turno activo...</div>;
+        }
 
-    if (!turnoActivo) {
-        return (
-            <div className="space-y-4">
-                <header className="flex items-center space-x-3">
-                    <BackButton navigateTo={navigateTo} targetPage={Seccion.VistaCarreras} />
-                    <KineticHeader title="Cerrar Turno" />
-                </header>
+        if (!turnoActivo) {
+            return (
                 <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 text-center">
                     <p className="text-zinc-400 mb-4">No hay un turno activo para cerrar</p>
                     <button
@@ -99,28 +87,21 @@ const CloseTurnScreen: React.FC<CloseTurnScreenProps> = ({ navigateTo }) => {
                         Volver
                     </button>
                 </div>
-            </div>
-        );
-    }
+            );
+        }
 
-    const fechaInicio = turnoActivo.fechaInicio;
-    const fechaInicioStr = fechaInicio.toLocaleDateString('es-ES', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-    });
-    const horaInicioStr = fechaInicio.toLocaleTimeString('es-ES', {
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+        const fechaInicio = turnoActivo.fechaInicio;
+        const fechaInicioStr = fechaInicio.toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+        const horaInicioStr = fechaInicio.toLocaleTimeString('es-ES', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
 
-    return (
-        <div className="space-y-4">
-            <header className="flex items-center space-x-3">
-                <BackButton navigateTo={navigateTo} targetPage={Seccion.VistaCarreras} />
-                <KineticHeader title="Cerrar Turno" />
-            </header>
-
+        return (
             <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-6">
                 {/* Información del turno */}
                 <div className="space-y-3">
@@ -179,6 +160,19 @@ const CloseTurnScreen: React.FC<CloseTurnScreenProps> = ({ navigateTo }) => {
                     {isClosing ? 'Cerrando turno...' : 'Cerrar Turno'}
                 </button>
             </div>
+        );
+    };
+
+    return (
+        <div className="bg-zinc-950 min-h-screen text-zinc-100 px-3 py-4 space-y-4">
+            <ScreenTopBar
+                title="Cerrar Turno"
+                navigateTo={navigateTo}
+                backTarget={Seccion.VistaCarreras}
+            />
+
+            <KineticHeader title="Cerrar Turno" />
+            {renderContent()}
         </div>
     );
 };

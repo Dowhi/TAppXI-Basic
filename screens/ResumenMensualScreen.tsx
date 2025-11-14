@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import BackButton from '../components/BackButton';
+import ScreenTopBar from '../components/ScreenTopBar';
 import { Seccion } from '../types';
 import { getIngresosByYear, getGastosByYear } from '../services/api';
 import jsPDF from 'jspdf';
@@ -218,82 +218,89 @@ const ResumenMensualScreen: React.FC<ResumenMensualScreenProps> = ({ navigateTo 
     };
 
     return (
-        <div className="space-y-0">
-            {/* Header Azul Oscuro */}
-            <div className="bg-blue-900 py-1.5 px-3 rounded-t-lg flex items-center">
-                <BackButton 
-                    navigateTo={navigateTo} 
-                    targetPage={Seccion.Resumen}
-                    className="p-1.5 text-white hover:text-zinc-300 transition-colors"
-                />
-                <h1 className="text-white font-bold text-sm flex-1 text-center">Resumen Financiero Anual</h1>
-                <div className="w-10"></div> {/* Espaciador */}
-            </div>
+        <div className="bg-zinc-950 min-h-screen text-zinc-100 px-3 py-4 space-y-2">
+            <ScreenTopBar
+                title="Resumen Financiero Anual"
+                navigateTo={navigateTo}
+                backTarget={Seccion.Resumen}
+                className="rounded-xl shadow-lg"
+            />
 
             {/* Navegación de Año */}
-            <div className="bg-white py-1 px-3 flex items-center justify-between">
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl py-1 px-4 flex items-center justify-between">
                 <button 
                     onClick={() => changeYear(-1)}
-                    className="text-zinc-900 hover:bg-gray-100 rounded p-1"
+                    className="text-cyan-300 hover:bg-zinc-800 rounded p-1 transition-colors"
                 >
                     <ArrowLeftIcon />
                 </button>
-                <span className="text-zinc-900 font-bold text-xl">{selectedYear}</span>
+                <span className="text-zinc-100 font-medium text-sm tracking-wide">{selectedYear}</span>
                 <button 
                     onClick={() => changeYear(1)}
-                    className="text-zinc-900 hover:bg-gray-100 rounded p-1"
+                    className="text-cyan-300 hover:bg-zinc-800 rounded p-1 transition-colors"
                 >
                     <ArrowRightIcon />
                 </button>
             </div>
 
-            {/* Tabla */}
-            <div className="bg-white overflow-hidden">
-                {/* Header de la Tabla */}
-                <div className="bg-blue-900 grid grid-cols-4 py-1.5 px-4 text-white font-bold text-sm">
-                    <div className="flex items-center">Mes</div>
-                    <div className="text-right flex items-center justify-end">Ingresos</div>
-                    <div className="text-right flex items-center justify-end">Gastos</div>
-                    <div className="text-right flex items-center justify-end">Total</div>
+            {/* Contenido principal */}
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-md flex flex-col" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+                {/* Tabla */}
+                <div className="flex-1 overflow-y-auto">
+                    {/* Header de la Tabla */}
+                    <div className="bg-[#14225A] grid grid-cols-4 py-1 px-4 text-white font-semibold text-xs uppercase tracking-wide sticky top-0 z-10">
+                        <div className="flex items-center">Mes</div>
+                        <div className="text-right flex items-center justify-end">Ingresos</div>
+                        <div className="text-right flex items-center justify-end">Gastos</div>
+                        <div className="text-right flex items-center justify-end">Total</div>
+                    </div>
+
+                    {/* Filas de Datos */}
+                    {loading ? (
+                        <div className="text-center py-8 text-zinc-400">Cargando...</div>
+                    ) : (
+                        <>
+                            {datosMensuales.map((dato, index) => (
+                                <div 
+                                    key={index}
+                                    className={`grid grid-cols-4 py-1 px-4 text-sm border-b border-zinc-800 ${
+                                        index % 2 === 0 ? 'bg-zinc-900' : 'bg-zinc-950'
+                                    }`}
+                                >
+                                    <div className="text-zinc-100 font-medium flex items-center">{dato.mes}</div>
+                                    <div className="text-cyan-400 text-right font-semibold flex items-center justify-end">{dato.ingresos.toFixed(2)} €</div>
+                                    <div className="text-red-400 text-right font-semibold flex items-center justify-end">{dato.gastos.toFixed(2)} €</div>
+                                    <div className={`text-right font-semibold flex items-center justify-end ${
+                                        dato.total >= 0 ? 'text-emerald-400' : 'text-red-400'
+                                    }`}>
+                                        {dato.total.toFixed(2)} €
+                                    </div>
+                                </div>
+                            ))}
+                        </>
+                    )}
                 </div>
 
-                {/* Filas de Datos */}
-                {loading ? (
-                    <div className="text-center py-8 text-zinc-400">Cargando...</div>
-                ) : (
-                    <>
-                        {datosMensuales.map((dato, index) => (
-                            <div 
-                                key={index}
-                                className={`grid grid-cols-4 py-1.5 px-4 text-sm border-b border-gray-200 ${
-                                    index % 2 === 0 ? 'bg-gray-50' : 'bg-white'
-                                }`}
-                            >
-                                <div className="text-zinc-900 font-medium flex items-center">{dato.mes}</div>
-                                <div className="text-blue-600 text-right font-medium flex items-center justify-end">{dato.ingresos.toFixed(2)} €</div>
-                                <div className="text-red-600 text-right font-medium flex items-center justify-end">{dato.gastos.toFixed(2)} €</div>
-                                <div className="text-blue-600 text-right font-medium flex items-center justify-end">{dato.total.toFixed(2)} €</div>
-                            </div>
-                        ))}
-
-                        {/* Fila de Totales */}
-                        <div className="bg-gray-200 grid grid-cols-4 py-2 px-4 text-sm font-semibold border-t-2 border-gray-300">
-                            <div className="flex items-center">
-                                <span className="text-zinc-900 font-bold">Total</span>
-                            </div>
-                            <div className="text-blue-600 text-right font-bold flex items-center justify-end">{totales.ingresosTotal.toFixed(2)} €</div>
-                            <div className="text-red-600 text-right font-bold flex items-center justify-end">{totales.gastosTotal.toFixed(2)} €</div>
-                            <div className="text-blue-600 text-right font-bold flex items-center justify-end">{totales.totalGeneral.toFixed(2)} €</div>
-                        </div>
-                    </>
-                )}
+                {/* Fila de Totales */}
+                <div className="bg-[#10172D] grid grid-cols-4 py-1.5 px-4 text-sm font-semibold border-t border-zinc-800">
+                    <div className="flex items-center">
+                        <span className="text-zinc-100 font-bold uppercase tracking-wide">Total</span>
+                    </div>
+                    <div className="text-cyan-300 text-right font-bold flex items-center justify-end">{totales.ingresosTotal.toFixed(2)} €</div>
+                    <div className="text-red-400 text-right font-bold flex items-center justify-end">{totales.gastosTotal.toFixed(2)} €</div>
+                    <div className={`text-right font-bold flex items-center justify-end ${
+                        totales.totalGeneral >= 0 ? 'text-emerald-400' : 'text-red-400'
+                    }`}>
+                        {totales.totalGeneral.toFixed(2)} €
+                    </div>
+                </div>
             </div>
 
             {/* Botón Generar PDF */}
-            <div className="flex justify-center pt-4 pb-20">
+            <div className="flex justify-center pt-0.5">
                 <button
                     onClick={handleGenerarPDF}
-                    className="bg-blue-900 text-white font-bold py-3 px-6 rounded-lg flex items-center gap-2 hover:bg-blue-800 transition-colors shadow-lg"
+                    className="bg-[#14225A] text-white font-semibold py-3 px-6 rounded-xl flex items-center gap-2 hover:bg-[#1b2c78] transition-colors shadow-lg"
                 >
                     <PDFIcon />
                     <span>Generar Informe PDF</span>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import BackButton from '../components/BackButton';
+import ScreenTopBar from '../components/ScreenTopBar';
 import { Seccion } from '../types';
 import { getCarrerasByMonth, getGastosByMonth, getTurnosByMonth } from '../services/api';
 
@@ -187,76 +187,72 @@ const ResumenMensualDetalladoScreen: React.FC<ResumenMensualDetalladoScreenProps
     };
 
     return (
-        <div className="space-y-0 bg-gray-100 min-h-screen">
-            {/* Header Azul Oscuro */}
-            <div className="bg-blue-900 py-2 px-3 flex items-center">
-                <BackButton 
-                    navigateTo={navigateTo} 
-                    targetPage={Seccion.Resumen}
-                    className="p-2 text-white hover:text-zinc-300 transition-colors"
-                />
-                <h1 className="text-white font-bold text-lg flex-1 text-center">Mensual Detallado</h1>
-                <div className="w-10"></div> {/* Espaciador */}
-            </div>
+        <div className="bg-zinc-950 min-h-screen text-zinc-100 flex flex-col p-3 space-y-2" style={{ maxHeight: '100vh', overflow: 'hidden' }}>
+            <ScreenTopBar
+                title="Mensual Detallado"
+                navigateTo={navigateTo}
+                backTarget={Seccion.Resumen}
+                className="rounded-xl shadow-md"
+            />
 
             {/* Navegación de Fecha */}
-            <div className="bg-gray-100 py-2 px-4 flex items-center justify-between">
+            <div className="bg-zinc-900 py-1 px-4 flex items-center justify-between border border-zinc-800 rounded-xl">
                 <button 
                     onClick={() => changeMonth(-1)}
-                    className="text-zinc-900 hover:bg-gray-200 rounded p-1"
+                    className="text-cyan-300 hover:bg-zinc-800 rounded p-1 transition-colors"
                 >
                     <ArrowLeftIcon />
                 </button>
-                <span className="text-zinc-900 font-bold text-base">
+                <span className="text-zinc-100 font-medium text-sm tracking-wide">
                     {meses[selectedMonth]} {selectedYear}
                 </span>
                 <button 
                     onClick={() => changeMonth(1)}
-                    className="text-zinc-900 hover:bg-gray-200 rounded p-1"
+                    className="text-cyan-300 hover:bg-zinc-800 rounded p-1 transition-colors"
                 >
                     <ArrowRightIcon />
                 </button>
             </div>
 
             {/* Resumen Completo y Total */}
-            <div className="bg-gray-100 px-4 py-3 flex items-center justify-between">
-                <h2 className="text-blue-900 font-bold text-sm uppercase">RESUMEN</h2>
-                <div className="bg-teal-400 rounded-lg px-4 py-2 shadow-md flex items-center gap-2">
-                    <span className="text-white font-bold text-sm uppercase">TOTAL</span>
-                    <span className="text-white font-bold text-lg">{formatCurrency(metrics.total)} €</span>
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl px-5 py-1.5 flex items-center justify-between">
+                <h2 className="text-cyan-300 font-semibold text-sm uppercase tracking-wide">Resumen</h2>
+                <div className="bg-emerald-500 rounded-xl px-4 py-1.5 shadow-md flex items-center gap-2">
+                    <span className="text-emerald-950 font-semibold text-xs uppercase">Total</span>
+                    <span className="text-white font-bold text-base">{formatCurrency(metrics.total)} €</span>
                 </div>
             </div>
 
             {/* Grid de Datos */}
             {loading ? (
-                <div className="text-center py-8 text-zinc-400">Cargando...</div>
+                <div className="flex-1 flex items-center justify-center text-zinc-500">Cargando...</div>
             ) : (
-                <div className="bg-gray-100 px-3 pb-20">
-                    <div className="grid grid-cols-3 gap-1.5">
+                <div className="flex-1 overflow-hidden min-h-0">
+                    <div className="grid grid-cols-3 gap-1 h-full" style={{ gridAutoRows: 'minmax(56px, auto)' }}>
                         {/* Fila 1 */}
                         <DataBox label="Días" value={formatNumber(metrics.dias)} />
                         <DataBox label="Carreras" value={formatNumber(metrics.carreras)} />
-                        <DataBox label="Turno 1" value={formatNumber(metrics.turno1)} />
+                        <DataBox label="Turnos" value={formatNumber(metrics.turno1)} />
                         
                         {/* Fila 2 */}
-                        <DataBox label="S.Tarjeta" value={formatCurrency(metrics.sumaTarjeta)} />
-                        <DataBox label="S.Emisora" value={formatCurrency(metrics.sumaEmisora)} />
+                        <DataBox label="S. Tarjeta" value={formatCurrency(metrics.sumaTarjeta)} />
+                        <DataBox label="S. Emisora" value={formatCurrency(metrics.sumaEmisora)} />
                         <DataBox label="S.Vales" value={formatCurrency(metrics.sumaVales)} />
                         
                         {/* Fila 3 */}
-                        <DataBox label="C.Tarjeta" value={metrics.countTarjeta > 0 ? formatNumber(metrics.countTarjeta) : ''} />
-                        <DataBox label="C.Emisora" value={metrics.countEmisora > 0 ? formatNumber(metrics.countEmisora) : ''} />
+                        <DataBox label="C. Tarjeta" value={metrics.countTarjeta > 0 ? formatNumber(metrics.countTarjeta) : ''} />
+                        <DataBox label="C. Emisora" value={metrics.countEmisora > 0 ? formatNumber(metrics.countEmisora) : ''} />
                         <DataBox label="C.Vales" value={metrics.countVales > 0 ? formatNumber(metrics.countVales) : ''} />
                         
                         {/* Fila 4 */}
                         <DataBox label="Propinas" value={formatCurrency(metrics.propinas)} />
-                        <DataBox label="Aerop." value={formatCurrency(metrics.aeropuerto)} />
+                        <DataBox label="Aeropuertos" value={formatCurrency(metrics.aeropuerto)} />
                         <DataBox label="Horas" value={metrics.horas > 0 ? formatNumber(metrics.horas) : ''} />
                         
                         {/* Fila 5 */}
-                        <DataBox label="Kilome." value={formatNumber(metrics.kilometros)} />
-                        <DataBox label="In. Varios" value={formatCurrency(metrics.ingresosVarios)} />
-                        <DataBox label="Combust." value={metrics.combustible > 0 ? formatCurrency(metrics.combustible) : '0.0'} />
+                        <DataBox label="Kilometros" value={formatNumber(metrics.kilometros)} />
+                        <DataBox label="Ing. Varios" value={formatCurrency(metrics.ingresosVarios)} />
+                        <DataBox label="Combustible" value={metrics.combustible > 0 ? formatCurrency(metrics.combustible) : '0.0'} />
                         
                         {/* Fila 6 - Totales */}
                         <DataBox label="NETO" value={formatCurrency(metrics.neto)} />
@@ -272,9 +268,9 @@ const ResumenMensualDetalladoScreen: React.FC<ResumenMensualDetalladoScreenProps
 // Componente para las cajas de datos
 const DataBox: React.FC<{ label: string; value: string }> = ({ label, value }) => {
     return (
-        <div className="bg-white rounded-sm shadow-sm p-2.5 flex flex-col justify-center min-h-[70px]">
-            <div className="text-blue-900 font-bold text-sm mb-0.5">{label}</div>
-            <div className="text-gray-600 text-base font-medium">{value || ''}</div>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-2 flex flex-col justify-center min-h-[56px]">
+            <div className="text-cyan-300 text-[10px] font-semibold uppercase tracking-wide mb-0.5">{label}</div>
+            <div className="text-zinc-100 text-sm font-semibold">{value || '—'}</div>
         </div>
     );
 };
