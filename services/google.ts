@@ -52,19 +52,55 @@ try {
 const loadGapi = (): Promise<void> => {
     return new Promise((resolve, reject) => {
         if (gapiLoaded) return resolve();
+        
+        // Verificar si ya existe el script
+        const existingScript = document.querySelector(`script[src="${GOOGLE_API_SRC}"]`);
+        if (existingScript) {
+            // Si el script ya existe, esperar a que cargue
+            let checkGapi: NodeJS.Timeout | null = null;
+            let timeoutId: NodeJS.Timeout | null = null;
+            
+            checkGapi = setInterval(() => {
+                // @ts-ignore
+                if (window.gapi && window.gapi.load) {
+                    if (checkGapi) clearInterval(checkGapi);
+                    if (timeoutId) clearTimeout(timeoutId);
+                    // @ts-ignore
+                    window.gapi.load("client:auth2", () => {
+                        gapiLoaded = true;
+                        resolve();
+                    });
+                }
+            }, 100);
+            
+            // Timeout después de 10 segundos
+            timeoutId = setTimeout(() => {
+                if (checkGapi) clearInterval(checkGapi);
+                if (!gapiLoaded) {
+                    reject(new Error("Timeout esperando carga de Google API. Recarga la página e intenta de nuevo."));
+                }
+            }, 10000);
+            return;
+        }
+        
         const script = document.createElement("script");
         script.src = GOOGLE_API_SRC;
         script.async = true;
         script.defer = true;
         script.onload = () => {
             // @ts-ignore
+            if (!window.gapi) {
+                reject(new Error("Google API no disponible después de cargar el script"));
+                return;
+            }
+            // @ts-ignore
             window.gapi.load("client:auth2", () => {
                 gapiLoaded = true;
                 resolve();
             });
         };
-        script.onerror = () => reject(new Error("No se pudo cargar Google API"));
-        document.body.appendChild(script);
+        script.onerror = () => reject(new Error("No se pudo cargar Google API. Verifica tu conexión a internet."));
+        document.head.appendChild(script);
     });
 };
 
@@ -74,6 +110,10 @@ export const initGoogleClient = async (): Promise<void> => {
     await loadGapi();
     // @ts-ignore
     const gapi = window.gapi;
+    
+    if (!gapi || !gapi.client) {
+        throw new Error("Google API client no disponible. Recarga la página e intenta de nuevo.");
+    }
     
     try {
         await gapi.client.init({
@@ -103,27 +143,43 @@ export const initGoogleClient = async (): Promise<void> => {
     
     // Inicializar auth2 de forma más robusta
     try {
+        // @ts-ignore
         if (!gapi.auth2) {
             // @ts-ignore
-            await gapi.load('auth2', () => {
+            await new Promise<void>((resolve, reject) => {
                 // @ts-ignore
-                gapi.auth2.init({
+                gapi.load('auth2', {
+                    callback: () => {
+                        try {
+                            // @ts-ignore
+                            gapi.auth2.init({
+                                client_id: CLIENT_ID,
+                                scope: SCOPES,
+                            });
+                            resolve();
+                        } catch (err) {
+                            reject(err);
+                        }
+                    },
+                    onerror: reject,
+                });
+            });
+        } else {
+            const authInstance = gapi.auth2.getAuthInstance();
+            if (!authInstance) {
+                // @ts-ignore
+                await gapi.auth2.init({
                     client_id: CLIENT_ID,
                     scope: SCOPES,
                 });
-            });
-        } else if (!gapi.auth2.getAuthInstance()) {
-            // @ts-ignore
-            await gapi.auth2.init({
-                client_id: CLIENT_ID,
-                scope: SCOPES,
-            });
+            }
         }
     } catch (authError: any) {
         // Si falla la inicialización de auth2, no es crítico si ya está inicializado
         const authMsg = String(authError?.error || authError?.details || authError?.message || authError);
-        if (!authMsg.includes('already initialized')) {
+        if (!authMsg.includes('already initialized') && !authMsg.includes('gapi.auth2 has been initialized')) {
             console.warn('Advertencia al inicializar auth2:', authError);
+            // No lanzar error, intentar continuar
         }
     }
     
@@ -134,27 +190,77 @@ export const ensureGoogleSignIn = async (): Promise<void> => {
     await initGoogleClient();
     // @ts-ignore
     const gapi = window.gapi;
-    const auth = gapi.auth2?.getAuthInstance?.();
-    if (!auth) {
+    
+    if (!gapi || !gapi.auth2) {
         const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'desconocido';
         throw new Error(
-            `Google Auth no inicializado.\n\n` +
+            `Google Auth2 no disponible.\n\n` +
             `Revisa que:\n` +
             `1. Las credenciales estén correctas en .env\n` +
             `2. El origen "${currentOrigin}" esté autorizado en Google Cloud Console\n` +
             `3. Ve a: APIs y servicios → Credenciales → Edita tu OAuth 2.0 Client ID\n` +
-            `4. Añade "${currentOrigin}" en "Orígenes autorizados de JavaScript"`
+            `4. Añade "${currentOrigin}" en "Orígenes autorizados de JavaScript"\n` +
+            `5. Recarga la página e intenta de nuevo`
         );
     }
+    
+    let auth = gapi.auth2.getAuthInstance();
+    if (!auth) {
+        // Intentar inicializar auth2 si no existe la instancia
+        try {
+            // @ts-ignore
+            auth = await gapi.auth2.init({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+            });
+        } catch (initError: any) {
+            const initMsg = String(initError?.error || initError?.details || initError?.message || initError);
+            if (!initMsg.includes('already initialized')) {
+                const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'desconocido';
+                throw new Error(
+                    `Google Auth no inicializado.\n\n` +
+                    `Revisa que:\n` +
+                    `1. Las credenciales estén correctas en .env\n` +
+                    `2. El origen "${currentOrigin}" esté autorizado en Google Cloud Console\n` +
+                    `3. Ve a: APIs y servicios → Credenciales → Edita tu OAuth 2.0 Client ID\n` +
+                    `4. Añade "${currentOrigin}" en "Orígenes autorizados de JavaScript"\n` +
+                    `5. Error técnico: ${initMsg}`
+                );
+            }
+            // Si ya está inicializado, obtener la instancia
+            auth = gapi.auth2.getAuthInstance();
+        }
+    }
+    
+    if (!auth) {
+        const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'desconocido';
+        throw new Error(
+            `No se pudo obtener la instancia de Google Auth.\n\n` +
+            `Revisa que:\n` +
+            `1. Las credenciales estén correctas en .env\n` +
+            `2. El origen "${currentOrigin}" esté autorizado en Google Cloud Console\n` +
+            `3. Recarga la página e intenta de nuevo`
+        );
+    }
+    
     try {
-        if (!auth.isSignedIn?.get?.()) {
-            await auth.signIn();
+        const isSignedIn = auth.isSignedIn.get();
+        if (!isSignedIn) {
+            await auth.signIn({
+                prompt: 'select_account',
+            });
         }
     } catch (e: any) {
         const msg = String(e?.error || e?.details || e?.message || e);
         const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'desconocido';
         
-        if (msg.includes('origin') || msg.includes('idpiframe_initialization_failed')) {
+        if (msg.includes('origin') || msg.includes('idpiframe_initialization_failed') || msg.includes('popup_closed_by_user')) {
+            if (msg.includes('popup_closed_by_user')) {
+                throw new Error(
+                    `❌ Inicio de sesión cancelado.\n\n` +
+                    `Por favor, completa el inicio de sesión con Google para continuar.`
+                );
+            }
             throw new Error(
                 `❌ Error de autorización de Google.\n\n` +
                 `El origen "${currentOrigin}" puede no estar autorizado o los cambios aún no se han propagado.\n\n` +
@@ -192,6 +298,11 @@ export const uploadFileToDrive = async (opts: {
     await ensureGoogleSignIn();
     // @ts-ignore
     const gapi = window.gapi;
+    
+    if (!gapi || !gapi.client || !gapi.client.drive) {
+        throw new Error("Google Drive API no disponible. Recarga la página e intenta de nuevo.");
+    }
+    
     const boundary = "-------314159265358979323846";
     const delimiter = "\r\n--" + boundary + "\r\n";
     const closeDelimiter = "\r\n--" + boundary + "--";
@@ -216,53 +327,132 @@ export const uploadFileToDrive = async (opts: {
         return btoa(unescape(encodeURIComponent(opts.content)));
     };
 
-    const base64Data = await reader();
-    const multipartRequestBody =
-        delimiter +
-        "Content-Type: application/json; charset=UTF-8\r\n\r\n" +
-        JSON.stringify(metadata) +
-        delimiter +
-        "Content-Type: " + opts.mimeType + "\r\n" +
-        "Content-Transfer-Encoding: base64\r\n" +
-        "\r\n" +
-        base64Data +
-        closeDelimiter;
+    try {
+        const base64Data = await reader();
+        const multipartRequestBody =
+            delimiter +
+            "Content-Type: application/json; charset=UTF-8\r\n\r\n" +
+            JSON.stringify(metadata) +
+            delimiter +
+            "Content-Type: " + opts.mimeType + "\r\n" +
+            "Content-Transfer-Encoding: base64\r\n" +
+            "\r\n" +
+            base64Data +
+            closeDelimiter;
 
-    const response = await gapi.client.request({
-        path: "/upload/drive/v3/files",
-        method: "POST",
-        params: { uploadType: "multipart" },
-        headers: {
-            "Content-Type": "multipart/related; boundary=" + boundary,
-        },
-        body: multipartRequestBody,
-    });
-    return response.result;
+        const response = await gapi.client.request({
+            path: "/upload/drive/v3/files",
+            method: "POST",
+            params: { uploadType: "multipart" },
+            headers: {
+                "Content-Type": "multipart/related; boundary=" + boundary,
+            },
+            body: multipartRequestBody,
+        });
+        
+        if (!response || !response.result || !response.result.id) {
+            throw new Error("No se recibió respuesta válida de Google Drive. El archivo puede no haberse subido correctamente.");
+        }
+        
+        return response.result;
+    } catch (e: any) {
+        const msg = String(e?.error || e?.details || e?.message || e);
+        if (msg.includes('insufficientPermissions') || msg.includes('permission')) {
+            throw new Error(
+                `❌ Error de permisos al subir a Drive.\n\n` +
+                `Asegúrate de haber autorizado el acceso a Google Drive cuando se te solicitó.\n` +
+                `Si cancelaste los permisos, recarga la página e intenta de nuevo.`
+            );
+        }
+        if (msg.includes('quota') || msg.includes('storage')) {
+            throw new Error(
+                `❌ Error de almacenamiento en Drive.\n\n` +
+                `Tu cuenta de Google Drive puede estar sin espacio.\n` +
+                `Libera espacio en Drive e intenta de nuevo.`
+            );
+        }
+        throw e;
+    }
 };
 
 export const createSpreadsheetWithSheets = async (title: string, sheetTitles: string[]): Promise<{ spreadsheetId: string }> => {
     await ensureGoogleSignIn();
     // @ts-ignore
     const gapi = window.gapi;
+    
+    if (!gapi || !gapi.client || !gapi.client.sheets) {
+        throw new Error("Google Sheets API no disponible. Recarga la página e intenta de nuevo.");
+    }
+    
     const resourceBody = {
         properties: { title },
         sheets: sheetTitles.map((t) => ({ properties: { title: t } })),
     };
-    // Nota: la firma correcta para gapi es (params, body)
-    const resp = await gapi.client.sheets.spreadsheets.create({}, resourceBody);
-    return { spreadsheetId: resp.result.spreadsheetId };
+    
+    try {
+        // Nota: la firma correcta para gapi es (params, body)
+        const resp = await gapi.client.sheets.spreadsheets.create({}, resourceBody);
+        
+        if (!resp || !resp.result || !resp.result.spreadsheetId) {
+            throw new Error("No se recibió respuesta válida de Google Sheets. La hoja puede no haberse creado correctamente.");
+        }
+        
+        return { spreadsheetId: resp.result.spreadsheetId };
+    } catch (e: any) {
+        const msg = String(e?.error || e?.details || e?.message || e);
+        if (msg.includes('insufficientPermissions') || msg.includes('permission')) {
+            throw new Error(
+                `❌ Error de permisos al crear la hoja de cálculo.\n\n` +
+                `Asegúrate de haber autorizado el acceso a Google Sheets cuando se te solicitó.\n` +
+                `Si cancelaste los permisos, recarga la página e intenta de nuevo.`
+            );
+        }
+        throw e;
+    }
 };
 
 export const writeSheetValues = async (spreadsheetId: string, sheetTitle: string, values: (string | number | null)[][]): Promise<void> => {
     await ensureGoogleSignIn();
     // @ts-ignore
     const gapi = window.gapi;
-    await gapi.client.sheets.spreadsheets.values.update({
-        spreadsheetId,
-        range: `${sheetTitle}!A1`,
-        valueInputOption: "RAW",
-        resource: { values },
-    });
+    
+    if (!gapi || !gapi.client || !gapi.client.sheets) {
+        throw new Error("Google Sheets API no disponible. Recarga la página e intenta de nuevo.");
+    }
+    
+    if (!values || values.length === 0) {
+        console.warn(`No hay datos para escribir en la hoja "${sheetTitle}"`);
+        return;
+    }
+    
+    try {
+        const response = await gapi.client.sheets.spreadsheets.values.update({
+            spreadsheetId,
+            range: `${sheetTitle}!A1`,
+            valueInputOption: "RAW",
+            resource: { values },
+        });
+        
+        if (!response || !response.result) {
+            throw new Error(`No se recibió respuesta válida al escribir en la hoja "${sheetTitle}"`);
+        }
+    } catch (e: any) {
+        const msg = String(e?.error || e?.details || e?.message || e);
+        if (msg.includes('insufficientPermissions') || msg.includes('permission')) {
+            throw new Error(
+                `❌ Error de permisos al escribir en la hoja de cálculo.\n\n` +
+                `Asegúrate de haber autorizado el acceso a Google Sheets cuando se te solicitó.\n` +
+                `Si cancelaste los permisos, recarga la página e intenta de nuevo.`
+            );
+        }
+        if (msg.includes('not found') || msg.includes('does not exist')) {
+            throw new Error(
+                `❌ Error: La hoja "${sheetTitle}" no existe en el documento.\n\n` +
+                `Esto puede ocurrir si la hoja fue eliminada o renombrada.`
+            );
+        }
+        throw e;
+    }
 };
 
 

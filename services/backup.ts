@@ -117,15 +117,35 @@ export const downloadBackupJson = async () => {
 };
 
 export const uploadBackupToGoogleDrive = async (): Promise<void> => {
-    const data = await buildBackupPayload();
-    const json = JSON.stringify(data, null, 2);
-    const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
-    const dateStr = new Date().toISOString().replace(/[:.]/g, '-');
-    await uploadFileToDrive({
-        name: `tappxi-backup-${dateStr}.json`,
-        mimeType: 'application/json',
-        content: blob,
-    });
+    try {
+        const data = await buildBackupPayload();
+        const json = JSON.stringify(data, null, 2);
+        const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+        const dateStr = new Date().toISOString().replace(/[:.]/g, '-');
+        const fileName = `tappxi-backup-${dateStr}.json`;
+        
+        const result = await uploadFileToDrive({
+            name: fileName,
+            mimeType: 'application/json',
+            content: blob,
+        });
+        
+        if (!result || !result.id) {
+            throw new Error("No se recibió confirmación de que el archivo se subió correctamente a Drive.");
+        }
+        
+        // Validar que el archivo se subió correctamente
+        console.log(`Backup subido exitosamente a Drive. ID: ${result.id}, Nombre: ${result.name || fileName}`);
+    } catch (error: any) {
+        const errorMsg = error?.message || String(error);
+        throw new Error(
+            `Error al subir backup a Google Drive: ${errorMsg}\n\n` +
+            `Asegúrate de:\n` +
+            `1. Tener conexión a internet\n` +
+            `2. Haber autorizado el acceso a Google Drive\n` +
+            `3. Tener espacio disponible en tu cuenta de Google Drive`
+        );
+    }
 };
 
 // Helpers para Google Sheets
@@ -143,26 +163,52 @@ const toRows = <T extends Record<string, any>>(items: T[], columns: string[]): (
     return [header, ...dataRows];
 };
 
-export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string }> => {
-    const data = await buildBackupPayload();
-    const dateStr = new Date().toISOString().split('T')[0];
-    const sheetTitles = ['Carreras', 'Gastos', 'Turnos'];
-    const { spreadsheetId } = await createSpreadsheetWithSheets(`TAppXI Export ${dateStr}`, sheetTitles);
+export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; url: string }> => {
+    try {
+        const data = await buildBackupPayload();
+        const dateStr = new Date().toISOString().split('T')[0];
+        const sheetTitles = ['Carreras', 'Gastos', 'Turnos'];
+        const { spreadsheetId } = await createSpreadsheetWithSheets(`TAppXI Export ${dateStr}`, sheetTitles);
 
-    // Definir columnas representativas
-    const carrerasCols = ['id', 'taximetro', 'cobrado', 'formaPago', 'tipoCarrera', 'emisora', 'aeropuerto', 'estacion', 'fechaHora', 'turnoId', 'valeInfo', 'notas'];
-    const gastosCols = ['id', 'importe', 'fecha', 'tipo', 'categoria', 'formaPago', 'proveedor', 'concepto', 'taller', 'numeroFactura', 'baseImponible', 'ivaImporte', 'ivaPorcentaje', 'kilometros', 'kilometrosVehiculo', 'descuento', 'servicios', 'notas'];
-    const turnosCols = ['id', 'fechaInicio', 'kilometrosInicio', 'fechaFin', 'kilometrosFin'];
+        if (!spreadsheetId) {
+            throw new Error("No se recibió el ID de la hoja de cálculo creada.");
+        }
 
-    const carrerasRows = toRows((data.carreras as any[]) || [], carrerasCols);
-    const gastosRows = toRows((data.gastos as any[]) || [], gastosCols);
-    const turnosRows = toRows((data.turnos as any[]) || [], turnosCols);
+        // Definir columnas representativas
+        const carrerasCols = ['id', 'taximetro', 'cobrado', 'formaPago', 'tipoCarrera', 'emisora', 'aeropuerto', 'estacion', 'fechaHora', 'turnoId', 'valeInfo', 'notas'];
+        const gastosCols = ['id', 'importe', 'fecha', 'tipo', 'categoria', 'formaPago', 'proveedor', 'concepto', 'taller', 'numeroFactura', 'baseImponible', 'ivaImporte', 'ivaPorcentaje', 'kilometros', 'kilometrosVehiculo', 'descuento', 'servicios', 'notas'];
+        const turnosCols = ['id', 'fechaInicio', 'kilometrosInicio', 'fechaFin', 'kilometrosFin'];
 
-    await writeSheetValues(spreadsheetId, 'Carreras', carrerasRows);
-    await writeSheetValues(spreadsheetId, 'Gastos', gastosRows);
-    await writeSheetValues(spreadsheetId, 'Turnos', turnosRows);
+        const carrerasRows = toRows((data.carreras as any[]) || [], carrerasCols);
+        const gastosRows = toRows((data.gastos as any[]) || [], gastosCols);
+        const turnosRows = toRows((data.turnos as any[]) || [], turnosCols);
 
-    return { spreadsheetId };
+        // Escribir datos en las hojas
+        if (carrerasRows.length > 0) {
+            await writeSheetValues(spreadsheetId, 'Carreras', carrerasRows);
+        }
+        if (gastosRows.length > 0) {
+            await writeSheetValues(spreadsheetId, 'Gastos', gastosRows);
+        }
+        if (turnosRows.length > 0) {
+            await writeSheetValues(spreadsheetId, 'Turnos', turnosRows);
+        }
+
+        const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
+        
+        console.log(`Exportación a Google Sheets completada. ID: ${spreadsheetId}`);
+        
+        return { spreadsheetId, url };
+    } catch (error: any) {
+        const errorMsg = error?.message || String(error);
+        throw new Error(
+            `Error al exportar a Google Sheets: ${errorMsg}\n\n` +
+            `Asegúrate de:\n` +
+            `1. Tener conexión a internet\n` +
+            `2. Haber autorizado el acceso a Google Sheets\n` +
+            `3. Tener espacio disponible en tu cuenta de Google`
+        );
+    }
 };
 
 
