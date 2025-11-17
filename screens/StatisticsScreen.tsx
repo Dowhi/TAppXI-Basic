@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect, useMemo } from 'react';
 import { Seccion } from '../types';
 import ScreenTopBar from '../components/ScreenTopBar';
-import { getCarrerasByDate, getGastosByDate } from '../services/api';
+import { getCarrerasByDate, getGastosByDate, isRestDay } from '../services/api';
 
 interface StatisticsScreenProps {
     navigateTo: (page: Seccion) => void;
@@ -57,6 +57,21 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                 const results = await Promise.all(
                     dates.map(async (date) => {
                         try {
+                            // Verificar si es día de descanso
+                            const restDay = await isRestDay(date);
+                            
+                            // Si es día de descanso, retornar datos vacíos (no se incluyen en estadísticas)
+                            if (restDay) {
+                                return {
+                                    date,
+                                    ingresos: 0,
+                                    gastos: 0,
+                                    balance: 0,
+                                    numCarreras: 0,
+                                    isRestDay: true, // Marcar como día de descanso
+                                } as DayData & { isRestDay?: boolean };
+                            }
+
                             const [carreras, gastos] = await Promise.all([
                                 getCarrerasByDate(date),
                                 getGastosByDate(date),
@@ -70,7 +85,8 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                                 gastos,
                                 balance: ingresos - gastos,
                                 numCarreras: carreras.length,
-                            } as DayData;
+                                isRestDay: false,
+                            } as DayData & { isRestDay?: boolean };
                         } catch (error) {
                             console.error(`Error cargando datos para ${date.toISOString()}:`, error);
                             return {
@@ -79,7 +95,8 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                                 gastos: 0,
                                 balance: 0,
                                 numCarreras: 0,
-                            } as DayData;
+                                isRestDay: false,
+                            } as DayData & { isRestDay?: boolean };
                         }
                     })
                 );
@@ -95,9 +112,12 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
         loadData();
     }, [dateRange]);
 
-    // Calcular estadísticas
+    // Calcular estadísticas (solo días trabajados)
     const stats = useMemo(() => {
-        if (dayData.length === 0) {
+        // Filtrar solo días trabajados (excluir días de descanso)
+        const workingDays = dayData.filter((d: any) => !d.isRestDay);
+        
+        if (workingDays.length === 0) {
             return {
                 totalIngresos: 0,
                 totalGastos: 0,
@@ -110,23 +130,27 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                 mejorDia: null as DayData | null,
                 peorDia: null as DayData | null,
                 diasConIngresos: 0,
-                diasConGastos: 0
+                diasConGastos: 0,
+                diasTrabajados: 0,
+                diasDescanso: 0
             };
         }
 
-        const totalIngresos = dayData.reduce((sum, d) => sum + d.ingresos, 0);
-        const totalGastos = dayData.reduce((sum, d) => sum + d.gastos, 0);
+        const totalIngresos = workingDays.reduce((sum, d) => sum + d.ingresos, 0);
+        const totalGastos = workingDays.reduce((sum, d) => sum + d.gastos, 0);
         const totalBalance = totalIngresos - totalGastos;
-        const totalCarreras = dayData.reduce((sum, d) => sum + d.numCarreras, 0);
+        const totalCarreras = workingDays.reduce((sum, d) => sum + d.numCarreras, 0);
         
-        const diasConIngresos = dayData.filter(d => d.ingresos > 0).length;
-        const diasConGastos = dayData.filter(d => d.gastos > 0).length;
+        const diasConIngresos = workingDays.filter(d => d.ingresos > 0).length;
+        const diasConGastos = workingDays.filter(d => d.gastos > 0).length;
+        const diasTrabajados = workingDays.length;
+        const diasDescanso = dayData.length - diasTrabajados;
         
-        const mejorDia = dayData.reduce((best, current) => 
+        const mejorDia = workingDays.reduce((best, current) => 
             current.balance > (best?.balance || -Infinity) ? current : best, null as DayData | null
         );
         
-        const peorDia = dayData.reduce((worst, current) => 
+        const peorDia = workingDays.reduce((worst, current) => 
             current.balance < (worst?.balance || Infinity) ? current : worst, null as DayData | null
         );
 
@@ -134,26 +158,30 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
             totalIngresos,
             totalGastos,
             totalBalance,
-            promedioDiarioIngresos: totalIngresos / dayData.length,
-            promedioDiarioGastos: totalGastos / dayData.length,
-            promedioDiarioBalance: totalBalance / dayData.length,
+            promedioDiarioIngresos: totalIngresos / diasTrabajados,
+            promedioDiarioGastos: totalGastos / diasTrabajados,
+            promedioDiarioBalance: totalBalance / diasTrabajados,
             totalCarreras,
-            promedioCarrerasPorDia: totalCarreras / dayData.length,
+            promedioCarrerasPorDia: totalCarreras / diasTrabajados,
             mejorDia,
             peorDia,
             diasConIngresos,
-            diasConGastos
+            diasConGastos,
+            diasTrabajados,
+            diasDescanso
         };
     }, [dayData]);
 
-    // Función para renderizar gráfico de barras
+    // Función para renderizar gráfico de barras (solo días trabajados)
     const renderBarChart = (data: DayData[], maxValue: number, height: number = 150) => {
-        if (data.length === 0) return null;
+        // Filtrar solo días trabajados
+        const workingDays = data.filter((d: any) => !d.isRestDay);
+        if (workingDays.length === 0) return null;
         
         const svgWidth = 400; // Ancho fijo para cálculos, se escalará con width="100%"
         const padding = 40;
         const chartWidth = svgWidth - (padding * 2);
-        const barSpacing = chartWidth / data.length;
+        const barSpacing = chartWidth / workingDays.length;
         const barWidth = Math.max(2, barSpacing * 0.8);
         const maxBarHeight = height - 40;
         
@@ -189,8 +217,8 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                         );
                     })}
                     
-                    {/* Barras de ingresos y gastos */}
-                    {data.map((day, index) => {
+                    {/* Barras de ingresos y gastos (solo días trabajados) */}
+                    {workingDays.map((day, index) => {
                         const x = padding + (index * barSpacing) + (barSpacing / 2) - (barWidth / 2);
                         const ingresosHeight = maxValue > 0 ? (day.ingresos / maxValue) * maxBarHeight : 0;
                         const gastosHeight = maxValue > 0 ? (day.gastos / maxValue) * maxBarHeight : 0;
@@ -230,16 +258,16 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                 
                 {/* Etiquetas del eje X */}
                 <div className="flex justify-between mt-2 text-xs text-zinc-500 px-2">
-                    {data.length > 0 && (
+                    {workingDays.length > 0 && (
                         <>
                             <span>
-                                {data[0].date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}
+                                {workingDays[0].date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}
                             </span>
                             <span>
-                                {data[Math.floor(data.length / 2)].date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}
+                                {workingDays[Math.floor(workingDays.length / 2)].date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}
                             </span>
                             <span>
-                                {data[data.length - 1].date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}
+                                {workingDays[workingDays.length - 1].date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}
                             </span>
                         </>
                     )}
@@ -248,12 +276,14 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
         );
     };
 
-    // Función para renderizar gráfico de línea de balance
+    // Función para renderizar gráfico de línea de balance (solo días trabajados)
     const renderLineChart = (data: DayData[], height: number = 150) => {
-        if (data.length === 0) return null;
+        // Filtrar solo días trabajados
+        const workingDays = data.filter((d: any) => !d.isRestDay);
+        if (workingDays.length === 0) return null;
         
-        const maxBalance = Math.max(...data.map(d => Math.abs(d.balance)), 1);
-        const minBalance = Math.min(...data.map(d => d.balance), 0);
+        const maxBalance = Math.max(...workingDays.map(d => Math.abs(d.balance)), 1);
+        const minBalance = Math.min(...workingDays.map(d => d.balance), 0);
         const range = maxBalance - minBalance || 1;
         const maxBarHeight = height - 40;
         const centerY = height - 20 - (maxBarHeight / 2);
@@ -261,8 +291,8 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
         const padding = 20;
         const chartWidth = svgWidth - (padding * 2);
         
-        const points = data.map((day, index) => {
-            const xPercent = index / (data.length - 1 || 1);
+        const points = workingDays.map((day, index) => {
+            const xPercent = index / (workingDays.length - 1 || 1);
             const x = padding + (xPercent * chartWidth);
             const normalizedBalance = (day.balance - minBalance) / range;
             const y = centerY - ((normalizedBalance - 0.5) * maxBarHeight);
@@ -322,8 +352,10 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
         );
     };
 
+    // Filtrar solo días trabajados para el gráfico
+    const workingDaysForChart = dayData.filter((d: any) => !d.isRestDay);
     const maxValue = Math.max(
-        ...dayData.map(d => Math.max(d.ingresos, d.gastos)),
+        ...workingDaysForChart.map(d => Math.max(d.ingresos, d.gastos)),
         1
     );
 
@@ -410,6 +442,9 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                             <div className="mb-4">
                                 {renderBarChart(dayData, maxValue)}
                             </div>
+                            <p className="text-xs text-zinc-500 text-center mt-2">
+                                Solo días trabajados (excluyendo descansos)
+                            </p>
                             <div className="flex gap-4 justify-center text-xs">
                                 <div className="flex items-center gap-2">
                                     <div className="w-3 h-3 rounded bg-cyan-400"></div>
@@ -428,6 +463,9 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                             <div className="mb-4">
                                 {renderLineChart(dayData)}
                             </div>
+                            <p className="text-xs text-zinc-500 text-center mt-2">
+                                Solo días trabajados (excluyendo descansos)
+                            </p>
                         </div>
 
                         {/* Estadísticas Detalladas */}
@@ -508,16 +546,25 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
 
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="bg-zinc-800 rounded-lg p-3">
-                                        <div className="text-zinc-400 text-xs mb-1">Días con Ingresos</div>
+                                        <div className="text-zinc-400 text-xs mb-1">Días Trabajados</div>
                                         <div className="text-white text-lg font-bold">
-                                            {stats.diasConIngresos} / {dayData.length}
+                                            {stats.diasTrabajados || 0}
+                                        </div>
+                                        <div className="text-zinc-500 text-xs mt-1">
+                                            Días descanso: {stats.diasDescanso || 0}
                                         </div>
                                     </div>
                                     <div className="bg-zinc-800 rounded-lg p-3">
-                                        <div className="text-zinc-400 text-xs mb-1">Días con Gastos</div>
+                                        <div className="text-zinc-400 text-xs mb-1">Días con Ingresos</div>
                                         <div className="text-white text-lg font-bold">
-                                            {stats.diasConGastos} / {dayData.length}
+                                            {stats.diasConIngresos} / {stats.diasTrabajados || 0}
                                         </div>
+                                    </div>
+                                </div>
+                                <div className="bg-zinc-800 rounded-lg p-3">
+                                    <div className="text-zinc-400 text-xs mb-1">Días con Gastos</div>
+                                    <div className="text-white text-lg font-bold">
+                                        {stats.diasConGastos} / {stats.diasTrabajados || 0}
                                     </div>
                                 </div>
                             </div>

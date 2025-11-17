@@ -44,14 +44,26 @@ const FlightTakeoffIcon: React.FC<{className?: string}> = ({ className }) => (
         <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
     </svg>
 );
+// Icono de Estación/Tren
+const TrainIcon: React.FC<{className?: string}> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+        <path d="M12 2c-4 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5h1.5l1.5-1.5h4.5L15 20.5h1.5L15 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-4-4-8-4zM7.5 17c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/>
+    </svg>
+);
+// Icono de Interurbana/Carretera
+const RoadIcon: React.FC<{className?: string}> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+        <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
+    </svg>
+);
 const AccessTimeIcon: React.FC<{className?: string}> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>;
 const AddIcon: React.FC<{className?: string}> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>;
 const ExitToAppIcon: React.FC<{className?: string}> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>;
 
 const ResumenBox: React.FC<{ title: string; value: string;}> = ({ title, value }) => (
     <div className="flex-1 text-center">
-        <p className="text-xs text-zinc-400">{title}</p>
-        <p className="font-semibold text-sm text-zinc-100">{value}</p>
+        <p className="text-sm text-zinc-400">{title}</p>
+        <p className="font-semibold text-base text-zinc-100">{value}</p>
     </div>
 );
 
@@ -77,9 +89,9 @@ const ResumenBoxGrande: React.FC<{ title: string; value: string; valueNumeric: n
     }
 
     return (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-2 flex-1 flex flex-col justify-center items-center text-center">
-            <p className="text-base font-bold text-zinc-100">{displayTitle}</p>
-            <p className={`text-xl font-bold ${valueColor}`}>{value}</p>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-1.5 flex-1 flex flex-col justify-center items-center text-center">
+            <p className="text-lg font-bold text-zinc-100">{displayTitle}</p>
+            <p className={`text-2xl font-bold ${valueColor}`}>{value}</p>
         </div>
     );
 };
@@ -296,7 +308,7 @@ const IncomeScreen: React.FC<IncomeScreenProps> = ({ navigateTo, navigateToEditR
     };
 
     return (
-        <div className="bg-zinc-950 min-h-screen text-zinc-100 px-3 pt-3 pb-24 space-y-4">
+        <div className="bg-zinc-950 min-h-screen text-zinc-100 px-3 pt-3 pb-24 space-y-1.5">
             <ScreenTopBar
                 title="Ingresos"
                 navigateTo={navigateTo}
@@ -313,18 +325,18 @@ const IncomeScreen: React.FC<IncomeScreenProps> = ({ navigateTo, navigateToEditR
                 }
             />
 
-            <section className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-2 space-y-2">
+            <section className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-2 space-y-1.5">
                 <div className="flex space-x-2">
                     <ResumenBoxGrande title="Pendiente" value={hideValues ? '****' : resumen.pendiente} valueNumeric={resumen.pendienteValor} />
                     <ResumenBoxGrande title="TOTAL" value={hideValues ? '****' : resumen.total} valueNumeric={parseFloat(resumen.total)} />
                 </div>
-                <div className="flex space-x-2 bg-zinc-900 border border-zinc-800 rounded-lg p-2">
+                <div className="flex space-x-2 bg-zinc-900 border border-zinc-800 rounded-lg p-1.5">
                     <ResumenBox title="Carr." value={hideValues ? '****' : resumen.carreras} />
                     <ResumenBox title="Tarjeta" value={hideValues ? '****' : resumen.tarjeta} />
                     <ResumenBox title="H.Inic." value={hideValues ? '****' : resumen.horaInicio} />
                     <ResumenBox title="H.Trab" value={hideValues ? '****' : resumen.horaTrabajo} />
                 </div>
-                 <div className="flex space-x-2 bg-zinc-900 border border-zinc-800 rounded-lg p-2">
+                 <div className="flex space-x-2 bg-zinc-900 border border-zinc-800 rounded-lg p-1.5">
                     <ResumenBox title="Kms. Ini" value={hideValues ? '****' : resumen.kmsInicio} />
                     {parseFloat(resumen.propina) > 0 && <ResumenBox title="Propina" value={hideValues ? '****' : resumen.propina} />}
                     <ResumenBox title="Tarjeta" value={hideValues ? '****' : resumen.totalTarjeta} />
@@ -332,35 +344,41 @@ const IncomeScreen: React.FC<IncomeScreenProps> = ({ navigateTo, navigateToEditR
             </section>
             
             <section>
-                <div className="border-b border-zinc-800 p-1.5 flex items-center text-zinc-400 font-semibold text-center text-xs">
-                    <span className="flex-1">€</span>
+                <div className="border-b border-zinc-800 p-1 flex items-center text-zinc-400 font-semibold text-center text-sm">
+                    <span className="flex-1 flex justify-center items-center"><EuroIcon className="w-4 h-4" /></span>
                     <span className="flex-1 flex justify-center items-center"><EuroIcon className="w-4 h-4" /></span>
                     <span className="flex-1">Propinas</span>
                     <span className="flex-1 flex justify-center items-center" title="Emisora"><CellTowerIcon className="w-5 h-5 text-pink-400" /></span>
-                    <span className="flex-1 flex justify-center items-center" title="Aeropuerto"><FlightTakeoffIcon className="w-5 h-5 text-blue-400" /></span>
+                    <span className="flex-1 flex justify-center items-center" title="Interurbana / Aeropuerto / Estación"></span>
                     <span className="flex-1 flex justify-center items-center"><AccessTimeIcon className="w-4 h-4" /></span>
                 </div>
-                {loading && <div className="text-center p-2 text-zinc-400 text-sm">Cargando carreras...</div>}
-                {error && <div className="text-center p-2 text-red-400 text-sm">{error}</div>}
+                {loading && <div className="text-center p-2 text-zinc-400 text-base">Cargando carreras...</div>}
+                {error && <div className="text-center p-2 text-red-400 text-base">{error}</div>}
                 {!loading && !error && (
-                    <div className="space-y-1 max-h-96 overflow-y-auto pt-1">
+                    <div className="space-y-0.5 max-h-96 overflow-y-auto pt-0.5">
                         {carreras.map(carrera => {
                             const PaymentIcon = getPaymentIconComponent(carrera.formaPago);
                             const propina = carrera.cobrado - carrera.taximetro;
                             return (
-                                <div key={carrera.id} onClick={() => navigateToEditRace(carrera.id)} className="bg-zinc-900 border border-zinc-800 rounded-lg p-2 flex items-center text-center cursor-pointer hover:bg-zinc-800 transition-colors">
-                                    <span className="flex-1 font-bold text-zinc-100 text-sm">{hideValues ? '****' : `${carrera.cobrado.toFixed(2)}€`}</span>
+                                <div key={carrera.id} onClick={() => navigateToEditRace(carrera.id)} className="bg-zinc-900 border border-zinc-800 rounded-lg p-1.5 flex items-center text-center cursor-pointer hover:bg-zinc-800 transition-colors">
+                                    <span className="flex-1 font-bold text-zinc-100 text-base">{hideValues ? '****' : `${carrera.cobrado.toFixed(2)}€`}</span>
                                     <span className={`flex-1 flex justify-center items-center ${getPaymentColorClass(carrera.formaPago)}`}>
                                         <PaymentIcon className="w-4 h-4" />
                                     </span>
-                                    <span className="flex-1 text-emerald-400 text-xs">{propina > 0 ? (hideValues ? '****' : `${propina.toFixed(2)}€`) : ''}</span>
+                                    <span className="flex-1 text-emerald-400 text-sm">{propina > 0 ? (hideValues ? '****' : `${propina.toFixed(2)}€`) : ''}</span>
                                     <span className="flex-1 text-pink-400 flex justify-center items-center">
                                         {carrera.emisora ? <CellTowerIcon className="w-5 h-5 text-pink-400" /> : null}
                                     </span>
-                                    <span className="flex-1 text-blue-400 flex justify-center items-center">
-                                        {carrera.aeropuerto ? <FlightTakeoffIcon className="w-5 h-5 text-blue-400" /> : null}
+                                    <span className="flex-1 flex justify-center items-center">
+                                        {(carrera.tipoCarrera || 'Urbana') === 'Interurbana' ? (
+                                            <RoadIcon className="w-5 h-5 text-orange-400" title="Interurbana" />
+                                        ) : carrera.aeropuerto ? (
+                                            <FlightTakeoffIcon className="w-5 h-5 text-blue-400" title="Aeropuerto" />
+                                        ) : carrera.estacion ? (
+                                            <TrainIcon className="w-5 h-5 text-amber-400" title="Estación" />
+                                        ) : null}
                                     </span>
-                                    <span className="flex-1 text-xs text-zinc-400">{hideValues ? '****' : carrera.fechaHora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
+                                    <span className="flex-1 text-sm text-zinc-400">{hideValues ? '****' : carrera.fechaHora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
                                 </div>
                             )
                         })}

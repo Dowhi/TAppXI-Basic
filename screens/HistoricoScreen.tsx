@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Card from '../components/NeumorphicCard';
 import ScreenTopBar from '../components/ScreenTopBar';
 import { Seccion, Turno, CarreraVista, Gasto } from '../types';
-import { getRecentTurnos, getCarreras, getGastos } from '../services/api';
+import { getRecentTurnos, getCarrerasPaginadas, getGastos } from '../services/api';
 
 // Icons
 const TaxiIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>;
@@ -16,6 +16,16 @@ type TabType = 'turnos' | 'carreras' | 'gastos';
 
 const HistoricoScreen: React.FC<HistoricoScreenProps> = ({ navigateTo }) => {
     const [activeTab, setActiveTab] = useState<TabType>('turnos');
+
+    // Función helper para formatear fecha y hora de forma consistente (DD/MM/YYYY HH:MM)
+    const formatDateTime = (date: Date): string => {
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${day}/${month}/${year} ${hours}:${minutes}`;
+    };
     const [turnos, setTurnos] = useState<Turno[]>([]);
     const [carreras, setCarreras] = useState<CarreraVista[]>([]);
     const [gastos, setGastos] = useState<Gasto[]>([]);
@@ -27,7 +37,7 @@ const HistoricoScreen: React.FC<HistoricoScreenProps> = ({ navigateTo }) => {
                 setLoading(true);
                 const [turnosData, carrerasData, gastosData] = await Promise.all([
                     getRecentTurnos(50), // Obtener últimos 50 turnos
-                    getCarreras(), // Obtener todas las carreras
+                    getCarrerasPaginadas(300), // Obtener últimas carreras (paginadas)
                     getGastos() // Obtener todos los gastos
                 ]);
                 setTurnos(turnosData || []);
@@ -93,7 +103,15 @@ const HistoricoScreen: React.FC<HistoricoScreenProps> = ({ navigateTo }) => {
             </div>
 
             {loading ? (
-                <div className="text-center p-8 text-zinc-400">Cargando histórico...</div>
+                <div className="space-y-2">
+                    {[1, 2, 3].map((i) => (
+                        <Card key={i} className="p-4 animate-pulse bg-zinc-800 border border-zinc-700">
+                            <div className="h-3 w-1/3 bg-zinc-700 rounded mb-3" />
+                            <div className="h-2 w-full bg-zinc-700 rounded mb-1.5" />
+                            <div className="h-2 w-2/3 bg-zinc-700 rounded" />
+                        </Card>
+                    ))}
+                </div>
             ) : (
                 <div className="space-y-2 max-h-[60vh] overflow-y-auto">
                     {activeTab === 'turnos' && (
@@ -104,24 +122,6 @@ const HistoricoScreen: React.FC<HistoricoScreenProps> = ({ navigateTo }) => {
                                 </Card>
                             ) : (
                                 turnos.map(turno => {
-                                    const fechaInicio = turno.fechaInicio.toLocaleDateString('es-ES', {
-                                        day: '2-digit',
-                                        month: '2-digit',
-                                        year: 'numeric'
-                                    });
-                                    const horaInicio = turno.fechaInicio.toLocaleTimeString('es-ES', {
-                                        hour: '2-digit',
-                                        minute: '2-digit'
-                                    });
-                                    const fechaFin = turno.fechaFin ? turno.fechaFin.toLocaleDateString('es-ES', {
-                                        day: '2-digit',
-                                        month: '2-digit',
-                                        year: 'numeric'
-                                    }) : '';
-                                    const horaFin = turno.fechaFin ? turno.fechaFin.toLocaleTimeString('es-ES', {
-                                        hour: '2-digit',
-                                        minute: '2-digit'
-                                    }) : '';
                                     const totalTurno = calcularTotalTurno(turno.id);
                                     const kmsRecorridos = turno.kilometrosFin && turno.kilometrosInicio 
                                         ? turno.kilometrosFin - turno.kilometrosInicio 
@@ -132,11 +132,11 @@ const HistoricoScreen: React.FC<HistoricoScreenProps> = ({ navigateTo }) => {
                                             <div className="flex justify-between items-start mb-2">
                                                 <div className="flex-1">
                                                     <p className="font-semibold text-zinc-100 mb-1">
-                                                        {fechaInicio} {horaInicio}
+                                                        Inicio: {formatDateTime(turno.fechaInicio)}
                                                     </p>
                                                     {turno.fechaFin && (
                                                         <p className="text-zinc-400 text-xs mb-1">
-                                                            Fin: {fechaFin} {horaFin}
+                                                            Fin: {formatDateTime(turno.fechaFin)}
                                                         </p>
                                                     )}
                                                     <div className="grid grid-cols-2 gap-2 mt-2">

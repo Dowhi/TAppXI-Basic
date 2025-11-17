@@ -76,8 +76,10 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
     const [taximetro, setTaximetro] = useState('');
     const [cobrado, setCobrado] = useState('');
     const [formaPago, setFormaPago] = useState<CarreraVista['formaPago']>('Efectivo');
+    const [tipoCarrera, setTipoCarrera] = useState<'Urbana' | 'Interurbana'>('Urbana');
     const [emisora, setEmisora] = useState(false);
     const [aeropuerto, setAeropuerto] = useState(false);
+    const [estacion, setEstacion] = useState(false);
     const [cobradoManuallySet, setCobradoManuallySet] = useState(false);
     const [isLoading, setIsLoading] = useState(isEditing);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -118,8 +120,10 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                 setTaximetro(race.taximetro.toFixed(2));
                 setCobrado(race.cobrado.toFixed(2));
                 setFormaPago(race.formaPago);
+                setTipoCarrera(race.tipoCarrera || 'Urbana');
                 setEmisora(race.formaPago === 'Vales' ? true : race.emisora);
                 setAeropuerto(race.aeropuerto);
+                setEstacion(race.estacion || false);
                 setNotas(race.notas || '');
                 if (race.formaPago === 'Vales' && race.valeInfo) {
                     setValeForm({
@@ -426,8 +430,10 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
             taximetro: taximetroValue,
             cobrado: cobradoValue || taximetroValue, // Si no hay cobrado, usar taximetro
             formaPago,
+            tipoCarrera,
             emisora,
             aeropuerto,
+            estacion,
             valeInfo: isValePayment ? sanitizedValeInfo : null,
             notas: sanitizedNotas.length > 0 ? sanitizedNotas : null,
         };
@@ -544,9 +550,37 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                                 )}
                             </FormField>
                             
+                    <FormField label="Tipo de Carrera" className="col-span-2">
+                        <div className="flex gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="radio"
+                                    name="tipoCarrera"
+                                    value="Urbana"
+                                    checked={tipoCarrera === 'Urbana'}
+                                    onChange={(e) => setTipoCarrera(e.target.value as 'Urbana' | 'Interurbana')}
+                                    className="w-4 h-4 text-blue-600 bg-zinc-700 border-zinc-600 focus:ring-blue-500"
+                                />
+                                <span className="text-sm font-medium text-zinc-300">Urbana</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="radio"
+                                    name="tipoCarrera"
+                                    value="Interurbana"
+                                    checked={tipoCarrera === 'Interurbana'}
+                                    onChange={(e) => setTipoCarrera(e.target.value as 'Urbana' | 'Interurbana')}
+                                    className="w-4 h-4 text-blue-600 bg-zinc-700 border-zinc-600 focus:ring-blue-500"
+                                />
+                                <span className="text-sm font-medium text-zinc-300">Interurbana</span>
+                            </label>
+                        </div>
+                    </FormField>
+                    
                     <div className="col-span-2 flex justify-around items-center pt-2">
                         <CheckboxField label="Emisora" checked={emisora} onChange={(e) => setEmisora(e.target.checked)} />
                         <CheckboxField label="Aeropuerto" checked={aeropuerto} onChange={(e) => setAeropuerto(e.target.checked)} />
+                        <CheckboxField label="Estación" checked={estacion} onChange={(e) => setEstacion(e.target.checked)} />
                     </div>
                 </div>
             </FormCard>

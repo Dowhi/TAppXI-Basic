@@ -37,8 +37,10 @@ const docToCarrera = (doc: any): CarreraVista => {
         taximetro: data.taximetro,
         cobrado: data.cobrado,
         formaPago: data.formaPago,
+        tipoCarrera: data.tipoCarrera || 'Urbana', // Por defecto 'Urbana' si no existe
         emisora: data.emisora,
         aeropuerto: data.aeropuerto,
+        estacion: data.estacion || false, // Por defecto false si no existe
         fechaHora: data.fechaHora.toDate(), // Convert Firestore Timestamp to JS Date
         turnoId: data.turnoId || undefined, // ID del turno relacionado
         valeInfo,
@@ -86,7 +88,25 @@ const docToTurno = (doc: any): Turno => {
 
 // Carreras
 export const getCarreras = async (): Promise<CarreraVista[]> => {
+    // Mantener esta función para compatibilidad: devuelve todas las carreras ordenadas por fecha.
+    // IMPORTANTE: Para listados de histórico usa mejor getCarrerasPaginadas para evitar cargar toda la colección.
     const snapshot = await carrerasCollection.orderBy('fechaHora', 'desc').get();
+    return snapshot.docs.map(docToCarrera);
+};
+
+export const getCarrerasPaginadas = async (
+    limit: number = 200,
+    startAfterFecha?: Date
+): Promise<CarreraVista[]> => {
+    let query: any = carrerasCollection.orderBy('fechaHora', 'desc').limit(limit);
+
+    if (startAfterFecha) {
+        // @ts-ignore
+        const startAfterTs = firebase.firestore.Timestamp.fromDate(startAfterFecha);
+        query = query.startAfter(startAfterTs);
+    }
+
+    const snapshot = await query.get();
     return snapshot.docs.map(docToCarrera);
 };
 
@@ -137,8 +157,10 @@ export const addCarrera = async (carrera: CarreraInputData) => {
         taximetro: carrera.taximetro,
         cobrado: carrera.cobrado,
         formaPago: carrera.formaPago,
+        tipoCarrera: carrera.tipoCarrera || 'Urbana', // Por defecto 'Urbana'
         emisora: carrera.emisora,
         aeropuerto: carrera.aeropuerto,
+        estacion: carrera.estacion || false, // Por defecto false
         // @ts-ignore
         fechaHora: carrera.fechaHora ? firebase.firestore.Timestamp.fromDate(carrera.fechaHora) : firebase.firestore.FieldValue.serverTimestamp()
     };
@@ -220,15 +242,10 @@ export const deleteCarrera = (id: string) => {
 // Home Screen Data
 export const getIngresosForCurrentMonth = async (): Promise<number> => {
     const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-
-    const snapshot = await carrerasCollection
-        .where('fechaHora', '>=', startOfMonth)
-        .where('fechaHora', '<=', endOfMonth)
-        .get();
-
-    return snapshot.docs.reduce((total, doc) => total + doc.data().cobrado, 0);
+    const month = now.getMonth();
+    const year = now.getFullYear();
+    // Usar la función que ya filtra días de descanso
+    return getIngresosByMonthYear(month, year);
 };
 
 export const getGastos = async (): Promise<Gasto[]> => {
@@ -874,6 +891,529 @@ export const updateExcepcion = async (id: string, excepcion: ExcepcionData): Pro
 
 export const deleteExcepcion = async (id: string): Promise<void> => {
     await excepcionesCollection.doc(id).delete();
+};
+
+// --- Análisis Avanzado ---
+
+// --- Funciones auxiliares para determinar días de descanso ---
+
+// Función auxiliar para parsear el patrón de fin de semana
+const parseWeekendPattern = (patternRaw: string) => {
+    const normalized = (patternRaw || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
+
+    const saturdayMatch = normalized.match(/sabado\s*:\s*([a-z]+)/);
+    const sundayMatch = normalized.match(/domingo\s*:\s*([a-z]+)/);
+
+    return {
+        saturday: (saturdayMatch?.[1] ?? 'ac').toUpperCase(),
+        sunday: (sundayMatch?.[1] ?? 'bd').toUpperCase(),
+    };
+};
+
+// Calcular la letra de un día específico
+const calculateDayLetter = (
+    date: Date,
+    breakConfig: BreakConfiguration,
+    excepciones: Excepcion[]
+): string | null => {
+    if (!breakConfig || !breakConfig.startDate) return null;
+
+    try {
+        const [dayStr, monthStr, yearStr] = breakConfig.startDate.split('/');
+        const startDate = new Date(parseInt(yearStr), parseInt(monthStr) - 1, parseInt(dayStr));
+        const lettersArray = ['A', 'B', 'C', 'D'];
+        const mod = (value: number, divisor: number) => ((value % divisor) + divisor) % divisor;
+        const weekendPattern = parseWeekendPattern(breakConfig.weekendPattern || '');
+
+        const startLetter = breakConfig.startDayLetter || 'A';
+        const startLetterIndex = lettersArray.indexOf(startLetter);
+        if (startLetterIndex === -1) return null;
+
+        const startDayOfWeek = startDate.getDay();
+        const startWeekday = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
+        const mondayOfStartWeekLetterIndex = mod(startLetterIndex - startWeekday, 4);
+
+        // Verificar excepciones primero
+        const dayDate = new Date(date);
+        dayDate.setHours(0, 0, 0, 0);
+        
+        for (const excepcion of excepciones) {
+            const fechaDesde = new Date(excepcion.fechaDesde);
+            fechaDesde.setHours(0, 0, 0, 0);
+            const fechaHasta = new Date(excepcion.fechaHasta);
+            fechaHasta.setHours(23, 59, 59, 999);
+            
+            if (dayDate >= fechaDesde && dayDate <= fechaHasta) {
+                if (excepcion.tipo === 'Cambio de Letra' && excepcion.nuevaLetra) {
+                    return excepcion.nuevaLetra;
+                }
+            }
+        }
+
+        const diffTime = dayDate.getTime() - startDate.getTime();
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays < 0) return null;
+
+        const dayOfWeek = dayDate.getDay();
+        const isSaturday = dayOfWeek === 6;
+        const isSunday = dayOfWeek === 0;
+
+        if (isSaturday || isSunday) {
+            const weekNumber = Math.floor((diffDays + startWeekday) / 7);
+            const swapPattern = weekNumber % 2 === 1;
+            const saturdayLetters = swapPattern ? weekendPattern.sunday : weekendPattern.saturday;
+            const sundayLetters = swapPattern ? weekendPattern.saturday : weekendPattern.sunday;
+            return isSaturday ? saturdayLetters : sundayLetters;
+        } else {
+            const weekday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+            const weekNumber = Math.floor((diffDays + startWeekday) / 7);
+            const mondayLetterIndex = mod(mondayOfStartWeekLetterIndex + weekNumber, 4);
+            const letterIndex = mod(mondayLetterIndex + weekday, 4);
+            return lettersArray[letterIndex];
+        }
+    } catch (error) {
+        console.error('Error calculando letra del día:', error);
+        return null;
+    }
+};
+
+// Determinar si un día es de descanso
+export const isRestDay = async (date: Date): Promise<boolean> => {
+    try {
+        const [breakConfig, excepciones] = await Promise.all([
+            getBreakConfiguration(),
+            getExcepciones(),
+        ]);
+
+        if (!breakConfig || !breakConfig.userBreakLetter) {
+            return false; // Si no hay configuración, no es día de descanso
+        }
+
+        // Verificar si es vacaciones
+        const dayDate = new Date(date);
+        dayDate.setHours(0, 0, 0, 0);
+        
+        for (const excepcion of excepciones) {
+            if (excepcion.tipo === 'Vacaciones') {
+                const fechaDesde = new Date(excepcion.fechaDesde);
+                fechaDesde.setHours(0, 0, 0, 0);
+                const fechaHasta = new Date(excepcion.fechaHasta);
+                fechaHasta.setHours(23, 59, 59, 999);
+                
+                if (dayDate >= fechaDesde && dayDate <= fechaHasta) {
+                    return true;
+                }
+            }
+        }
+
+        const dayLetter = calculateDayLetter(date, breakConfig, excepciones);
+        if (!dayLetter) return false;
+
+        const userLetter = breakConfig.userBreakLetter.toUpperCase();
+        const dayLetterUpper = dayLetter.toUpperCase();
+
+        // Verificar si coincide con la letra del usuario
+        return (
+            dayLetterUpper === userLetter ||
+            (dayLetterUpper === 'AC' && (userLetter === 'A' || userLetter === 'C')) ||
+            (dayLetterUpper === 'BD' && (userLetter === 'B' || userLetter === 'D'))
+        );
+    } catch (error) {
+        console.error('Error determinando si es día de descanso:', error);
+        return false;
+    }
+};
+
+// Obtener lista de días trabajados en un rango de fechas
+export const getWorkingDays = async (startDate: Date, endDate: Date): Promise<Date[]> => {
+    const workingDays: Date[] = [];
+    const current = new Date(startDate);
+    current.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    while (current <= end) {
+        const isRest = await isRestDay(new Date(current));
+        if (!isRest) {
+            workingDays.push(new Date(current));
+        }
+        current.setDate(current.getDate() + 1);
+    }
+
+    return workingDays;
+};
+
+// Obtener ingresos por hora del día (0-23) para un rango de fechas (solo días trabajados)
+export const getIngresosByHour = async (startDate: Date, endDate: Date): Promise<number[]> => {
+    // @ts-ignore
+    const startTimestamp = firebase.firestore.Timestamp.fromDate(startDate);
+    // @ts-ignore
+    const endTimestamp = firebase.firestore.Timestamp.fromDate(endDate);
+
+    const snapshot = await carrerasCollection
+        .where('fechaHora', '>=', startTimestamp)
+        .where('fechaHora', '<=', endTimestamp)
+        .get();
+
+    const ingresosPorHora = new Array(24).fill(0);
+    const [breakConfig, excepciones] = await Promise.all([
+        getBreakConfiguration(),
+        getExcepciones(),
+    ]);
+
+    snapshot.docs.forEach(doc => {
+        const data = doc.data();
+        const fechaHora = data.fechaHora.toDate();
+        
+        // Verificar si es día de descanso
+        const fechaDia = new Date(fechaHora);
+        fechaDia.setHours(0, 0, 0, 0);
+        
+        // Verificar vacaciones
+        let isVacaciones = false;
+        for (const excepcion of excepciones) {
+            if (excepcion.tipo === 'Vacaciones') {
+                const fechaDesde = new Date(excepcion.fechaDesde);
+                fechaDesde.setHours(0, 0, 0, 0);
+                const fechaHasta = new Date(excepcion.fechaHasta);
+                fechaHasta.setHours(23, 59, 59, 999);
+                if (fechaDia >= fechaDesde && fechaDia <= fechaHasta) {
+                    isVacaciones = true;
+                    break;
+                }
+            }
+        }
+        
+        if (isVacaciones) return; // Saltar días de vacaciones
+        
+        // Verificar letra de descanso
+        if (breakConfig && breakConfig.userBreakLetter) {
+            const dayLetter = calculateDayLetter(fechaDia, breakConfig, excepciones);
+            if (dayLetter) {
+                const userLetter = breakConfig.userBreakLetter.toUpperCase();
+                const dayLetterUpper = dayLetter.toUpperCase();
+                const isRest = (
+                    dayLetterUpper === userLetter ||
+                    (dayLetterUpper === 'AC' && (userLetter === 'A' || userLetter === 'C')) ||
+                    (dayLetterUpper === 'BD' && (userLetter === 'B' || userLetter === 'D'))
+                );
+                if (isRest) return; // Saltar días de descanso
+            }
+        }
+        
+        const hora = fechaHora.getHours(); // 0-23
+        const cobrado = data.cobrado || 0;
+        ingresosPorHora[hora] += cobrado;
+    });
+
+    return ingresosPorHora;
+};
+
+// Obtener ingresos por día de la semana (0=Domingo, 1=Lunes, ..., 6=Sábado) - solo días trabajados
+export const getIngresosByDayOfWeek = async (startDate: Date, endDate: Date): Promise<number[]> => {
+    // @ts-ignore
+    const startTimestamp = firebase.firestore.Timestamp.fromDate(startDate);
+    // @ts-ignore
+    const endTimestamp = firebase.firestore.Timestamp.fromDate(endDate);
+
+    const snapshot = await carrerasCollection
+        .where('fechaHora', '>=', startTimestamp)
+        .where('fechaHora', '<=', endTimestamp)
+        .get();
+
+    const ingresosPorDia = new Array(7).fill(0);
+    const contadorPorDia = new Array(7).fill(0);
+    const [breakConfig, excepciones] = await Promise.all([
+        getBreakConfiguration(),
+        getExcepciones(),
+    ]);
+
+    snapshot.docs.forEach(doc => {
+        const data = doc.data();
+        const fechaHora = data.fechaHora.toDate();
+        
+        // Verificar si es día de descanso
+        const fechaDia = new Date(fechaHora);
+        fechaDia.setHours(0, 0, 0, 0);
+        
+        // Verificar vacaciones
+        let isVacaciones = false;
+        for (const excepcion of excepciones) {
+            if (excepcion.tipo === 'Vacaciones') {
+                const fechaDesde = new Date(excepcion.fechaDesde);
+                fechaDesde.setHours(0, 0, 0, 0);
+                const fechaHasta = new Date(excepcion.fechaHasta);
+                fechaHasta.setHours(23, 59, 59, 999);
+                if (fechaDia >= fechaDesde && fechaDia <= fechaHasta) {
+                    isVacaciones = true;
+                    break;
+                }
+            }
+        }
+        
+        if (isVacaciones) return; // Saltar días de vacaciones
+        
+        // Verificar letra de descanso
+        if (breakConfig && breakConfig.userBreakLetter) {
+            const dayLetter = calculateDayLetter(fechaDia, breakConfig, excepciones);
+            if (dayLetter) {
+                const userLetter = breakConfig.userBreakLetter.toUpperCase();
+                const dayLetterUpper = dayLetter.toUpperCase();
+                const isRest = (
+                    dayLetterUpper === userLetter ||
+                    (dayLetterUpper === 'AC' && (userLetter === 'A' || userLetter === 'C')) ||
+                    (dayLetterUpper === 'BD' && (userLetter === 'B' || userLetter === 'D'))
+                );
+                if (isRest) return; // Saltar días de descanso
+            }
+        }
+        
+        const diaSemana = fechaHora.getDay(); // 0-6
+        const cobrado = data.cobrado || 0;
+        ingresosPorDia[diaSemana] += cobrado;
+        contadorPorDia[diaSemana] += 1;
+    });
+
+    // Calcular promedio por día
+    return ingresosPorDia.map((total, index) => 
+        contadorPorDia[index] > 0 ? total / contadorPorDia[index] : 0
+    );
+};
+
+// Obtener total de ingresos por día de la semana (sin promediar) - solo días trabajados
+export const getTotalIngresosByDayOfWeek = async (startDate: Date, endDate: Date): Promise<number[]> => {
+    // @ts-ignore
+    const startTimestamp = firebase.firestore.Timestamp.fromDate(startDate);
+    // @ts-ignore
+    const endTimestamp = firebase.firestore.Timestamp.fromDate(endDate);
+
+    const snapshot = await carrerasCollection
+        .where('fechaHora', '>=', startTimestamp)
+        .where('fechaHora', '<=', endTimestamp)
+        .get();
+
+    const ingresosPorDia = new Array(7).fill(0);
+    const [breakConfig, excepciones] = await Promise.all([
+        getBreakConfiguration(),
+        getExcepciones(),
+    ]);
+
+    snapshot.docs.forEach(doc => {
+        const data = doc.data();
+        const fechaHora = data.fechaHora.toDate();
+        
+        // Verificar si es día de descanso
+        const fechaDia = new Date(fechaHora);
+        fechaDia.setHours(0, 0, 0, 0);
+        
+        // Verificar vacaciones
+        let isVacaciones = false;
+        for (const excepcion of excepciones) {
+            if (excepcion.tipo === 'Vacaciones') {
+                const fechaDesde = new Date(excepcion.fechaDesde);
+                fechaDesde.setHours(0, 0, 0, 0);
+                const fechaHasta = new Date(excepcion.fechaHasta);
+                fechaHasta.setHours(23, 59, 59, 999);
+                if (fechaDia >= fechaDesde && fechaDia <= fechaHasta) {
+                    isVacaciones = true;
+                    break;
+                }
+            }
+        }
+        
+        if (isVacaciones) return; // Saltar días de vacaciones
+        
+        // Verificar letra de descanso
+        if (breakConfig && breakConfig.userBreakLetter) {
+            const dayLetter = calculateDayLetter(fechaDia, breakConfig, excepciones);
+            if (dayLetter) {
+                const userLetter = breakConfig.userBreakLetter.toUpperCase();
+                const dayLetterUpper = dayLetter.toUpperCase();
+                const isRest = (
+                    dayLetterUpper === userLetter ||
+                    (dayLetterUpper === 'AC' && (userLetter === 'A' || userLetter === 'C')) ||
+                    (dayLetterUpper === 'BD' && (userLetter === 'B' || userLetter === 'D'))
+                );
+                if (isRest) return; // Saltar días de descanso
+            }
+        }
+        
+        const diaSemana = fechaHora.getDay(); // 0-6
+        const cobrado = data.cobrado || 0;
+        ingresosPorDia[diaSemana] += cobrado;
+    });
+
+    return ingresosPorDia;
+};
+
+// Obtener ingresos de un mes específico (solo días trabajados)
+export const getIngresosByMonthYear = async (month: number, year: number): Promise<number> => {
+    const startOfMonth = new Date(year, month, 1);
+    startOfMonth.setHours(0, 0, 0, 0);
+    const endOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+    // @ts-ignore
+    const startTimestamp = firebase.firestore.Timestamp.fromDate(startOfMonth);
+    // @ts-ignore
+    const endTimestamp = firebase.firestore.Timestamp.fromDate(endOfMonth);
+
+    const snapshot = await carrerasCollection
+        .where('fechaHora', '>=', startTimestamp)
+        .where('fechaHora', '<=', endTimestamp)
+        .get();
+
+    const [breakConfig, excepciones] = await Promise.all([
+        getBreakConfiguration(),
+        getExcepciones(),
+    ]);
+
+    return snapshot.docs.reduce((total, doc) => {
+        const data = doc.data();
+        const fechaHora = data.fechaHora.toDate();
+        
+        // Verificar si es día de descanso
+        const fechaDia = new Date(fechaHora);
+        fechaDia.setHours(0, 0, 0, 0);
+        
+        // Verificar vacaciones
+        for (const excepcion of excepciones) {
+            if (excepcion.tipo === 'Vacaciones') {
+                const fechaDesde = new Date(excepcion.fechaDesde);
+                fechaDesde.setHours(0, 0, 0, 0);
+                const fechaHasta = new Date(excepcion.fechaHasta);
+                fechaHasta.setHours(23, 59, 59, 999);
+                if (fechaDia >= fechaDesde && fechaDia <= fechaHasta) {
+                    return total; // Saltar días de vacaciones
+                }
+            }
+        }
+        
+        // Verificar letra de descanso
+        if (breakConfig && breakConfig.userBreakLetter) {
+            const dayLetter = calculateDayLetter(fechaDia, breakConfig, excepciones);
+            if (dayLetter) {
+                const userLetter = breakConfig.userBreakLetter.toUpperCase();
+                const dayLetterUpper = dayLetter.toUpperCase();
+                const isRest = (
+                    dayLetterUpper === userLetter ||
+                    (dayLetterUpper === 'AC' && (userLetter === 'A' || userLetter === 'C')) ||
+                    (dayLetterUpper === 'BD' && (userLetter === 'B' || userLetter === 'D'))
+                );
+                if (isRest) return total; // Saltar días de descanso
+            }
+        }
+        
+        return total + (data.cobrado || 0);
+    }, 0);
+};
+
+// Obtener gastos de un mes específico
+export const getGastosByMonthYear = async (month: number, year: number): Promise<number> => {
+    const startOfMonth = new Date(year, month, 1);
+    startOfMonth.setHours(0, 0, 0, 0);
+    const endOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+    // @ts-ignore
+    const startTimestamp = firebase.firestore.Timestamp.fromDate(startOfMonth);
+    // @ts-ignore
+    const endTimestamp = firebase.firestore.Timestamp.fromDate(endOfMonth);
+
+    const snapshot = await gastosCollection
+        .where('fecha', '>=', startTimestamp)
+        .where('fecha', '<=', endTimestamp)
+        .get();
+
+    return snapshot.docs.reduce((total, doc) => {
+        const data = doc.data();
+        return total + (data.importe || 0);
+    }, 0);
+};
+
+// Obtener total de ingresos de un año específico (retorna número, no array) - solo días trabajados
+export const getTotalIngresosByYear = async (year: number): Promise<number> => {
+    const startOfYear = new Date(year, 0, 1);
+    startOfYear.setHours(0, 0, 0, 0);
+    const endOfYear = new Date(year, 11, 31, 23, 59, 59, 999);
+
+    // @ts-ignore
+    const startTimestamp = firebase.firestore.Timestamp.fromDate(startOfYear);
+    // @ts-ignore
+    const endTimestamp = firebase.firestore.Timestamp.fromDate(endOfYear);
+
+    const snapshot = await carrerasCollection
+        .where('fechaHora', '>=', startTimestamp)
+        .where('fechaHora', '<=', endTimestamp)
+        .get();
+
+    const [breakConfig, excepciones] = await Promise.all([
+        getBreakConfiguration(),
+        getExcepciones(),
+    ]);
+
+    return snapshot.docs.reduce((total, doc) => {
+        const data = doc.data();
+        const fechaHora = data.fechaHora.toDate();
+        
+        // Verificar si es día de descanso
+        const fechaDia = new Date(fechaHora);
+        fechaDia.setHours(0, 0, 0, 0);
+        
+        // Verificar vacaciones
+        for (const excepcion of excepciones) {
+            if (excepcion.tipo === 'Vacaciones') {
+                const fechaDesde = new Date(excepcion.fechaDesde);
+                fechaDesde.setHours(0, 0, 0, 0);
+                const fechaHasta = new Date(excepcion.fechaHasta);
+                fechaHasta.setHours(23, 59, 59, 999);
+                if (fechaDia >= fechaDesde && fechaDia <= fechaHasta) {
+                    return total; // Saltar días de vacaciones
+                }
+            }
+        }
+        
+        // Verificar letra de descanso
+        if (breakConfig && breakConfig.userBreakLetter) {
+            const dayLetter = calculateDayLetter(fechaDia, breakConfig, excepciones);
+            if (dayLetter) {
+                const userLetter = breakConfig.userBreakLetter.toUpperCase();
+                const dayLetterUpper = dayLetter.toUpperCase();
+                const isRest = (
+                    dayLetterUpper === userLetter ||
+                    (dayLetterUpper === 'AC' && (userLetter === 'A' || userLetter === 'C')) ||
+                    (dayLetterUpper === 'BD' && (userLetter === 'B' || userLetter === 'D'))
+                );
+                if (isRest) return total; // Saltar días de descanso
+            }
+        }
+        
+        return total + (data.cobrado || 0);
+    }, 0);
+};
+
+// Obtener total de gastos de un año específico (retorna número, no array)
+export const getTotalGastosByYear = async (year: number): Promise<number> => {
+    const startOfYear = new Date(year, 0, 1);
+    startOfYear.setHours(0, 0, 0, 0);
+    const endOfYear = new Date(year, 11, 31, 23, 59, 59, 999);
+
+    // @ts-ignore
+    const startTimestamp = firebase.firestore.Timestamp.fromDate(startOfYear);
+    // @ts-ignore
+    const endTimestamp = firebase.firestore.Timestamp.fromDate(endOfYear);
+
+    const snapshot = await gastosCollection
+        .where('fecha', '>=', startTimestamp)
+        .where('fecha', '<=', endTimestamp)
+        .get();
+
+    return snapshot.docs.reduce((total, doc) => {
+        const data = doc.data();
+        return total + (data.importe || 0);
+    }, 0);
 };
 
 

@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { useTheme } from './contexts/ThemeContext';
 import { Seccion } from './types';
 import HomeScreen from './screens/HomeScreen';
 import IncomeScreen from './screens/IncomeScreen';
@@ -19,6 +20,7 @@ import StatisticsScreen from './screens/StatisticsScreen';
 import CalendarScreen from './screens/CalendarScreen';
 import BreakConfigurationScreen from './screens/BreakConfigurationScreen';
 import ReportsScreen from './screens/ReportsScreen';
+import AnalisisAvanzadoScreen from './screens/AnalisisAvanzadoScreen';
 
 const HomeIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px" fill="currentColor">
@@ -31,6 +33,7 @@ const App: React.FC = () => {
     const [currentPage, setCurrentPage] = useState<Seccion>(Seccion.Home);
     const [editingRaceId, setEditingRaceId] = useState<string | null>(null);
     const [editingTurnoId, setEditingTurnoId] = useState<string | null>(null);
+    const { isDark } = useTheme();
 
     const navigateTo = useCallback((page: Seccion, id?: string) => {
         if (page === Seccion.IntroducirCarrera) {
@@ -89,14 +92,18 @@ const App: React.FC = () => {
                 return <BreakConfigurationScreen navigateTo={navigateTo} />;
             case Seccion.Informes:
                 return <ReportsScreen navigateTo={navigateTo} />;
+            case Seccion.AnalisisAvanzado:
+                return <AnalisisAvanzadoScreen navigateTo={navigateTo} />;
             default:
                 return <HomeScreen navigateTo={navigateTo} />;
         }
     };
 
+    const appBgClass = isDark ? 'bg-zinc-950 text-zinc-50' : 'bg-zinc-50 text-zinc-900';
+
     return (
-        <div className="bg-zinc-950 min-h-screen text-zinc-50 font-sans">
-            <main className="w-full pb-24">
+        <div className={`${appBgClass} min-h-screen font-sans`}>
+            <main className="w-full pb-24 animate-fade-in-up">
                 {renderPage()}
             </main>
             {currentPage !== Seccion.Home && (

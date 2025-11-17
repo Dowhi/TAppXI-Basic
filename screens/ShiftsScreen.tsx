@@ -31,6 +31,45 @@ const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
     const [error, setError] = useState<string | null>(null);
     const [isCreating, setIsCreating] = useState(false);
 
+    // Función helper para formatear fecha y hora de forma consistente (DD/MM/YYYY HH:MM)
+    // Usa métodos locales explícitos para garantizar formato DD/MM/YYYY
+    const formatDateTime = (date: Date): string => {
+        if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+            return 'Fecha inválida';
+        }
+        // getDate(), getMonth(), getFullYear() ya devuelven valores en zona horaria local
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        // Formato explícito: DD/MM/YYYY HH:MM
+        return `${day}/${month}/${year} ${hours}:${minutes}`;
+    };
+
+    // Función helper para formatear solo la fecha (DD/MM/YYYY)
+    const formatDate = (date: Date): string => {
+        if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+            return 'Fecha inválida';
+        }
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        // Formato explícito: DD/MM/YYYY
+        return `${day}/${month}/${year}`;
+    };
+
+    // Función helper para formatear solo la hora (HH:MM)
+    const formatTime = (date: Date): string => {
+        if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+            return 'Hora inválida';
+        }
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        // Formato explícito: HH:MM
+        return `${hours}:${minutes}`;
+    };
+
     // Cargar turnos recientes
     const loadTurnosRecientes = React.useCallback(async () => {
         try {
@@ -161,8 +200,8 @@ const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
                 ) : (
                     <div className="space-y-4 text-sm">
                         <p><span className="font-semibold text-emerald-400">Estado:</span> Activo</p>
-                        <p><span className="font-semibold text-zinc-400">Fecha inicio:</span> {turnoActivo.fechaInicio.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
-                        <p><span className="font-semibold text-zinc-400">Hora inicio:</span> {turnoActivo.fechaInicio.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</p>
+                        <p><span className="font-semibold text-zinc-400">Fecha inicio:</span> {formatDate(turnoActivo.fechaInicio)}</p>
+                        <p><span className="font-semibold text-zinc-400">Hora inicio:</span> {formatTime(turnoActivo.fechaInicio)}</p>
                         <p><span className="font-semibold text-zinc-400">Km inicio:</span> {turnoActivo.kilometrosInicio}</p>
                         <p className="text-zinc-500 text-xs mt-4">
                             Ve a "Carreras" para añadir carreras a este turno. 
@@ -181,32 +220,17 @@ const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
                 ) : (
                     <div className="space-y-2 max-h-60 overflow-y-auto">
                         {turnosRecientes.map(turno => {
-                            const fechaInicio = turno.fechaInicio.toLocaleDateString('es-ES', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric'
-                            });
-                            const horaInicio = turno.fechaInicio.toLocaleTimeString('es-ES', {
-                                hour: '2-digit',
-                                minute: '2-digit'
-                            });
-                            const fechaFin = turno.fechaFin ? turno.fechaFin.toLocaleDateString('es-ES', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric'
-                            }) : '';
-                            const horaFin = turno.fechaFin ? turno.fechaFin.toLocaleTimeString('es-ES', {
-                                hour: '2-digit',
-                                minute: '2-digit'
-                            }) : '';
+                            // Asegurar que las fechas son objetos Date válidos
+                            const fechaInicio = turno.fechaInicio instanceof Date ? turno.fechaInicio : new Date(turno.fechaInicio);
+                            const fechaFin = turno.fechaFin instanceof Date ? turno.fechaFin : (turno.fechaFin ? new Date(turno.fechaFin) : null);
                             
                             return (
                                 <Card key={turno.id} className="p-3 text-sm">
                                     <div className="flex justify-between items-start mb-2">
                                         <div className="flex-1">
-                                            <p><span className="font-semibold text-zinc-400">Inicio:</span> {fechaInicio} {horaInicio}</p>
-                                            {turno.fechaFin && (
-                                                <p><span className="font-semibold text-zinc-400">Fin:</span> {fechaFin} {horaFin}</p>
+                                            <p><span className="font-semibold text-zinc-400">Inicio:</span> {formatDateTime(fechaInicio)}</p>
+                                            {fechaFin && (
+                                                <p><span className="font-semibold text-zinc-400">Fin:</span> {formatDateTime(fechaFin)}</p>
                                             )}
                                             <p><span className="font-semibold text-zinc-400">Kms:</span> {turno.kilometrosInicio} - {turno.kilometrosFin || 'N/A'}</p>
                                             <p><span className="font-semibold text-zinc-500">Estado:</span> {turno.kilometrosFin ? 'Finalizado' : 'Activo'}</p>

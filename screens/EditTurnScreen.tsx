@@ -34,6 +34,24 @@ const EditTurnScreen: React.FC<EditTurnScreenProps> = ({ navigateTo, turnoId }) 
     const [horaFin, setHoraFin] = useState('');
     const [kilometrosFin, setKilometrosFin] = useState('');
 
+    // Función helper para convertir Date a formato YYYY-MM-DD (para input type="date")
+    const dateToInputFormat = (date: Date): string => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    // Función helper para formatear fecha y hora para mostrar (DD/MM/YYYY HH:MM)
+    const formatDateTime = (date: Date): string => {
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${day}/${month}/${year} ${hours}:${minutes}`;
+    };
+
     useEffect(() => {
         const loadTurno = async () => {
             try {
@@ -46,9 +64,9 @@ const EditTurnScreen: React.FC<EditTurnScreenProps> = ({ navigateTo, turnoId }) 
                 
                 setTurno(turnoData);
                 
-                // Formatear fecha y hora de inicio
+                // Formatear fecha y hora de inicio (usar formato local para evitar problemas de zona horaria)
                 const fechaInicioDate = turnoData.fechaInicio;
-                const fechaInicioStr = fechaInicioDate.toISOString().split('T')[0];
+                const fechaInicioStr = dateToInputFormat(fechaInicioDate);
                 const horaInicioStr = `${String(fechaInicioDate.getHours()).padStart(2, '0')}:${String(fechaInicioDate.getMinutes()).padStart(2, '0')}`;
                 
                 setFechaInicio(fechaInicioStr);
@@ -58,7 +76,7 @@ const EditTurnScreen: React.FC<EditTurnScreenProps> = ({ navigateTo, turnoId }) 
                 // Formatear fecha y hora de fin si existe
                 if (turnoData.fechaFin) {
                     const fechaFinDate = turnoData.fechaFin;
-                    const fechaFinStr = fechaFinDate.toISOString().split('T')[0];
+                    const fechaFinStr = dateToInputFormat(fechaFinDate);
                     const horaFinStr = `${String(fechaFinDate.getHours()).padStart(2, '0')}:${String(fechaFinDate.getMinutes()).padStart(2, '0')}`;
                     
                     setFechaFin(fechaFinStr);
@@ -165,6 +183,21 @@ const EditTurnScreen: React.FC<EditTurnScreenProps> = ({ navigateTo, turnoId }) 
         return (
             <Card>
                 <div className="space-y-4">
+                    {/* Información actual del turno */}
+                    {turno && (
+                        <div className="bg-zinc-800/50 rounded-lg p-3 mb-4 text-xs">
+                            <p className="text-zinc-400 mb-1">Información actual:</p>
+                            <p className="text-zinc-300">
+                                <span className="font-semibold">Inicio:</span> {formatDateTime(turno.fechaInicio)}
+                            </p>
+                            {turno.fechaFin && (
+                                <p className="text-zinc-300">
+                                    <span className="font-semibold">Fin:</span> {formatDateTime(turno.fechaFin)}
+                                </p>
+                            )}
+                        </div>
+                    )}
+
                     <div>
                         <h3 className="text-zinc-100 font-semibold mb-3 text-sm">Inicio del Turno</h3>
                         <div className="grid grid-cols-2 gap-3">

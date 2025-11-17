@@ -175,6 +175,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
     { label: 'Gastos', icon: <TrendingDownIcon />, action: () => navigateTo(Seccion.Gastos) },
     { label: 'Histórico', icon: <HistoryIcon />, action: () => navigateTo(Seccion.Historico) },
     { label: 'Estadíst...', icon: <AssessmentIcon />, action: () => navigateTo(Seccion.Estadisticas) },
+    { label: 'Análisis', icon: <AssessmentIcon />, action: () => navigateTo(Seccion.AnalisisAvanzado) },
     { label: 'Calenda...', icon: <CalendarIcon />, action: () => navigateTo(Seccion.Calendario) },
     { label: 'Resumen', icon: <AssessmentIcon />, action: () => navigateTo(Seccion.Resumen) },
     { label: 'Informes', icon: <AssignmentIcon />, action: () => navigateTo(Seccion.Informes) },
@@ -341,8 +342,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
             </div>
           )}
 
-          {/* Accesos directos en 2 filas de 4 (como en la foto) */}
-          <div className="grid grid-cols-4 gap-1">
+          {/* Accesos directos en 3 filas de 3 (ajustado para 9 acciones) */}
+          <div className="grid grid-cols-3 gap-1">
             {quickActions.map((action, index) => (
               <QuickActionItem key={index} icon={action.icon} label={action.label} onClick={action.action} />
             ))}

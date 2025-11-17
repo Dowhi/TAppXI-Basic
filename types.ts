@@ -23,6 +23,7 @@ export enum Seccion {
     ResumenMensualIngresos = "Resumen Mensual Ingresos",
     Historico = "Hist�rico",
     ConfiguracionDescansos = "Configuración Descansos",
+    AnalisisAvanzado = "Análisis Avanzado",
 }
 
 
@@ -52,8 +53,10 @@ export interface CarreraVista {
     taximetro: number;
     cobrado: number;
     formaPago: 'Efectivo' | 'Tarjeta' | 'Bizum' | 'Vales';
+    tipoCarrera?: 'Urbana' | 'Interurbana'; // Tipo de carrera, 'Urbana' por defecto
     emisora: boolean;
     aeropuerto: boolean;
+    estacion?: boolean; // Nueva opción para estación
     fechaHora: Date;
     turnoId?: string; // ID del turno al que pertenece esta carrera
     valeInfo?: ValeInfo | null;

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="76.8" fill="#3b82f6"/>
+  <rect x="128" y="204.8" width="256" height="153.6" fill="#ffffff" rx="25.6"/>
+  <rect x="153.6" y="230.4" width="204.8" height="76.8" fill="#e0e7ff" rx="10.24"/>
+  <circle cx="179.2" cy="384" r="40.96" fill="#1e293b"/>
+  <circle cx="332.8" cy="384" r="40.96" fill="#1e293b"/>
+  <text x="256" y="435.2" font-family="Arial, sans-serif" font-size="76.8" font-weight="bold" fill="#ffffff" text-anchor="middle">XI</text>
+</svg>
