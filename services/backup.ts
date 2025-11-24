@@ -1,12 +1,17 @@
-import { 
-    getCarreras, 
-    getGastos, 
-    getProveedores, 
-    getConceptos, 
-    getTalleres, 
-    getAjustes, 
-    getBreakConfiguration, 
-    getExcepciones 
+import {
+    getCarreras,
+    getGastos,
+    getProveedores,
+    getConceptos,
+    getTalleres,
+    getAjustes,
+    getBreakConfiguration,
+    getExcepciones,
+    restoreCarrera,
+    restoreGasto,
+    restoreTurno,
+    saveAjustes,
+    saveBreakConfiguration
 } from './api';
 import { uploadFileToDrive, createSpreadsheetWithSheets, writeSheetValues } from './google';
 
@@ -123,17 +128,17 @@ export const uploadBackupToGoogleDrive = async (): Promise<void> => {
         const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
         const dateStr = new Date().toISOString().replace(/[:.]/g, '-');
         const fileName = `tappxi-backup-${dateStr}.json`;
-        
+
         const result = await uploadFileToDrive({
             name: fileName,
             mimeType: 'application/json',
             content: blob,
         });
-        
+
         if (!result || !result.id) {
             throw new Error("No se recibió confirmación de que el archivo se subió correctamente a Drive.");
         }
-        
+
         // Validar que el archivo se subió correctamente
         console.log(`Backup subido exitosamente a Drive. ID: ${result.id}, Nombre: ${result.name || fileName}`);
     } catch (error: any) {
@@ -146,6 +151,54 @@ export const uploadBackupToGoogleDrive = async (): Promise<void> => {
             `3. Tener espacio disponible en tu cuenta de Google Drive`
         );
     }
+};
+
+export const restoreBackup = async (jsonData: any): Promise<{ carreras: number; gastos: number; turnos: number }> => {
+    if (!jsonData || !jsonData.meta || !jsonData.meta.app) {
+        throw new Error("El archivo no parece ser un backup válido de TAppXI.");
+    }
+
+    const stats = {
+        carreras: 0,
+        gastos: 0,
+        turnos: 0
+    };
+
+    // Restaurar Ajustes
+    if (jsonData.ajustes) {
+        await saveAjustes(jsonData.ajustes);
+    }
+
+    // Restaurar Configuración de Descansos
+    if (jsonData.breakConfiguration) {
+        await saveBreakConfiguration(jsonData.breakConfiguration);
+    }
+
+    // Restaurar Carreras
+    if (jsonData.carreras && Array.isArray(jsonData.carreras)) {
+        for (const carrera of jsonData.carreras) {
+            await restoreCarrera(carrera);
+            stats.carreras++;
+        }
+    }
+
+    // Restaurar Gastos
+    if (jsonData.gastos && Array.isArray(jsonData.gastos)) {
+        for (const gasto of jsonData.gastos) {
+            await restoreGasto(gasto);
+            stats.gastos++;
+        }
+    }
+
+    // Restaurar Turnos
+    if (jsonData.turnos && Array.isArray(jsonData.turnos)) {
+        for (const turno of jsonData.turnos) {
+            await restoreTurno(turno);
+            stats.turnos++;
+        }
+    }
+
+    return stats;
 };
 
 // Helpers para Google Sheets
@@ -195,9 +248,9 @@ export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; u
         }
 
         const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
-        
+
         console.log(`Exportación a Google Sheets completada. ID: ${spreadsheetId}`);
-        
+
         return { spreadsheetId, url };
     } catch (error: any) {
         const errorMsg = error?.message || String(error);

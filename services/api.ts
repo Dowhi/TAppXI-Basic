@@ -186,6 +186,25 @@ export const addCarrera = async (carrera: CarreraInputData) => {
     return docRef.id;
 };
 
+export const restoreCarrera = async (carrera: CarreraVista) => {
+    const dataToSave: any = {
+        taximetro: carrera.taximetro,
+        cobrado: carrera.cobrado,
+        formaPago: carrera.formaPago,
+        tipoCarrera: carrera.tipoCarrera || 'Urbana',
+        emisora: carrera.emisora,
+        aeropuerto: carrera.aeropuerto,
+        estacion: carrera.estacion || false,
+        // @ts-ignore
+        fechaHora: carrera.fechaHora ? firebase.firestore.Timestamp.fromDate(new Date(carrera.fechaHora)) : firebase.firestore.FieldValue.serverTimestamp(),
+        valeInfo: carrera.valeInfo || null,
+        notas: carrera.notas || null,
+        turnoId: carrera.turnoId || null,
+    };
+
+    await carrerasCollection.doc(carrera.id).set(dataToSave);
+};
+
 // Gastos
 export const addGasto = async (gasto: Omit<Gasto, 'id'>) => {
     const dataToAdd: any = {
@@ -211,6 +230,31 @@ export const addGasto = async (gasto: Omit<Gasto, 'id'>) => {
     };
     const docRef = await gastosCollection.add(dataToAdd);
     return docRef.id;
+};
+
+export const restoreGasto = async (gasto: Gasto) => {
+    const dataToSave: any = {
+        importe: gasto.importe,
+        // @ts-ignore
+        fecha: gasto.fecha ? firebase.firestore.Timestamp.fromDate(new Date(gasto.fecha)) : firebase.firestore.FieldValue.serverTimestamp(),
+        tipo: gasto.tipo || null,
+        categoria: gasto.categoria || null,
+        formaPago: gasto.formaPago || null,
+        proveedor: gasto.proveedor || null,
+        concepto: gasto.concepto || null,
+        taller: gasto.taller || null,
+        numeroFactura: gasto.numeroFactura || null,
+        baseImponible: gasto.baseImponible || 0,
+        ivaImporte: gasto.ivaImporte || 0,
+        ivaPorcentaje: gasto.ivaPorcentaje || 0,
+        kilometros: gasto.kilometros || 0,
+        kilometrosVehiculo: gasto.kilometrosVehiculo || 0,
+        descuento: gasto.descuento || 0,
+        servicios: gasto.servicios || null,
+        notas: gasto.notas || null,
+    };
+
+    await gastosCollection.doc(gasto.id).set(dataToSave);
 };
 
 export const updateCarrera = async (id: string, carrera: Partial<CarreraInputData>) => {
@@ -395,11 +439,11 @@ export const getActiveTurno = async (): Promise<Turno | null> => {
         .where('kilometrosFin', '==', null)
         .limit(1)
         .get();
-    
+
     if (snapshot.empty) {
         return null;
     }
-    
+
     return docToTurno(snapshot.docs[0]);
 };
 
@@ -416,13 +460,26 @@ export const addTurno = async (kilometrosInicio: number): Promise<string> => {
     return docRef.id;
 };
 
+export const restoreTurno = async (turno: Turno) => {
+    const dataToSave: any = {
+        // @ts-ignore
+        fechaInicio: turno.fechaInicio ? firebase.firestore.Timestamp.fromDate(new Date(turno.fechaInicio)) : firebase.firestore.FieldValue.serverTimestamp(),
+        kilometrosInicio: turno.kilometrosInicio,
+        // @ts-ignore
+        fechaFin: turno.fechaFin ? firebase.firestore.Timestamp.fromDate(new Date(turno.fechaFin)) : null,
+        kilometrosFin: turno.kilometrosFin || null,
+    };
+
+    await turnosCollection.doc(turno.id).set(dataToSave);
+};
+
 export const getTurno = async (id: string): Promise<Turno | null> => {
     const doc = await turnosCollection.doc(id).get();
     return doc.exists ? docToTurno(doc) : null;
 };
 
 export const updateTurno = async (
-    turnoId: string, 
+    turnoId: string,
     updates: {
         fechaInicio?: Date;
         kilometrosInicio?: number;
@@ -431,7 +488,7 @@ export const updateTurno = async (
     }
 ): Promise<void> => {
     const updateData: any = {};
-    
+
     if (updates.fechaInicio !== undefined) {
         // @ts-ignore
         updateData.fechaInicio = firebase.firestore.Timestamp.fromDate(updates.fechaInicio);
@@ -446,7 +503,7 @@ export const updateTurno = async (
     if (updates.kilometrosFin !== undefined) {
         updateData.kilometrosFin = updates.kilometrosFin;
     }
-    
+
     // @ts-ignore
     await turnosCollection.doc(turnoId).update(updateData);
 };
@@ -712,6 +769,8 @@ export interface Ajustes {
     tamanoFuente: number;
     letraDescanso: string;
     objetivoDiario: number;
+    temaColor?: string;
+    altoContraste?: boolean;
 }
 
 export const saveAjustes = async (ajustes: Ajustes): Promise<void> => {
@@ -853,11 +912,11 @@ export const addExcepcion = async (excepcion: ExcepcionData): Promise<string> =>
         // @ts-ignore
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
     };
-    
+
     if (excepcion.nuevaLetra) {
         dataToAdd.nuevaLetra = excepcion.nuevaLetra;
     }
-    
+
     const docRef = await excepcionesCollection.add(dataToAdd);
     return docRef.id;
 };
@@ -878,14 +937,14 @@ export const updateExcepcion = async (id: string, excepcion: ExcepcionData): Pro
         aplicaImpar: excepcion.aplicaImpar,
         descripcion: excepcion.descripcion || '',
     };
-    
+
     if (excepcion.nuevaLetra) {
         dataToUpdate.nuevaLetra = excepcion.nuevaLetra;
     } else {
         // Si no hay nuevaLetra, eliminarla del documento
         dataToUpdate.nuevaLetra = firebase.firestore.FieldValue.delete();
     }
-    
+
     await excepcionesCollection.doc(id).update(dataToUpdate);
 };
 
@@ -939,13 +998,13 @@ const calculateDayLetter = (
         // Verificar excepciones primero
         const dayDate = new Date(date);
         dayDate.setHours(0, 0, 0, 0);
-        
+
         for (const excepcion of excepciones) {
             const fechaDesde = new Date(excepcion.fechaDesde);
             fechaDesde.setHours(0, 0, 0, 0);
             const fechaHasta = new Date(excepcion.fechaHasta);
             fechaHasta.setHours(23, 59, 59, 999);
-            
+
             if (dayDate >= fechaDesde && dayDate <= fechaHasta) {
                 if (excepcion.tipo === 'Cambio de Letra' && excepcion.nuevaLetra) {
                     return excepcion.nuevaLetra;
@@ -955,7 +1014,7 @@ const calculateDayLetter = (
 
         const diffTime = dayDate.getTime() - startDate.getTime();
         const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-        
+
         if (diffDays < 0) return null;
 
         const dayOfWeek = dayDate.getDay();
@@ -996,14 +1055,14 @@ export const isRestDay = async (date: Date): Promise<boolean> => {
         // Verificar si es vacaciones
         const dayDate = new Date(date);
         dayDate.setHours(0, 0, 0, 0);
-        
+
         for (const excepcion of excepciones) {
             if (excepcion.tipo === 'Vacaciones') {
                 const fechaDesde = new Date(excepcion.fechaDesde);
                 fechaDesde.setHours(0, 0, 0, 0);
                 const fechaHasta = new Date(excepcion.fechaHasta);
                 fechaHasta.setHours(23, 59, 59, 999);
-                
+
                 if (dayDate >= fechaDesde && dayDate <= fechaHasta) {
                     return true;
                 }
@@ -1068,11 +1127,11 @@ export const getIngresosByHour = async (startDate: Date, endDate: Date): Promise
     snapshot.docs.forEach(doc => {
         const data = doc.data();
         const fechaHora = data.fechaHora.toDate();
-        
+
         // Verificar si es día de descanso
         const fechaDia = new Date(fechaHora);
         fechaDia.setHours(0, 0, 0, 0);
-        
+
         // Verificar vacaciones
         let isVacaciones = false;
         for (const excepcion of excepciones) {
@@ -1087,9 +1146,9 @@ export const getIngresosByHour = async (startDate: Date, endDate: Date): Promise
                 }
             }
         }
-        
+
         if (isVacaciones) return; // Saltar días de vacaciones
-        
+
         // Verificar letra de descanso
         if (breakConfig && breakConfig.userBreakLetter) {
             const dayLetter = calculateDayLetter(fechaDia, breakConfig, excepciones);
@@ -1104,7 +1163,7 @@ export const getIngresosByHour = async (startDate: Date, endDate: Date): Promise
                 if (isRest) return; // Saltar días de descanso
             }
         }
-        
+
         const hora = fechaHora.getHours(); // 0-23
         const cobrado = data.cobrado || 0;
         ingresosPorHora[hora] += cobrado;
@@ -1135,11 +1194,11 @@ export const getIngresosByDayOfWeek = async (startDate: Date, endDate: Date): Pr
     snapshot.docs.forEach(doc => {
         const data = doc.data();
         const fechaHora = data.fechaHora.toDate();
-        
+
         // Verificar si es día de descanso
         const fechaDia = new Date(fechaHora);
         fechaDia.setHours(0, 0, 0, 0);
-        
+
         // Verificar vacaciones
         let isVacaciones = false;
         for (const excepcion of excepciones) {
@@ -1154,9 +1213,9 @@ export const getIngresosByDayOfWeek = async (startDate: Date, endDate: Date): Pr
                 }
             }
         }
-        
+
         if (isVacaciones) return; // Saltar días de vacaciones
-        
+
         // Verificar letra de descanso
         if (breakConfig && breakConfig.userBreakLetter) {
             const dayLetter = calculateDayLetter(fechaDia, breakConfig, excepciones);
@@ -1171,7 +1230,7 @@ export const getIngresosByDayOfWeek = async (startDate: Date, endDate: Date): Pr
                 if (isRest) return; // Saltar días de descanso
             }
         }
-        
+
         const diaSemana = fechaHora.getDay(); // 0-6
         const cobrado = data.cobrado || 0;
         ingresosPorDia[diaSemana] += cobrado;
@@ -1179,7 +1238,7 @@ export const getIngresosByDayOfWeek = async (startDate: Date, endDate: Date): Pr
     });
 
     // Calcular promedio por día
-    return ingresosPorDia.map((total, index) => 
+    return ingresosPorDia.map((total, index) =>
         contadorPorDia[index] > 0 ? total / contadorPorDia[index] : 0
     );
 };
@@ -1205,11 +1264,11 @@ export const getTotalIngresosByDayOfWeek = async (startDate: Date, endDate: Date
     snapshot.docs.forEach(doc => {
         const data = doc.data();
         const fechaHora = data.fechaHora.toDate();
-        
+
         // Verificar si es día de descanso
         const fechaDia = new Date(fechaHora);
         fechaDia.setHours(0, 0, 0, 0);
-        
+
         // Verificar vacaciones
         let isVacaciones = false;
         for (const excepcion of excepciones) {
@@ -1224,9 +1283,9 @@ export const getTotalIngresosByDayOfWeek = async (startDate: Date, endDate: Date
                 }
             }
         }
-        
+
         if (isVacaciones) return; // Saltar días de vacaciones
-        
+
         // Verificar letra de descanso
         if (breakConfig && breakConfig.userBreakLetter) {
             const dayLetter = calculateDayLetter(fechaDia, breakConfig, excepciones);
@@ -1241,7 +1300,7 @@ export const getTotalIngresosByDayOfWeek = async (startDate: Date, endDate: Date
                 if (isRest) return; // Saltar días de descanso
             }
         }
-        
+
         const diaSemana = fechaHora.getDay(); // 0-6
         const cobrado = data.cobrado || 0;
         ingresosPorDia[diaSemana] += cobrado;
@@ -1274,11 +1333,11 @@ export const getIngresosByMonthYear = async (month: number, year: number): Promi
     return snapshot.docs.reduce((total, doc) => {
         const data = doc.data();
         const fechaHora = data.fechaHora.toDate();
-        
+
         // Verificar si es día de descanso
         const fechaDia = new Date(fechaHora);
         fechaDia.setHours(0, 0, 0, 0);
-        
+
         // Verificar vacaciones
         for (const excepcion of excepciones) {
             if (excepcion.tipo === 'Vacaciones') {
@@ -1291,7 +1350,7 @@ export const getIngresosByMonthYear = async (month: number, year: number): Promi
                 }
             }
         }
-        
+
         // Verificar letra de descanso
         if (breakConfig && breakConfig.userBreakLetter) {
             const dayLetter = calculateDayLetter(fechaDia, breakConfig, excepciones);
@@ -1306,7 +1365,7 @@ export const getIngresosByMonthYear = async (month: number, year: number): Promi
                 if (isRest) return total; // Saltar días de descanso
             }
         }
-        
+
         return total + (data.cobrado || 0);
     }, 0);
 };
@@ -1357,11 +1416,11 @@ export const getTotalIngresosByYear = async (year: number): Promise<number> => {
     return snapshot.docs.reduce((total, doc) => {
         const data = doc.data();
         const fechaHora = data.fechaHora.toDate();
-        
+
         // Verificar si es día de descanso
         const fechaDia = new Date(fechaHora);
         fechaDia.setHours(0, 0, 0, 0);
-        
+
         // Verificar vacaciones
         for (const excepcion of excepciones) {
             if (excepcion.tipo === 'Vacaciones') {
@@ -1374,7 +1433,7 @@ export const getTotalIngresosByYear = async (year: number): Promise<number> => {
                 }
             }
         }
-        
+
         // Verificar letra de descanso
         if (breakConfig && breakConfig.userBreakLetter) {
             const dayLetter = calculateDayLetter(fechaDia, breakConfig, excepciones);
@@ -1389,7 +1448,7 @@ export const getTotalIngresosByYear = async (year: number): Promise<number> => {
                 if (isRest) return total; // Saltar días de descanso
             }
         }
-        
+
         return total + (data.cobrado || 0);
     }, 0);
 };

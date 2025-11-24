@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "deploy": "npm run build && gh-pages -d dist",
-    "generate-icons": "node scripts/generate-icons.js"
+    "generate-icons": "node scripts/generate-icons.js",
+    "verify-google": "node scripts/verify-google-config.js"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.16",
