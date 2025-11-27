@@ -39,15 +39,19 @@ const CellTowerIcon: React.FC<{ className?: string }> = ({ className }) => (
 );
 
 // Icono de Aeropuerto/Avión - imagen personalizada
-const FlightTakeoffIcon: React.FC<{ className?: string; title?: string }> = ({ className, title }) => (
-    <img
-        src="/airport-icon.png"
-        alt="Aeropuerto"
-        title={title}
-        className={className}
-        style={{ objectFit: 'contain' }}
-    />
-);
+const FlightTakeoffIcon: React.FC<{ className?: string; title?: string }> = ({ className, title }) => {
+    // Usar la ruta base correcta para GitHub Pages
+    const basePath = window.location.pathname.includes('/tappxi-web-replica/') ? '/tappxi-web-replica/' : '/';
+    return (
+        <img
+            src={`${basePath}airport-icon.png`}
+            alt="Aeropuerto"
+            title={title}
+            className={className}
+            style={{ objectFit: 'contain' }}
+        />
+    );
+};
 // Icono de Estación/Tren
 const TrainIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
