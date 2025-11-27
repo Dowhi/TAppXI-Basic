@@ -4,18 +4,18 @@ import ScreenTopBar from '../components/ScreenTopBar';
 import { subscribeToCarreras, subscribeToGastos, subscribeToActiveTurno, getAjustes } from '../services/api';
 
 // Icons
-const VisibilityIcon: React.FC<{className?: string}> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5zm0 12.5c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>;
-const VisibilityOffIcon: React.FC<{className?: string}> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/></svg>;
-const EuroIcon: React.FC<{className?: string}> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M15 18.5c-2.51 0-4.68-1.42-5.76-3.5H15v-2H8.58c-.05-.33-.08-.66-.08-1s.03-.67.08-1H15V9H9.24C10.32 6.92 12.5 5.5 15 5.5c1.61 0 3.09.59 4.23 1.57L21 5.3C19.41 3.87 17.3 3 15 3c-3.92 0-7.24 2.51-8.48 6H3v2h3.06c-.04.33-.06.66-.06 1s.02.67.06 1H3v2h3.52c1.24 3.49 4.56 6 8.48 6 2.31 0 4.41-.87 6-2.3l-1.78-1.77C18.09 17.91 16.61 18.5 15 18.5z"/></svg>;
-const CreditCardIcon: React.FC<{className?: string}> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>;
-const BizumIcon: React.FC<{className?: string}> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>;
-const ValesIcon: React.FC<{className?: string}> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2h-2v2h2V4zM9 18H4v-2h5v2zm0-4H4v-2h5v2zm0-4H4V8h5v2zm7 8h-5v-2h5v2zm0-4h-5v-2h5v2zm0-4h-5V8h5v2z"/></svg>;
+const VisibilityIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5zm0 12.5c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" /></svg>;
+const VisibilityOffIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z" /></svg>;
+const EuroIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M15 18.5c-2.51 0-4.68-1.42-5.76-3.5H15v-2H8.58c-.05-.33-.08-.66-.08-1s.03-.67.08-1H15V9H9.24C10.32 6.92 12.5 5.5 15 5.5c1.61 0 3.09.59 4.23 1.57L21 5.3C19.41 3.87 17.3 3 15 3c-3.92 0-7.24 2.51-8.48 6H3v2h3.06c-.04.33-.06.66-.06 1s.02.67.06 1H3v2h3.52c1.24 3.49 4.56 6 8.48 6 2.31 0 4.41-.87 6-2.3l-1.78-1.77C18.09 17.91 16.61 18.5 15 18.5z" /></svg>;
+const CreditCardIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z" /></svg>;
+const BizumIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" /></svg>;
+const ValesIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2h-2v2h2V4zM9 18H4v-2h5v2zm0-4H4v-2h5v2zm0-4H4V8h5v2zm7 8h-5v-2h5v2zm0-4h-5v-2h5v2zm0-4h-5V8h5v2z" /></svg>;
 // Icono de Emisora/Antena - nuevo diseño más reconocible
-const CellTowerIcon: React.FC<{className?: string}> = ({ className }) => (
+const CellTowerIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 611.999 611.999" fill="currentColor" className={className}>
         <g>
             <g>
-                <path d="M194.84,254.637l117.295-117.295L198.831,120.14c-12.402-1.883-23.076,8.792-21.193,21.193L194.84,254.637z"/>
+                <path d="M194.84,254.637l117.295-117.295L198.831,120.14c-12.402-1.883-23.076,8.792-21.193,21.193L194.84,254.637z" />
                 <path d="M388.511,516.293c-19.922,8.436-40.467,14.752-61.48,18.924l-61.826,55.115c-8.509,7.586-3.144,21.669,8.256,21.669
                     h236.204c10.278,0,18.611-8.333,18.611-18.611V401.134c-11.354,16.822-24.347,32.568-38.9,47.121
                     C460.228,477.402,426.293,500.294,388.511,516.293z"/>
@@ -38,36 +38,40 @@ const CellTowerIcon: React.FC<{className?: string}> = ({ className }) => (
     </svg>
 );
 
-// Icono de Aeropuerto/Avión - más reconocible y bonito
-const FlightTakeoffIcon: React.FC<{className?: string}> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
-        <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
-    </svg>
+// Icono de Aeropuerto/Avión - imagen personalizada
+const FlightTakeoffIcon: React.FC<{ className?: string; title?: string }> = ({ className, title }) => (
+    <img
+        src="/airport-icon.png"
+        alt="Aeropuerto"
+        title={title}
+        className={className}
+        style={{ objectFit: 'contain' }}
+    />
 );
 // Icono de Estación/Tren
-const TrainIcon: React.FC<{className?: string}> = ({ className }) => (
+const TrainIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
-        <path d="M12 2c-4 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5h1.5l1.5-1.5h4.5L15 20.5h1.5L15 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-4-4-8-4zM7.5 17c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/>
+        <path d="M12 2c-4 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5h1.5l1.5-1.5h4.5L15 20.5h1.5L15 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-4-4-8-4zM7.5 17c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z" />
     </svg>
 );
 // Icono de Interurbana/Carretera
-const RoadIcon: React.FC<{className?: string}> = ({ className }) => (
+const RoadIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
-        <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
+        <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z" />
     </svg>
 );
-const AccessTimeIcon: React.FC<{className?: string}> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>;
-const AddIcon: React.FC<{className?: string}> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>;
-const ExitToAppIcon: React.FC<{className?: string}> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>;
+const AccessTimeIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" /></svg>;
+const AddIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg>;
+const ExitToAppIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z" /></svg>;
 
-const ResumenBox: React.FC<{ title: string; value: string;}> = ({ title, value }) => (
+const ResumenBox: React.FC<{ title: string; value: string; }> = ({ title, value }) => (
     <div className="flex-1 text-center">
         <p className="text-sm text-zinc-400">{title}</p>
         <p className="font-semibold text-base text-zinc-100">{value}</p>
     </div>
 );
 
-const ResumenBoxGrande: React.FC<{ title: string; value: string; valueNumeric: number;}> = ({ title, value, valueNumeric }) => {
+const ResumenBoxGrande: React.FC<{ title: string; value: string; valueNumeric: number; }> = ({ title, value, valueNumeric }) => {
     let displayTitle = title;
     let valueColor = "text-zinc-100";
 
@@ -118,7 +122,7 @@ const IncomeScreen: React.FC<IncomeScreenProps> = ({ navigateTo, navigateToEditR
         const unsubscribe = subscribeToCarreras((data) => {
             // Filtrar carreras: solo las del turno activo (si existe) o las del día actual
             let carrerasFiltradas = data;
-            
+
             if (turnoActivo) {
                 // Si hay turno activo, filtrar por turnoId
                 carrerasFiltradas = data.filter(c => c.turnoId === turnoActivo.id);
@@ -128,13 +132,13 @@ const IncomeScreen: React.FC<IncomeScreenProps> = ({ navigateTo, navigateToEditR
                 today.setHours(0, 0, 0, 0);
                 const tomorrow = new Date(today);
                 tomorrow.setDate(tomorrow.getDate() + 1);
-                
+
                 carrerasFiltradas = data.filter(c => {
                     const fechaCarrera = new Date(c.fechaHora);
                     return fechaCarrera >= today && fechaCarrera < tomorrow;
                 });
             }
-            
+
             setCarreras(carrerasFiltradas);
             setLoading(false);
             setError(null);
@@ -201,19 +205,19 @@ const IncomeScreen: React.FC<IncomeScreenProps> = ({ navigateTo, navigateToEditR
             return () => clearInterval(interval);
         }
     }, [turnoActivo]);
-    
+
     const resumen: CarrerasResumen = useMemo(() => {
         const total = carreras.reduce((sum, c) => sum + c.taximetro, 0);
         const totalCobrado = carreras.reduce((sum, c) => sum + c.cobrado, 0);
         const propinaTotal = carreras.reduce((sum, c) => sum + (c.cobrado - c.taximetro), 0);
         const tarjetaRaces = carreras.filter(c => c.formaPago === 'Tarjeta');
-        
+
         // Calcular pendiente: objetivoDiario - totalCobrado
         const pendienteValor = objetivoDiario - totalCobrado;
         // Si totalCobrado > objetivoDiario (pendienteValor < 0): mostrar con signo + (se queda como está)
         // Si totalCobrado < objetivoDiario (pendienteValor > 0): mostrar valor absoluto (lo que falta)
-        const pendiente = pendienteValor > 0 
-            ? `${Math.abs(pendienteValor).toFixed(2)}€` 
+        const pendiente = pendienteValor > 0
+            ? `${Math.abs(pendienteValor).toFixed(2)}€`
             : `+${Math.abs(pendienteValor).toFixed(2)}€`;
 
         // Calcular horaInicio: del turno activo o de la primera carrera del día
@@ -266,7 +270,7 @@ const IncomeScreen: React.FC<IncomeScreenProps> = ({ navigateTo, navigateToEditR
         if (turnoActivo) {
             kmsInicio = turnoActivo.kilometrosInicio.toString();
         }
-        
+
         return {
             total: `${totalCobrado.toFixed(2)}€`,
             carreras: carreras.length.toString(),
@@ -336,13 +340,13 @@ const IncomeScreen: React.FC<IncomeScreenProps> = ({ navigateTo, navigateToEditR
                     <ResumenBox title="H.Inic." value={hideValues ? '****' : resumen.horaInicio} />
                     <ResumenBox title="H.Trab" value={hideValues ? '****' : resumen.horaTrabajo} />
                 </div>
-                 <div className="flex space-x-2 bg-zinc-900 border border-zinc-800 rounded-lg p-1.5">
+                <div className="flex space-x-2 bg-zinc-900 border border-zinc-800 rounded-lg p-1.5">
                     <ResumenBox title="Kms. Ini" value={hideValues ? '****' : resumen.kmsInicio} />
                     {parseFloat(resumen.propina) > 0 && <ResumenBox title="Propina" value={hideValues ? '****' : resumen.propina} />}
                     <ResumenBox title="Tarjeta" value={hideValues ? '****' : resumen.totalTarjeta} />
                 </div>
             </section>
-            
+
             <section>
                 <div className="border-b border-zinc-800 p-1 flex items-center text-zinc-400 font-semibold text-center text-sm">
                     <span className="flex-1 flex justify-center items-center"><EuroIcon className="w-4 h-4" /></span>
@@ -385,20 +389,20 @@ const IncomeScreen: React.FC<IncomeScreenProps> = ({ navigateTo, navigateToEditR
                     </div>
                 )}
             </section>
-            
+
             <div className="fixed bottom-10 left-6 z-10">
-                 <button 
-                     onClick={() => navigateTo(Seccion.CerrarTurno)}
-                     className="bg-zinc-800 border border-zinc-700 text-zinc-300 w-10 h-10 rounded-full flex items-center justify-center shadow-lg hover:bg-zinc-700 transition-colors"
-                     title="Cerrar Turno"
-                 >
-                     <ExitToAppIcon className="w-5 h-5" />
-                 </button>
+                <button
+                    onClick={() => navigateTo(Seccion.CerrarTurno)}
+                    className="bg-zinc-800 border border-zinc-700 text-zinc-300 w-10 h-10 rounded-full flex items-center justify-center shadow-lg hover:bg-zinc-700 transition-colors"
+                    title="Cerrar Turno"
+                >
+                    <ExitToAppIcon className="w-5 h-5" />
+                </button>
             </div>
             <div className="fixed bottom-10 right-6 z-10">
-                 <button onClick={() => navigateTo(Seccion.IntroducirCarrera)} className="bg-zinc-50 text-zinc-900 w-10 h-10 rounded-full flex items-center justify-center shadow-lg hover:bg-zinc-200 transition-colors">
-                     <AddIcon className="w-5 h-5" />
-                 </button>
+                <button onClick={() => navigateTo(Seccion.IntroducirCarrera)} className="bg-zinc-50 text-zinc-900 w-10 h-10 rounded-full flex items-center justify-center shadow-lg hover:bg-zinc-200 transition-colors">
+                    <AddIcon className="w-5 h-5" />
+                </button>
             </div>
         </div>
     );
