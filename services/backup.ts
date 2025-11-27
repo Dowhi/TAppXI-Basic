@@ -11,9 +11,10 @@ import {
     restoreGasto,
     restoreTurno,
     saveAjustes,
-    saveBreakConfiguration
+    saveBreakConfiguration,
+    getAllTurnos
 } from './api';
-import { uploadFileToDrive, createSpreadsheetWithSheets, writeSheetValues } from './google';
+import { uploadFileToDrive, createSpreadsheetWithSheets, writeSheetValues, readSheetValues } from './google';
 
 interface BackupPayload {
     meta: {
@@ -67,7 +68,8 @@ export const buildBackupPayload = async (): Promise<BackupPayload> => {
         getExcepciones(),
         getCarreras(),
         getGastos(),
-        getTurnosByRecentSafe(),
+
+        getAllTurnos(),
         getProveedores(),
         getConceptos(),
         getTalleres(),
@@ -95,16 +97,16 @@ export const buildBackupPayload = async (): Promise<BackupPayload> => {
 
 // Fallback: si no hay función pública para "get turnos recientes", usar getRecentTurnos si existe,
 // de lo contrario recuperar todos (ya existe getRecentTurnos en api.ts, tomamos un límite amplio).
-import { getRecentTurnos } from './api';
-const getTurnosByRecentSafe = async () => {
-    try {
-        // Obtener más elementos por si el historial es largo
-        const list = await getRecentTurnos(500);
-        return list;
-    } catch {
-        return [];
-    }
-};
+// import { getRecentTurnos } from './api';
+// const getTurnosByRecentSafe = async () => {
+//     try {
+//         // Obtener más elementos por si el historial es largo
+//         const list = await getRecentTurnos(500);
+//         return list;
+//     } catch {
+//         return [];
+//     }
+// };
 
 export const downloadBackupJson = async () => {
     const data = await buildBackupPayload();
@@ -153,7 +155,7 @@ export const uploadBackupToGoogleDrive = async (): Promise<void> => {
     }
 };
 
-export const restoreBackup = async (jsonData: any): Promise<{ carreras: number; gastos: number; turnos: number }> => {
+export const restoreBackup = async (jsonData: any, onProgress?: (progress: number, message: string) => void): Promise<{ carreras: number; gastos: number; turnos: number }> => {
     if (!jsonData || !jsonData.meta || !jsonData.meta.app) {
         throw new Error("El archivo no parece ser un backup válido de TAppXI.");
     }
@@ -164,39 +166,76 @@ export const restoreBackup = async (jsonData: any): Promise<{ carreras: number; 
         turnos: 0
     };
 
+    const totalSteps = 5; // Ajustes, Config, Carreras, Gastos, Turnos
+    let currentStep = 0;
+
+    const reportProgress = (msg: string) => {
+        if (onProgress) {
+            const percent = Math.round((currentStep / totalSteps) * 100);
+            onProgress(percent, msg);
+        }
+    };
+
     // Restaurar Ajustes
+    reportProgress("Restaurando ajustes...");
     if (jsonData.ajustes) {
         await saveAjustes(jsonData.ajustes);
     }
+    currentStep++;
 
     // Restaurar Configuración de Descansos
+    reportProgress("Restaurando configuración...");
     if (jsonData.breakConfiguration) {
         await saveBreakConfiguration(jsonData.breakConfiguration);
     }
+    currentStep++;
 
     // Restaurar Carreras
+    reportProgress("Restaurando carreras...");
     if (jsonData.carreras && Array.isArray(jsonData.carreras)) {
-        for (const carrera of jsonData.carreras) {
-            await restoreCarrera(carrera);
+        const total = jsonData.carreras.length;
+        for (let i = 0; i < total; i++) {
+            await restoreCarrera(jsonData.carreras[i]);
             stats.carreras++;
+            if (i % 10 === 0 && onProgress) {
+                // Progreso granular dentro del paso de carreras (20% del total asignado a este paso)
+                const stepBase = (2 / totalSteps) * 100; // paso 2 (0-indexed) es el 3ro
+                // Mejor simplificamos: solo actualizamos mensaje
+                onProgress(Math.round((2 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando carreras (${i + 1}/${total})...`);
+            }
         }
     }
+    currentStep++;
 
     // Restaurar Gastos
+    reportProgress("Restaurando gastos...");
     if (jsonData.gastos && Array.isArray(jsonData.gastos)) {
-        for (const gasto of jsonData.gastos) {
-            await restoreGasto(gasto);
+        const total = jsonData.gastos.length;
+        for (let i = 0; i < total; i++) {
+            await restoreGasto(jsonData.gastos[i]);
             stats.gastos++;
+            if (i % 10 === 0 && onProgress) {
+                onProgress(Math.round((3 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando gastos (${i + 1}/${total})...`);
+            }
         }
     }
+    currentStep++;
 
     // Restaurar Turnos
+    reportProgress("Restaurando turnos...");
     if (jsonData.turnos && Array.isArray(jsonData.turnos)) {
-        for (const turno of jsonData.turnos) {
-            await restoreTurno(turno);
+        const total = jsonData.turnos.length;
+        for (let i = 0; i < total; i++) {
+            await restoreTurno(jsonData.turnos[i]);
             stats.turnos++;
+            if (i % 10 === 0 && onProgress) {
+                onProgress(Math.round((4 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando turnos (${i + 1}/${total})...`);
+            }
         }
     }
+    currentStep++;
+
+    if (onProgress) onProgress(100, "Restauración completada.");
 
     return stats;
 };
@@ -236,15 +275,23 @@ export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; u
         const gastosRows = toRows((data.gastos as any[]) || [], gastosCols);
         const turnosRows = toRows((data.turnos as any[]) || [], turnosCols);
 
-        // Escribir datos en las hojas
+        console.log(`Escribiendo ${carrerasRows.length} filas en Carreras`);
         if (carrerasRows.length > 0) {
+            console.log("Iniciando escritura en hoja Carreras...");
             await writeSheetValues(spreadsheetId, 'Carreras', carrerasRows);
+            console.log("Escritura en hoja Carreras finalizada.");
         }
+        console.log(`Escribiendo ${gastosRows.length} filas en Gastos`);
         if (gastosRows.length > 0) {
+            console.log("Iniciando escritura en hoja Gastos...");
             await writeSheetValues(spreadsheetId, 'Gastos', gastosRows);
+            console.log("Escritura en hoja Gastos finalizada.");
         }
+        console.log(`Escribiendo ${turnosRows.length} filas en Turnos`);
         if (turnosRows.length > 0) {
+            console.log("Iniciando escritura en hoja Turnos...");
             await writeSheetValues(spreadsheetId, 'Turnos', turnosRows);
+            console.log("Escritura en hoja Turnos finalizada.");
         }
 
         const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
@@ -254,14 +301,131 @@ export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; u
         return { spreadsheetId, url };
     } catch (error: any) {
         const errorMsg = error?.message || String(error);
-        throw new Error(
-            `Error al exportar a Google Sheets: ${errorMsg}\n\n` +
-            `Asegúrate de:\n` +
-            `1. Tener conexión a internet\n` +
-            `2. Haber autorizado el acceso a Google Sheets\n` +
-            `3. Tener espacio disponible en tu cuenta de Google`
-        );
+        console.error("Error detallado exportación Sheets:", error);
+
+        let userFriendlyMsg = `Error al exportar a Google Sheets: ${errorMsg}\n\n`;
+
+        if (errorMsg.includes("403") || errorMsg.includes("permission") || errorMsg.includes("unverified")) {
+            userFriendlyMsg += `POSIBLE PROBLEMA DE PERMISOS:\n` +
+                `Si ves una pantalla de "Aplicación no verificada", haz clic en "Configuración avanzada" y luego en "Ir a tappxi (no seguro)" para continuar.\n` +
+                `Asegúrate de haber concedido todos los permisos solicitados.`;
+        } else {
+            userFriendlyMsg += `Asegúrate de:\n` +
+                `1. Tener conexión a internet\n` +
+                `2. Haber autorizado el acceso a Google Sheets\n` +
+                `3. Tener espacio disponible en tu cuenta de Google`;
+        }
+
+        throw new Error(userFriendlyMsg);
     }
 };
 
 
+
+const fromRows = (rows: any[][]): any[] => {
+    if (!rows || rows.length < 2) return [];
+    const headers = rows[0];
+    const data = rows.slice(1);
+
+    return data.map((row) => {
+        const obj: any = {};
+        headers.forEach((header: string, index: number) => {
+            let value = row[index];
+            if (value === undefined) {
+                value = null;
+            }
+            // Intentar parsear JSON si parece un objeto serializado
+            if (typeof value === 'string' && (value.startsWith('{') || value.startsWith('['))) {
+                try {
+                    value = JSON.parse(value);
+                } catch {
+                    // Ignorar error, dejar como string
+                }
+            }
+            obj[header] = value;
+        });
+        return obj;
+    });
+};
+
+const parseNumber = (val: any): number => {
+    if (typeof val === 'number') return val;
+    if (val === null || val === undefined || val === '') return 0;
+    if (typeof val === 'string') {
+        // Reemplazar coma por punto y eliminar caracteres no numéricos (excepto . y -)
+        const clean = val.replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, '');
+        return parseFloat(clean) || 0;
+    }
+    return 0;
+};
+
+export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?: (progress: number, message: string) => void): Promise<{ carreras: number; gastos: number; turnos: number }> => {
+    try {
+        console.log(`Iniciando restauración desde Sheet ID: ${spreadsheetId}`);
+        if (onProgress) onProgress(0, "Descargando datos de Google Sheets...");
+
+        // Leer hojas
+        const [carrerasRows, gastosRows, turnosRows] = await Promise.all([
+            readSheetValues(spreadsheetId, 'Carreras!A:Z'),
+            readSheetValues(spreadsheetId, 'Gastos!A:Z'),
+            readSheetValues(spreadsheetId, 'Turnos!A:Z'),
+        ]);
+
+        if (onProgress) onProgress(10, "Procesando datos...");
+
+        console.log(`Leídas filas: Carreras=${carrerasRows.length}, Gastos=${gastosRows.length}, Turnos=${turnosRows.length}`);
+
+        const carrerasRaw = fromRows(carrerasRows);
+        const gastosRaw = fromRows(gastosRows);
+        const turnosRaw = fromRows(turnosRows);
+
+        // Procesar tipos de datos (números, fechas si es necesario)
+        const carreras = carrerasRaw.map(c => ({
+            ...c,
+            taximetro: parseNumber(c.taximetro),
+            cobrado: parseNumber(c.cobrado),
+        }));
+
+        const gastos = gastosRaw.map(g => ({
+            ...g,
+            importe: parseNumber(g.importe),
+            baseImponible: parseNumber(g.baseImponible),
+            ivaImporte: parseNumber(g.ivaImporte),
+            ivaPorcentaje: parseNumber(g.ivaPorcentaje),
+            kilometros: parseNumber(g.kilometros),
+            kilometrosVehiculo: parseNumber(g.kilometrosVehiculo),
+            descuento: parseNumber(g.descuento),
+        }));
+
+        const turnos = turnosRaw.map(t => ({
+            ...t,
+            kilometrosInicio: parseNumber(t.kilometrosInicio),
+            kilometrosFin: t.kilometrosFin ? parseNumber(t.kilometrosFin) : null,
+        }));
+
+        // Construir payload parcial (solo lo que tenemos en sheets)
+        const payload: Partial<BackupPayload> = {
+            meta: {
+                app: 'TAppXI',
+                version: '1.0',
+                createdAt: new Date().toISOString(),
+            },
+            carreras,
+            gastos,
+            turnos,
+            // Los demás arrays vacíos o null, restoreBackup maneja nulls
+            ajustes: null,
+            breakConfiguration: null,
+            excepciones: [],
+            proveedores: [],
+            conceptos: [],
+            talleres: [],
+        };
+
+        return await restoreBackup(payload, onProgress);
+
+    } catch (error: any) {
+        console.error("Error en restoreFromGoogleSheets:", error);
+        throw new Error(`Error al restaurar desde Google Sheets: ${error.message}`);
+    }
+};

@@ -28,3 +28,6 @@ dev-dist
 *.njsproj
 *.sln
 *.sw?
+
+# Generated files
+tsc_output.txt

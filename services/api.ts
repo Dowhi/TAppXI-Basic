@@ -531,6 +531,11 @@ export const getRecentTurnos = async (limit: number = 10): Promise<Turno[]> => {
     return turnos;
 };
 
+export const getAllTurnos = async (): Promise<Turno[]> => {
+    const snapshot = await turnosCollection.orderBy('fechaInicio', 'desc').get();
+    return snapshot.docs.map(docToTurno);
+};
+
 export const getTurnosByDate = async (date: Date): Promise<Turno[]> => {
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);

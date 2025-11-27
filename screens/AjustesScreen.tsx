@@ -4,7 +4,7 @@ import { useFontSize } from "../contexts/FontSizeContext";
 import ScreenTopBar from "../components/ScreenTopBar";
 import { Seccion } from "../types";
 import { saveAjustes, getAjustes } from "../services/api";
-import { downloadBackupJson, uploadBackupToGoogleDrive, exportToGoogleSheets, restoreBackup } from "../services/backup";
+import { downloadBackupJson, uploadBackupToGoogleDrive, exportToGoogleSheets, restoreBackup, restoreFromGoogleSheets } from "../services/backup";
 import { listFiles, getFileContent } from "../services/google";
 import { archiveOperationalDataOlderThan, getRelativeCutoffDate } from "../services/maintenance";
 import { exportToExcel, exportToCSV, exportToPDFAdvanced, ExportFilter } from "../services/exports";
@@ -57,6 +57,40 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
     const [showRestoreModal, setShowRestoreModal] = useState<boolean>(false);
     const [backupsList, setBackupsList] = useState<any[]>([]);
     const [loadingBackups, setLoadingBackups] = useState<boolean>(false);
+
+    // Progress state
+    const [restoreProgress, setRestoreProgress] = useState<number>(0);
+    const [restoreMessage, setRestoreMessage] = useState<string>("");
+
+    // Custom Modal State
+    const [alertMessage, setAlertMessage] = useState<string | null>(null);
+    const [confirmMessage, setConfirmMessage] = useState<string | null>(null);
+    const [onConfirmAction, setOnConfirmAction] = useState<(() => void) | null>(null);
+
+    const showAlert = (message: string) => {
+        setAlertMessage(message);
+    };
+
+    const showConfirm = (message: string, onConfirm: () => void) => {
+        setConfirmMessage(message);
+        setOnConfirmAction(() => onConfirm);
+    };
+
+    const closeAlert = () => {
+        setAlertMessage(null);
+    };
+
+    const closeConfirm = () => {
+        setConfirmMessage(null);
+        setOnConfirmAction(null);
+    };
+
+    const handleConfirm = () => {
+        if (onConfirmAction) {
+            onConfirmAction();
+        }
+        closeConfirm();
+    };
 
     useEffect(() => {
         const cargarAjustes = async () => {
@@ -159,27 +193,27 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
     };
 
     const handleArchiveOldData = async () => {
-        const confirmacion = window.confirm(
+        showConfirm(
             `Se archivarán y eliminarán datos anteriores a aproximadamente ${archiveMonths} meses.\n\n` +
-            "Esto puede tardar varios minutos dependiendo del volumen de datos. ¿Continuar?"
+            "Esto puede tardar varios minutos dependiendo del volumen de datos. ¿Continuar?",
+            async () => {
+                setArchiving(true);
+                setArchiveResult(null);
+                try {
+                    const cutoff = getRelativeCutoffDate(archiveMonths);
+                    const results = await archiveOperationalDataOlderThan(cutoff);
+                    const resumen = results
+                        .map(r => `${r.collection}: ${r.moved} documentos movidos`)
+                        .join(" · ");
+                    setArchiveResult(resumen || "No se encontraron datos antiguos para archivar.");
+                } catch (e) {
+                    console.error("Error archivando datos antiguos:", e);
+                    setArchiveResult("Error al archivar datos. Revisa la consola para más detalles.");
+                } finally {
+                    setArchiving(false);
+                }
+            }
         );
-        if (!confirmacion) return;
-
-        setArchiving(true);
-        setArchiveResult(null);
-        try {
-            const cutoff = getRelativeCutoffDate(archiveMonths);
-            const results = await archiveOperationalDataOlderThan(cutoff);
-            const resumen = results
-                .map(r => `${r.collection}: ${r.moved} documentos movidos`)
-                .join(" · ");
-            setArchiveResult(resumen || "No se encontraron datos antiguos para archivar.");
-        } catch (e) {
-            console.error("Error archivando datos antiguos:", e);
-            setArchiveResult("Error al archivar datos. Revisa la consola para más detalles.");
-        } finally {
-            setArchiving(false);
-        }
     };
 
     const handleBackupGoogleDrive = async () => {
@@ -188,7 +222,7 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
         setUploadingToDrive(true);
         try {
             await uploadBackupToGoogleDrive();
-            alert("✅ Copia de seguridad subida a Google Drive correctamente.\n\nEl archivo está disponible en tu Google Drive.");
+            showAlert("✅ Copia de seguridad subida a Google Drive correctamente.\n\nEl archivo está disponible en tu Google Drive.");
         } catch (e: any) {
             console.error("Error realizando backup:", e);
             const msg = e?.message || e?.error || String(e);
@@ -234,19 +268,18 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                 errorMessage += "📖 Consulta SOLUCION_BACKUP_GOOGLE.md para más ayuda.";
             }
 
-            alert(errorMessage);
+            showAlert(errorMessage);
 
             // Ofrecer descarga local como alternativa
-            const fallback = window.confirm("¿Quieres descargar el backup JSON localmente como alternativa?");
-            if (fallback) {
+            showConfirm("¿Quieres descargar el backup JSON localmente como alternativa?", async () => {
                 try {
                     await downloadBackupJson();
-                    alert("✅ Backup descargado localmente correctamente.");
+                    showAlert("✅ Backup descargado localmente correctamente.");
                 } catch (downloadError) {
                     console.error("Error descargando backup:", downloadError);
-                    alert("❌ Error al descargar el backup localmente.");
+                    showAlert("❌ Error al descargar el backup localmente.");
                 }
-            }
+            });
         } finally {
             setUploadingToDrive(false);
         }
@@ -258,14 +291,14 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
         setExportingToSheets(true);
         try {
             const { spreadsheetId, url } = await exportToGoogleSheets();
-            const openSheet = window.confirm(
+            showConfirm(
                 `✅ Exportación a Google Sheets completada.\n\n` +
                 `ID: ${spreadsheetId}\n\n` +
-                `¿Quieres abrir la hoja de cálculo ahora?`
+                `¿Quieres abrir la hoja de cálculo ahora?`,
+                () => {
+                    window.open(url, '_blank');
+                }
             );
-            if (openSheet) {
-                window.open(url, '_blank');
-            }
         } catch (e: any) {
             console.error("Error exportando a Google Sheets:", e);
             const msg = e?.message || e?.error || String(e);
@@ -311,7 +344,7 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                 errorMessage += "📖 Consulta SOLUCION_BACKUP_GOOGLE.md para más ayuda.";
             }
 
-            alert(errorMessage);
+            showAlert(errorMessage);
         } finally {
             setExportingToSheets(false);
         }
@@ -323,64 +356,103 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
         setShowRestoreModal(true);
         setBackupsList([]);
         try {
-            // Buscar archivos JSON que contengan "tappxi-backup" en el nombre
-            const files = await listFiles("name contains 'tappxi-backup' and mimeType = 'application/json' and trashed = false");
-            setBackupsList(files);
+            // Query más amplia para asegurar que encontramos todo lo que tenga "tappxi" o "TAppXI"
+            const query = "(name contains 'tappxi' or name contains 'TAppXI') and trashed = false";
+            console.log("Buscando backups con query:", query);
+
+            const files = await listFiles(query);
+            console.log("Archivos encontrados (raw):", files);
+
+            const validFiles = files.filter(f =>
+                f.mimeType === 'application/json' ||
+                f.mimeType === 'application/vnd.google-apps.spreadsheet'
+            );
+            console.log("Archivos válidos tras filtrar:", validFiles);
+
+            setBackupsList(validFiles);
         } catch (e) {
             console.error("Error listando backups:", e);
-            alert("Error al buscar copias de seguridad en Google Drive.");
+            console.error("Error listando backups:", e);
+            showAlert("Error al buscar copias de seguridad en Google Drive. Revisa la consola.");
+            setShowRestoreModal(false);
             setShowRestoreModal(false);
         } finally {
             setLoadingBackups(false);
         }
     };
 
-    const handleRestoreBackup = async (fileId: string, fileName: string) => {
-        if (!window.confirm(`¿Estás seguro de que quieres restaurar el backup "${fileName}"?\n\n⚠️ ESTO SOBREESCRIBIRÁ LOS DATOS EXISTENTES QUE COINCIDAN.`)) {
-            return;
-        }
+    const handleRestoreBackup = async (fileId: string, fileName: string, mimeType: string) => {
+        showConfirm(
+            `¿Estás seguro de que quieres restaurar el backup "${fileName}"?\n\n⚠️ ESTO SOBREESCRIBIRÁ LOS DATOS EXISTENTES QUE COINCIDAN.`,
+            async () => {
+                setRestoring(true);
+                setRestoreProgress(0);
+                setRestoreMessage("Iniciando restauración...");
 
-        setRestoring(true);
-        try {
-            const content = await getFileContent(fileId);
-            const stats = await restoreBackup(content);
+                try {
+                    let stats;
+                    const onProgress = (progress: number, message: string) => {
+                        setRestoreProgress(progress);
+                        setRestoreMessage(message);
+                    };
 
-            alert(
-                `✅ Restauración completada con éxito.\n\n` +
-                `Resumen:\n` +
-                `- Carreras: ${stats.carreras}\n` +
-                `- Gastos: ${stats.gastos}\n` +
-                `- Turnos: ${stats.turnos}\n\n` +
-                `La aplicación se recargará para aplicar los cambios.`
-            );
-            window.location.reload();
-        } catch (e: any) {
-            console.error("Error restaurando backup:", e);
-            alert(`❌ Error al restaurar el backup: ${e.message}`);
-        } finally {
-            setRestoring(false);
-            setShowRestoreModal(false);
-        }
+                    if (mimeType === 'application/vnd.google-apps.spreadsheet') {
+                        stats = await restoreFromGoogleSheets(fileId, onProgress);
+                    } else {
+                        const content = await getFileContent(fileId);
+                        stats = await restoreBackup(content, onProgress);
+                    }
+
+                    // Pequeña pausa para ver el 100%
+                    setRestoreProgress(100);
+                    setRestoreMessage("¡Restauración completada!");
+                    await new Promise(resolve => setTimeout(resolve, 500));
+
+                    showAlert(
+                        `✅ Restauración completada con éxito.\n\n` +
+                        `Resumen:\n` +
+                        `- Carreras: ${stats.carreras}\n` +
+                        `- Gastos: ${stats.gastos}\n` +
+                        `- Turnos: ${stats.turnos}\n\n` +
+                        `La aplicación se recargará para aplicar los cambios.`
+                    );
+
+                    // Esperar a que el usuario cierre el alert para recargar
+                    // Como showAlert no es bloqueante, necesitamos un efecto o un callback en el modal de alert
+                    // Para simplificar, recargaremos cuando se cierre el modal de alert.
+                    // Modificaremos closeAlert para manejar esto si es necesario, o simplemente recargamos después de un timeout
+                    setTimeout(() => window.location.reload(), 3000);
+
+                } catch (e: any) {
+                    console.error("Error restaurando backup:", e);
+                    showAlert(`❌ Error al restaurar el backup: ${e.message}`);
+                } finally {
+                    setRestoring(false);
+                    setShowRestoreModal(false);
+                    setRestoreProgress(0);
+                    setRestoreMessage("");
+                }
+            }
+        );
     };
 
     const handleEliminacionTotal = () => {
-        const confirmacion = window.confirm(
-            "Estas seguro de que quieres eliminar TODOS los datos? Esta accion no se puede deshacer."
+        showConfirm(
+            "Estas seguro de que quieres eliminar TODOS los datos? Esta accion no se puede deshacer.",
+            () => {
+                showConfirm(
+                    "ULTIMA CONFIRMACION: Esta accion eliminara todos los datos permanentemente. Continuar?",
+                    () => {
+                        showAlert("Funcion de eliminacion total disponible proximamente.");
+                    }
+                );
+            }
         );
-        if (!confirmacion) return;
-
-        const segundaConfirmacion = window.confirm(
-            "ULTIMA CONFIRMACION: Esta accion eliminara todos los datos permanentemente. Continuar?"
-        );
-
-        if (segundaConfirmacion) {
-            alert("Funcion de eliminacion total disponible proximamente.");
-        }
     };
 
     const handleExportAvanzada = async () => {
         if (!exportFechaDesde || !exportFechaHasta) {
-            alert("Por favor, selecciona ambas fechas.");
+            showAlert("Por favor, selecciona ambas fechas.");
             return;
         }
 
@@ -432,10 +504,10 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                 exportToPDFAdvanced(data, filtros);
             }
 
-            alert(`Exportación a ${exportTipo.toUpperCase()} completada exitosamente.`);
+            showAlert(`Exportación a ${exportTipo.toUpperCase()} completada exitosamente.`);
         } catch (err) {
             console.error("Error en exportación avanzada:", err);
-            alert("Error al exportar los datos. Por favor, intenta de nuevo.");
+            showAlert("Error al exportar los datos. Por favor, intenta de nuevo.");
         } finally {
             setExporting(false);
         }
@@ -443,12 +515,12 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
 
     const handleGuardarReportePersonalizado = async () => {
         if (!newReportNombre.trim()) {
-            alert("Por favor, ingresa un nombre para el reporte.");
+            showAlert("Por favor, ingresa un nombre para el reporte.");
             return;
         }
 
         if (!exportFechaDesde || !exportFechaHasta) {
-            alert("Por favor, selecciona ambas fechas.");
+            showAlert("Por favor, selecciona ambas fechas.");
             return;
         }
 
@@ -480,26 +552,24 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
             setNewReportNombre('');
             setNewReportDescripcion('');
             setShowReportBuilder(false);
-            alert("Reporte personalizado guardado exitosamente.");
+            showAlert("Reporte personalizado guardado exitosamente.");
         } catch (err) {
             console.error("Error guardando reporte personalizado:", err);
-            alert("Error al guardar el reporte. Por favor, intenta de nuevo.");
+            showAlert("Error al guardar el reporte. Por favor, intenta de nuevo.");
         }
     };
 
     const handleEliminarReporte = async (id: string) => {
-        if (!window.confirm("¿Estás seguro de que quieres eliminar este reporte personalizado?")) {
-            return;
-        }
-
-        try {
-            await deleteCustomReport(id);
-            const reportes = await getCustomReports();
-            setCustomReports(reportes);
-        } catch (err) {
-            console.error("Error eliminando reporte:", err);
-            alert("Error al eliminar el reporte.");
-        }
+        showConfirm("¿Estás seguro de que quieres eliminar este reporte personalizado?", async () => {
+            try {
+                await deleteCustomReport(id);
+                const reportes = await getCustomReports();
+                setCustomReports(reportes);
+            } catch (err) {
+                console.error("Error eliminando reporte:", err);
+                showAlert("Error al eliminar el reporte.");
+            }
+        });
     };
 
     const handleUsarReporte = async (reporte: CustomReport) => {
@@ -542,10 +612,10 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
             }
 
             await markReportAsUsed(reporte.id);
-            alert(`Exportación "${reporte.nombre}" completada exitosamente.`);
+            showAlert(`Exportación "${reporte.nombre}" completada exitosamente.`);
         } catch (err) {
             console.error("Error usando reporte:", err);
-            alert("Error al exportar con el reporte. Por favor, intenta de nuevo.");
+            showAlert("Error al exportar con el reporte. Por favor, intenta de nuevo.");
         } finally {
             setExporting(false);
         }
@@ -842,12 +912,13 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                                         {backupsList.map((file) => (
                                             <button
                                                 key={file.id}
-                                                onClick={() => handleRestoreBackup(file.id, file.name)}
+                                                onClick={() => handleRestoreBackup(file.id, file.name, file.mimeType)}
                                                 disabled={restoring}
                                                 className="w-full text-left p-3 rounded-lg bg-zinc-700/50 hover:bg-zinc-700 border border-zinc-600 transition-colors group"
                                             >
-                                                <div className="font-medium text-zinc-200 group-hover:text-white truncate">
-                                                    {file.name}
+                                                <div className="font-medium text-zinc-200 group-hover:text-white truncate flex items-center gap-2">
+                                                    <span>{file.mimeType === 'application/vnd.google-apps.spreadsheet' ? '📊' : '📄'}</span>
+                                                    <span>{file.name}</span>
                                                 </div>
                                                 <div className="text-xs text-zinc-400 mt-1">
                                                     {new Date(file.createdTime).toLocaleString()}
@@ -870,6 +941,81 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                     </div>
                 )
             }
+
+            {/* Modal de Progreso de Restauración */}
+            {restoring && (
+                <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4">
+                    <div className="bg-zinc-800 rounded-xl w-full max-w-sm p-6 border border-zinc-700 shadow-2xl flex flex-col items-center text-center">
+                        <div className="w-16 h-16 mb-4 relative flex items-center justify-center">
+                            <svg className="animate-spin w-full h-full text-blue-500 absolute" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span className="text-xs font-bold text-white relative z-10">{restoreProgress}%</span>
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-2">Restaurando Datos</h3>
+                        <p className="text-zinc-400 text-sm mb-4">{restoreMessage}</p>
+
+                        <div className="w-full bg-zinc-700 rounded-full h-2.5 mb-1 overflow-hidden">
+                            <div
+                                className="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out"
+                                style={{ width: `${restoreProgress}%` }}
+                            ></div>
+                        </div>
+                        <p className="text-xs text-zinc-500 mt-2">Por favor, no cierres la aplicación.</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Custom Alert Modal */}
+            {alertMessage && (
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4 animate-in fade-in duration-200">
+                    <div className="bg-zinc-800 rounded-xl w-full max-w-sm p-6 border border-zinc-700 shadow-2xl flex flex-col items-center text-center scale-100 animate-in zoom-in-95 duration-200">
+                        <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center mb-4 text-blue-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <h3 className="text-lg font-bold text-white mb-2">Aviso</h3>
+                        <p className="text-zinc-300 text-sm mb-6 whitespace-pre-wrap">{alertMessage}</p>
+                        <button
+                            onClick={closeAlert}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-lg transition-colors"
+                        >
+                            Aceptar
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Custom Confirm Modal */}
+            {confirmMessage && (
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4 animate-in fade-in duration-200">
+                    <div className="bg-zinc-800 rounded-xl w-full max-w-sm p-6 border border-zinc-700 shadow-2xl flex flex-col items-center text-center scale-100 animate-in zoom-in-95 duration-200">
+                        <div className="w-12 h-12 bg-yellow-500/20 rounded-full flex items-center justify-center mb-4 text-yellow-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <h3 className="text-lg font-bold text-white mb-2">Confirmación</h3>
+                        <p className="text-zinc-300 text-sm mb-6 whitespace-pre-wrap">{confirmMessage}</p>
+                        <div className="flex gap-3 w-full">
+                            <button
+                                onClick={closeConfirm}
+                                className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleConfirm}
+                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-lg transition-colors"
+                            >
+                                Confirmar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Exportación Avanzada de Datos */}
             <div className="bg-zinc-800 rounded-lg p-2.5 border border-zinc-700">

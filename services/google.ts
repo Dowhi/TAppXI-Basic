@@ -26,7 +26,7 @@ let gisInited = false;
 
 const assertEnvConfigured = () => {
     if (!CLIENT_ID || !API_KEY) {
-        const errorMsg = 
+        const errorMsg =
             "Configuración de Google faltante: define VITE_GOOGLE_CLIENT_ID y VITE_GOOGLE_API_KEY en tu .env\n\n" +
             "Pasos:\n" +
             "1. Crea un archivo .env en la raíz del proyecto\n" +
@@ -56,7 +56,7 @@ try {
 const loadGapi = (): Promise<void> => {
     return new Promise((resolve, reject) => {
         if (gapiInited) return resolve();
-        
+
         // @ts-ignore
         if (window.gapi) {
             // @ts-ignore
@@ -75,13 +75,13 @@ const loadGapi = (): Promise<void> => {
             });
             return;
         }
-        
+
         const script = document.createElement("script");
         script.src = GOOGLE_API_SRC;
         script.async = true;
         script.defer = true;
         script.onload = () => {
-             // @ts-ignore
+            // @ts-ignore
             window.gapi.load("client", async () => {
                 try {
                     // @ts-ignore
@@ -143,23 +143,45 @@ export const initGoogleClient = async (): Promise<void> => {
 
 export const ensureGoogleSignIn = async (): Promise<void> => {
     await initGoogleClient();
-    
+
     // @ts-ignore
     const gapi = window.gapi;
     // Verificar si tenemos un token válido
     const token = gapi.client.getToken();
-    
-    if (token && Date.now() < (token.expires_in || 3600) * 1000 + (token.created || 0)) {
-        // Token válido (aproximación, GIS maneja esto mejor pero gapi necesita el token set)
+
+    const hasValidToken = token && Date.now() < (token.expires_in || 3600) * 1000 + (token.created || 0);
+
+    // Verificar scopes
+    // SCOPES es una cadena separada por espacios
+    const requiredScopes = SCOPES.split(' ');
+    const grantedScopes = token?.scope?.split(' ') || [];
+    const hasAllScopes = requiredScopes.every(s => grantedScopes.includes(s));
+
+    console.log("Estado Token:", { hasValidToken, hasAllScopes, granted: token?.scope, required: SCOPES });
+
+    if (hasValidToken && hasAllScopes) {
         return;
     }
+
+    console.log("Solicitando nuevo token. Razón:", !hasValidToken ? "Expirado/Inexistente" : "Faltan permisos");
 
     return new Promise((resolve, reject) => {
         try {
             // @ts-ignore
             tokenClient.callback = (resp: any) => {
                 if (resp.error !== undefined) {
+                    console.error("Error en autenticación Google:", resp);
                     reject(resp);
+                }
+                console.log("Autenticación Google exitosa:", resp);
+                // Importante: Actualizar el token en gapi para que las llamadas subsiguientes funcionen
+                // GIS no lo hace automáticamente para gapi.client
+                if (resp.access_token) {
+                    const tokenWithCreated = {
+                        ...resp,
+                        created: Date.now()
+                    };
+                    gapi.client.setToken(tokenWithCreated);
                 }
                 resolve(resp);
             };
@@ -175,7 +197,7 @@ export const getCurrentUserEmail = (): string | null => {
     // GIS no expone el perfil del usuario directamente como auth2.
     // Se requeriría llamar a la API de People o userinfo, pero para backup no es estrictamente necesario.
     // Retornamos null o implementamos una llamada a userinfo si es crítico.
-    return null; 
+    return null;
 };
 
 export const uploadFileToDrive = async (opts: {
@@ -187,7 +209,7 @@ export const uploadFileToDrive = async (opts: {
     await ensureGoogleSignIn();
     // @ts-ignore
     const gapi = window.gapi;
-    
+
     const boundary = "-------314159265358979323846";
     const delimiter = "\r\n--" + boundary + "\r\n";
     const closeDelimiter = "\r\n--" + boundary + "--";
@@ -234,11 +256,11 @@ export const uploadFileToDrive = async (opts: {
             },
             body: multipartRequestBody,
         });
-        
+
         if (!response || !response.result || !response.result.id) {
             throw new Error("No se recibió respuesta válida de Google Drive.");
         }
-        
+
         return response.result;
     } catch (e: any) {
         console.error("Error uploadFileToDrive", e);
@@ -303,19 +325,19 @@ export const createSpreadsheetWithSheets = async (title: string, sheetTitles: st
     await ensureGoogleSignIn();
     // @ts-ignore
     const gapi = window.gapi;
-    
+
     const resourceBody = {
         properties: { title },
         sheets: sheetTitles.map((t) => ({ properties: { title: t } })),
     };
-    
+
     try {
         const resp = await gapi.client.sheets.spreadsheets.create({}, resourceBody);
-        
+
         if (!resp || !resp.result || !resp.result.spreadsheetId) {
             throw new Error("No se recibió respuesta válida de Google Sheets.");
         }
-        
+
         return { spreadsheetId: resp.result.spreadsheetId };
     } catch (e: any) {
         console.error("Error createSpreadsheetWithSheets", e);
@@ -327,24 +349,47 @@ export const writeSheetValues = async (spreadsheetId: string, sheetTitle: string
     await ensureGoogleSignIn();
     // @ts-ignore
     const gapi = window.gapi;
-    
+
     if (!values || values.length === 0) {
         return;
     }
-    
+
     try {
+        console.log(`Intentando escribir en hoja ${sheetTitle}. SpreadsheetId: ${spreadsheetId}`);
         const response = await gapi.client.sheets.spreadsheets.values.update({
             spreadsheetId,
             range: `${sheetTitle}!A1`,
             valueInputOption: "RAW",
             resource: { values },
         });
-        
+
         if (!response || !response.result) {
             throw new Error(`No se recibió respuesta válida al escribir en la hoja "${sheetTitle}"`);
         }
     } catch (e: any) {
         console.error("Error writeSheetValues", e);
+        throw e;
+    }
+};
+
+export const readSheetValues = async (spreadsheetId: string, range: string): Promise<any[][]> => {
+    await ensureGoogleSignIn();
+    // @ts-ignore
+    const gapi = window.gapi;
+
+    try {
+        const response = await gapi.client.sheets.spreadsheets.values.get({
+            spreadsheetId,
+            range,
+        });
+
+        if (!response || !response.result || !response.result.values) {
+            return [];
+        }
+
+        return response.result.values;
+    } catch (e: any) {
+        console.error("Error readSheetValues", e);
         throw e;
     }
 };
