@@ -426,17 +426,17 @@ const IncomeScreen: React.FC<IncomeScreenProps> = ({ navigateTo, navigateToEditR
                 )}
             </section>
 
-            <div className="fixed bottom-1 left-6 z-20">
+            <div className="fixed bottom-2 left-6 z-20">
                 <button
                     onClick={() => navigateTo(Seccion.CerrarTurno)}
-                    className={`${isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700' : 'bg-zinc-200 border-zinc-300 text-zinc-700 hover:bg-zinc-300'} border w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-colors`}
+                    className={`${isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700' : 'bg-zinc-200 border-zinc-300 text-zinc-700 hover:bg-zinc-300'} border w-6 h-6 rounded-full flex items-center justify-center shadow-lg transition-colors`}
                     title="Cerrar Turno"
                 >
                     <ExitToAppIcon className="w-4 h-4" />
                 </button>
             </div>
-            <div className="fixed bottom-1 right-6 z-20">
-                <button onClick={() => navigateTo(Seccion.IntroducirCarrera)} className="bg-zinc-50 text-zinc-900 w-8 h-8 rounded-full flex items-center justify-center shadow-lg hover:bg-zinc-200 transition-colors">
+            <div className="fixed bottom-2 right-6 z-20">
+                <button onClick={() => navigateTo(Seccion.IntroducirCarrera)} className="bg-zinc-50 text-zinc-900 w-6 h-6 rounded-full flex items-center justify-center shadow-lg hover:bg-zinc-200 transition-colors">
                     <AddIcon className="w-4 h-4" />
                 </button>
             </div>
