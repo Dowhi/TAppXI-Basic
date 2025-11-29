@@ -48,7 +48,11 @@ const FlightTakeoffIcon: React.FC<{ className?: string; title?: string }> = ({ c
             alt="Aeropuerto"
             title={title}
             className={className}
-            style={{ objectFit: 'contain' }}
+            style={{
+                objectFit: 'contain',
+                width: '28px',
+                height: '28px'
+            }}
         />
     );
 };
