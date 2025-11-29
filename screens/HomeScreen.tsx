@@ -1,5 +1,6 @@
 ﻿import React, { useState, useEffect, useMemo } from 'react';
 import { Seccion, Turno, CarreraVista } from '../types';
+import { useTheme } from '../contexts/ThemeContext';
 import {
   getIngresosForCurrentMonth,
   getGastosForCurrentMonth,
@@ -117,6 +118,31 @@ const PauseCircleIcon = () => (
   </svg>
 );
 
+const StatisticsIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 3v18h18" />
+    <path d="M18 17V9" />
+    <path d="M13 17V5" />
+    <path d="M8 17v-3" />
+  </svg>
+);
+
+const AnalysisIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21.21 15.89A10 10 0 1 1 8 2.83" />
+    <path d="M22 12A10 10 0 0 0 12 2v10z" />
+  </svg>
+);
+
+const SummaryIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="7" height="9" />
+    <rect x="14" y="3" width="7" height="5" />
+    <rect x="14" y="12" width="7" height="9" />
+    <rect x="3" y="16" width="7" height="5" />
+  </svg>
+);
+
 // --- COMPONENTE PRINCIPAL (REPLICADO DE LA FOTO) ---
 
 interface HomeScreenProps {
@@ -124,6 +150,7 @@ interface HomeScreenProps {
 }
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
+  const { isDark } = useTheme();
   const [turnoActivo, setTurnoActivo] = useState<Turno | null>(null);
   const [carreras, setCarreras] = useState<CarreraVista[]>([]);
   const [ingresos, setIngresos] = useState(0);
@@ -174,10 +201,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
     { label: 'Ingresos', icon: <TrendingUpIcon />, action: () => navigateTo(turnoActivo ? Seccion.VistaCarreras : Seccion.Turnos) },
     { label: 'Gastos', icon: <TrendingDownIcon />, action: () => navigateTo(Seccion.Gastos) },
     { label: 'Histórico', icon: <HistoryIcon />, action: () => navigateTo(Seccion.Historico) },
-    { label: 'Estadíst...', icon: <AssessmentIcon />, action: () => navigateTo(Seccion.Estadisticas) },
-    { label: 'Análisis', icon: <AssessmentIcon />, action: () => navigateTo(Seccion.AnalisisAvanzado) },
+    { label: 'Estadíst...', icon: <StatisticsIcon />, action: () => navigateTo(Seccion.Estadisticas) },
+    { label: 'Análisis', icon: <AnalysisIcon />, action: () => navigateTo(Seccion.AnalisisAvanzado) },
     { label: 'Calenda...', icon: <CalendarIcon />, action: () => navigateTo(Seccion.Calendario) },
-    { label: 'Resumen', icon: <AssessmentIcon />, action: () => navigateTo(Seccion.Resumen) },
+    { label: 'Resumen', icon: <SummaryIcon />, action: () => navigateTo(Seccion.Resumen) },
     { label: 'Informes', icon: <AssignmentIcon />, action: () => navigateTo(Seccion.Informes) },
     { label: 'Ajustes', icon: <SettingsIcon />, action: () => navigateTo(Seccion.AjustesGenerales) },
   ];
@@ -202,30 +229,52 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
   }) => (
     <button
       onClick={onClick}
-      className="flex flex-col items-center justify-center py-3 rounded-xl bg-[#2A3347] hover:bg-[#3B455A] transition-colors duration-200 group"
+      className={`flex flex-col items-center justify-center py-3 rounded-xl transition-colors duration-200 group ${isDark
+        ? 'bg-zinc-800 hover:bg-zinc-700 border border-zinc-700'
+        : 'bg-zinc-200 hover:bg-zinc-300 border border-zinc-300'
+        }`}
     >
-      <div className="text-[#00D4FF] mb-1 group-hover:text-[#00F0FF] transition-colors">{icon}</div>
-      <span className="text-white text-xs font-semibold text-center leading-tight truncate w-full px-1">
+      <div className={`mb-1 transition-colors ${isDark ? 'text-cyan-400 group-hover:text-cyan-300' : 'text-blue-600 group-hover:text-blue-700'
+        }`}>{icon}</div>
+      <span className={`text-xs font-semibold text-center leading-tight truncate w-full px-1 ${isDark ? 'text-zinc-100' : 'text-zinc-900'
+        }`}>
         {label}
       </span>
     </button>
   );
 
+  // Colores dinámicos basados en el tema
+  const bgGradient = isDark
+    ? 'linear-gradient(180deg, #08A8D7 0%, #072639 28%, #090B13 100%)'
+    : 'linear-gradient(180deg, #60A5FA 0%, #E0E7FF 28%, #F3F4F6 100%)';
+
+  const textColor = isDark ? '#E6F1FF' : '#1F2937';
+  const secondaryTextColor = isDark ? '#7A8FA9' : '#6B7280';
+  const accentColor = isDark ? '#5FE3FF' : '#2563EB';
+  const cardBg = isDark ? '#0A0D14' : '#FFFFFF';
+  const cardBorder = isDark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.1)';
+  const turnoCardBg = isDark ? '#1A1A1F' : '#F9FAFB';
+  const turnoCardBorder = isDark ? '#1F2A37' : '#E5E7EB';
+  const noTurnoCardBg = isDark ? '#11131D' : '#F3F4F6';
+  const iconBg = isDark ? '#0A0D14' : '#F9FAFB';
+
   return (
     <div
       className="min-h-screen px-2 py-4 font-sans"
       style={{
-        background: 'linear-gradient(180deg, #08A8D7 0%, #072639 28%, #090B13 100%)',
-        color: '#E6F1FF',
+        background: bgGradient,
+        color: textColor,
       }}
     >
       {loading ? (
-        <div className="text-center py-12 text-[#7A8FA9] text-lg">Cargando datos...</div>
+        <div className={`text-center py-12 text-lg ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>
+          Cargando datos...
+        </div>
       ) : (
         <div className="space-y-6 max-w-xl mx-auto">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-[#5FE3FF]">
+            <div className={`flex items-center gap-2 ${isDark ? 'text-cyan-400' : 'text-blue-600'}`}>
               <span className="block">
                 <TaxiIcon />
               </span>
@@ -233,7 +282,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
             </div>
             <button
               onClick={() => navigateTo(Seccion.AjustesGenerales)}
-              className="p-2 rounded-full bg-black/20 text-[#5FE3FF] hover:bg-black/30 transition-colors"
+              className={`p-2 rounded-full transition-colors ${isDark
+                ? 'bg-black/20 text-cyan-400 hover:bg-black/30'
+                : 'bg-white/80 text-blue-600 hover:bg-white/90'
+                }`}
               aria-label="Ir a ajustes"
             >
               <SettingsIcon />
@@ -246,32 +298,35 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
               {
                 label: "Ingresos",
                 value: formatCurrency(ingresos),
-                color: '#00D4FF',
-                iconBg: '#0A0D14',
+                color: isDark ? '#00D4FF' : '#2563EB',
                 icon: <TrendingUpIcon />,
               },
               {
                 label: "Gastos",
                 value: formatCurrency(gastos),
-                color: '#FF3DD0',
-                iconBg: '#0A0D14',
+                color: isDark ? '#FF3DD0' : '#DC2626',
                 icon: <TrendingDownIcon />,
               },
               {
                 label: "Balance",
                 value: formatCurrency(balance),
-                color: '#00FF94',
-                iconBg: '#0A0D14',
+                color: isDark ? '#00FF94' : '#16A34A',
                 icon: <WalletIcon />,
               },
             ].map((card) => (
               <div
                 key={card.label}
-                className="flex-1 min-w-0 rounded-xl px-2 py-1 bg-[#0A0D14] border border-black/60 shadow-[0_8px_20px_rgba(0,0,0,0.5)] flex flex-col items-center gap-1"
+                className="flex-1 min-w-0 rounded-xl px-2 py-1 flex flex-col items-center gap-1 shadow-lg"
+                style={{
+                  backgroundColor: cardBg,
+                  borderColor: cardBorder,
+                  borderWidth: '1px',
+                  borderStyle: 'solid'
+                }}
               >
                 <div
                   className="w-8 h-5 rounded-lg flex items-center justify-center"
-                  style={{ backgroundColor: card.iconBg, color: card.color }}
+                  style={{ backgroundColor: iconBg, color: card.color }}
                 >
                   {card.icon}
                 </div>
@@ -287,13 +342,23 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
 
           {/* Estado del turno (como en la foto) */}
           {turnoActivo ? (
-            <div className="bg-[#1A1A1F] rounded-3xl p-6 border border-[#1F2A37] shadow-[0_18px_50px_rgba(0,0,0,0.45)]">
+            <div
+              className="rounded-3xl p-6 shadow-xl"
+              style={{
+                backgroundColor: turnoCardBg,
+                borderColor: turnoCardBorder,
+                borderWidth: '1px',
+                borderStyle: 'solid'
+              }}
+            >
               <div className="flex justify-between items-start mb-5">
                 <div>
-                  <h2 className="text-[#46D7FF] text-sm font-bold tracking-wide uppercase">
+                  <h2 className={`text-sm font-bold tracking-wide uppercase ${isDark ? 'text-cyan-400' : 'text-blue-600'
+                    }`}>
                     {`Turno ${turnoActivo.numero ?? 1}`}
                   </h2>
-                  <p className="text-[#A4B7D6] uppercase tracking-wide">
+                  <p className={`uppercase tracking-wide ${isDark ? 'text-zinc-400' : 'text-zinc-600'
+                    }`}>
                     {turnoActivo.fechaInicio.toLocaleDateString('es-ES', {
                       weekday: 'short',
                       day: '2-digit',
@@ -302,43 +367,67 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[#00D4FF] text-xs font-semibold uppercase tracking-wider">Total turno</p>
-                  <p className="text-2xl font-bold text-[#26FFC9] mt-1">{formatCurrency(totalTurno)}</p>
+                  <p className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-600'
+                    }`}>Total turno</p>
+                  <p className={`text-2xl font-bold mt-1 ${isDark ? 'text-green-400' : 'text-green-600'
+                    }`}>{formatCurrency(totalTurno)}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-5 mb-3 text-sm">
                 <div className="text-center">
-                  <p className="text-[#00D4FF] text-xs font-semibold uppercase tracking-wider">Kms Inic.</p>
-                  <p className="text-[#E6F1FF] text-xl mt-1">{turnoActivo.kilometrosInicio}</p>
+                  <p className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-600'
+                    }`}>Kms Inic.</p>
+                  <p className={`text-xl mt-1 ${isDark ? 'text-zinc-100' : 'text-zinc-900'}`}>
+                    {turnoActivo.kilometrosInicio}
+                  </p>
                 </div>
                 <div className="text-center">
-                  <p className="text-[#00D4FF] text-xs font-semibold uppercase tracking-wider">H. Inicio</p>
-                  <p className="text-[#E6F1FF] text-xl mt-1">
+                  <p className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-600'
+                    }`}>H. Inicio</p>
+                  <p className={`text-xl mt-1 ${isDark ? 'text-zinc-100' : 'text-zinc-900'}`}>
                     {turnoActivo.fechaInicio.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
                 <div className="text-center">
-                  <p className="text-[#00D4FF] text-xs font-semibold uppercase tracking-wider">Carreras</p>
-                  <p className="text-[#E6F1FF] mt-1">{carrerasDelTurno.length}</p>
+                  <p className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-600'
+                    }`}>Carreras</p>
+                  <p className={`text-xl mt-1 ${isDark ? 'text-zinc-100' : 'text-zinc-900'}`}>
+                    {carrerasDelTurno.length}
+                  </p>
                 </div>
               </div>
 
               <button
                 onClick={() => navigateTo(Seccion.VistaCarreras)}
-                className="w-full py-2 bg-gradient-to-r from-[#00FF94] to-[#00C6FF] rounded-xl font-semibold text-[#0F0F12] text-sm shadow-md hover:opacity-95 transition-opacity"
+                className={`w-full py-2 rounded-xl font-semibold text-sm shadow-md hover:opacity-95 transition-opacity ${isDark
+                  ? 'bg-gradient-to-r from-green-400 to-cyan-400 text-zinc-900'
+                  : 'bg-gradient-to-r from-green-500 to-blue-500 text-white'
+                  }`}
               >
                 Ver Detalles
               </button>
             </div>
           ) : (
-            <div className="bg-[#11131D] rounded-3xl px-6 py-8 border border-black/60 text-center shadow-[0_20px_65px_rgba(0,0,0,0.45)]">
-              <div className="mx-auto mb-5 w-14 h-14 rounded-full flex items-center justify-center bg-[#2B0F49] text-[#FF3DD0]">
+            <div
+              className="rounded-3xl px-6 py-8 text-center shadow-xl"
+              style={{
+                backgroundColor: noTurnoCardBg,
+                borderColor: cardBorder,
+                borderWidth: '1px',
+                borderStyle: 'solid'
+              }}
+            >
+              <div className={`mx-auto mb-5 w-14 h-14 rounded-full flex items-center justify-center ${isDark ? 'bg-purple-900/50 text-pink-400' : 'bg-purple-100 text-pink-600'
+                }`}>
                 <PauseCircleIcon />
               </div>
-              <p className="text-[#46D7FF] text-lg font-semibold mb-1">{formattedDateCapitalized}</p>
-              <h3 className="text-[#FF3DD0] font-bold text-lg tracking-wide mb-3 uppercase">NO HAY TURNO ACTIVO</h3>
-              <p className="text-[#E6F1FF] text-base leading-relaxed">Inicia un nuevo turno para comenzar</p>
+              <p className={`text-lg font-semibold mb-1 ${isDark ? 'text-cyan-400' : 'text-blue-600'
+                }`}>{formattedDateCapitalized}</p>
+              <h3 className={`font-bold text-lg tracking-wide mb-3 uppercase ${isDark ? 'text-pink-400' : 'text-pink-600'
+                }`}>NO HAY TURNO ACTIVO</h3>
+              <p className={`text-base leading-relaxed ${isDark ? 'text-zinc-300' : 'text-zinc-700'
+                }`}>Inicia un nuevo turno para comenzar</p>
             </div>
           )}
 

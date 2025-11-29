@@ -21,12 +21,8 @@ import CalendarScreen from './screens/CalendarScreen';
 import BreakConfigurationScreen from './screens/BreakConfigurationScreen';
 import ReportsScreen from './screens/ReportsScreen';
 import AnalisisAvanzadoScreen from './screens/AnalisisAvanzadoScreen';
+import BottomNavBar from './components/BottomNavBar';
 
-const HomeIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px" fill="currentColor">
-        <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8h5z"/>
-    </svg>
-);
 
 const App: React.FC = () => {
     // Siempre iniciar en HomeScreen
@@ -44,7 +40,7 @@ const App: React.FC = () => {
         }
         setCurrentPage(page);
     }, []);
-    
+
     const navigateToEditRace = useCallback((id: string) => {
         setEditingRaceId(id);
         setCurrentPage(Seccion.EditarCarrera);
@@ -106,16 +102,9 @@ const App: React.FC = () => {
             <main className="w-full pb-24 animate-fade-in-up">
                 {renderPage()}
             </main>
+
             {currentPage !== Seccion.Home && (
-                <div className="fixed bottom-1 left-1/2 -translate-x-1/2 z-50">
-                    <button
-                        onClick={() => navigateTo(Seccion.Home)}
-                        className="text-zinc-300 p-2 hover:text-cyan-300 transition-transform active:scale-90 focus:outline-none"
-                        aria-label="Go to Home page"
-                    >
-                        <HomeIcon />
-                    </button>
-                </div>
+                <BottomNavBar navigateTo={navigateTo} />
             )}
         </div>
     );

@@ -4,7 +4,7 @@ import ScreenTopBar from '../components/ScreenTopBar';
 import { addGasto, getProveedores, getConceptos, getTalleres, addProveedor, addConcepto, addTaller } from '../services/api';
 
 // Icons
-const AddIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>;
+const AddIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg>;
 const ArrowBackIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"></path></svg>;
 
 // Local components for this screen's specific style
@@ -25,11 +25,11 @@ const FormField: React.FC<{ label: string; children: React.ReactNode; className?
 const TextInput: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = (props) => {
     const { readOnly, ...rest } = props;
     return (
-        <input 
-            {...rest} 
+        <input
+            {...rest}
             readOnly={readOnly}
             onChange={readOnly ? undefined : rest.onChange}
-            className={`w-full p-2 border border-zinc-700 bg-zinc-800/50 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm text-zinc-100 placeholder:text-zinc-500 ${readOnly ? 'bg-zinc-800 cursor-not-allowed' : ''} ${rest.className || ''}`} 
+            className={`w-full p-2 border border-zinc-700 bg-zinc-800/50 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm text-zinc-100 placeholder:text-zinc-500 ${readOnly ? 'bg-zinc-800 cursor-not-allowed' : ''} ${rest.className || ''}`}
         />
     );
 };
@@ -56,7 +56,7 @@ interface ExpensesScreenProps {
 
 const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
     const [activeTab, setActiveTab] = useState<'actividad' | 'vehiculo'>('actividad');
-    
+
     // Estados para encabezado
     const [fecha, setFecha] = useState('');
     const [numeroFactura, setNumeroFactura] = useState('');
@@ -166,7 +166,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
             setFilteredProveedores([]);
             setShowProveedorDropdown(false);
         } else {
-            const filtered = proveedoresList.filter(p => 
+            const filtered = proveedoresList.filter(p =>
                 p.nombre.toLowerCase().includes(proveedorName.toLowerCase())
             );
             setFilteredProveedores(filtered);
@@ -180,7 +180,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
             setFilteredConceptos([]);
             setShowConceptoDropdown(false);
         } else {
-            const filtered = conceptosList.filter(c => 
+            const filtered = conceptosList.filter(c =>
                 c.nombre.toLowerCase().includes(conceptoName.toLowerCase())
             );
             setFilteredConceptos(filtered);
@@ -194,7 +194,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
             setFilteredTalleres([]);
             setShowTallerDropdown(false);
         } else {
-            const filtered = talleresList.filter(t => 
+            const filtered = talleresList.filter(t =>
                 t.nombre.toLowerCase().includes(tallerName.toLowerCase())
             );
             setFilteredTalleres(filtered);
@@ -206,7 +206,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
     useEffect(() => {
         const total = parseFloat(importeTotal) || 0;
         const iva = parseFloat(ivaPorcentaje) || 21;
-        
+
         if (soportaIVA) {
             // Con IVA: Base = Total / (1 + IVA/100)
             const base = total / (1 + iva / 100);
@@ -224,7 +224,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
     useEffect(() => {
         const litrosValue = parseFloat(litros) || 0;
         const totalValue = parseFloat(importeTotal) || 0;
-        
+
         if (litrosValue > 0 && totalValue > 0) {
             const precio = totalValue / litrosValue;
             setPrecioPorLitro(precio.toFixed(2));
@@ -258,14 +258,14 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                 telefono: modalProveedorTelefono || null,
                 nif: modalProveedorNIF || null
             });
-            
+
             // Actualizar lista
             const proveedores = await getProveedores();
             setProveedoresList(proveedores);
-            
+
             // Establecer el nombre seleccionado
             setProveedorName(modalProveedorName);
-            
+
             // Cerrar modal y limpiar
             setShowProveedorModal(false);
             setModalProveedorName('');
@@ -293,14 +293,14 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                 descripcion: modalConceptoDescripcion || null,
                 categoria: modalConceptoCategoria || null
             });
-            
+
             // Actualizar lista
             const conceptos = await getConceptos();
             setConceptosList(conceptos);
-            
+
             // Establecer el nombre seleccionado
             setConceptoName(modalConceptoName);
-            
+
             // Cerrar modal y limpiar
             setShowConceptoModal(false);
             setModalConceptoName('');
@@ -327,14 +327,14 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                 direccion: modalTallerDireccion || null,
                 telefono: modalTallerTelefono || null
             });
-            
+
             // Actualizar lista
             const talleres = await getTalleres();
             setTalleresList(talleres);
-            
+
             // Establecer el nombre seleccionado
             setTallerName(modalTallerName);
-            
+
             // Cerrar modal y limpiar
             setShowTallerModal(false);
             setModalTallerName('');
@@ -350,7 +350,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
 
     const handleSaveExpense = async () => {
         const importeValue = parseFloat(importeTotal) || 0;
-        
+
         if (importeValue <= 0) {
             setError('El importe total debe ser mayor a 0');
             return;
@@ -382,7 +382,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                 if (tallerName) gastoData.taller = tallerName;
                 if (kilometrosVehiculo) gastoData.kilometrosVehiculo = parseFloat(kilometrosVehiculo);
                 if (descripcionTrabajos) gastoData.descripcionTrabajos = descripcionTrabajos;
-                
+
                 // Servicios
                 const serviciosValidados = services
                     .filter(s => s.referencia || s.importe || s.cantidad || s.descripcion)
@@ -393,7 +393,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                         descuentoPorcentaje: s.descuentoPorcentaje ? Number(s.descuentoPorcentaje) : undefined,
                         descripcion: s.descripcion
                     }));
-                
+
                 if (serviciosValidados.length > 0) {
                     gastoData.servicios = serviciosValidados;
                 }
@@ -404,7 +404,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
             if (notas) gastoData.notas = notas;
 
             await addGasto(gastoData);
-            
+
             // Limpiar formulario
             setFecha('');
             setNumeroFactura('');
@@ -414,7 +414,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
             setTallerName('');
             setServices([{}]);
             setNotas('');
-            
+
             alert('Gasto guardado correctamente');
         } catch (err) {
             console.error('Error saving expense:', err);
@@ -427,32 +427,32 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
     return (
         <div className="bg-zinc-950 min-h-screen text-zinc-100 font-sans px-3 pt-3 pb-6">
             <ScreenTopBar title="Gastos" navigateTo={navigateTo} backTarget={Seccion.Home} className="mb-4" />
-            
+
             <div className="space-y-3 max-w-sm mx-auto">
                 <FormCard title="Encabezado de Factura">
                     <div className="grid grid-cols-2 gap-4">
                         <FormField label="Fecha">
-                            <TextInput 
-                                type="text" 
-                                placeholder="Seleccionar" 
+                            <TextInput
+                                type="text"
+                                placeholder="Seleccionar"
                                 value={fecha}
-                                className="border-blue-500" 
-                                onFocus={(e) => e.target.type='date'} 
-                                onBlur={(e) => e.target.type='text'}
+                                className="border-blue-500"
+                                onFocus={(e) => e.target.type = 'date'}
+                                onBlur={(e) => e.target.type = 'text'}
                                 onChange={(e) => setFecha(e.target.value)}
                             />
                         </FormField>
                         <FormField label="Nº de Factura">
-                            <TextInput 
-                                type="text" 
-                                placeholder="Ingrese Nº de Fact" 
+                            <TextInput
+                                type="text"
+                                placeholder="Ingrese Nº de Fact"
                                 value={numeroFactura}
                                 onChange={(e) => setNumeroFactura(e.target.value)}
                             />
                         </FormField>
                         <FormField label="Importe Total">
-                            <TextInput 
-                                type="number" 
+                            <TextInput
+                                type="number"
                                 value={importeTotal}
                                 onChange={(e) => setImporteTotal(e.target.value)}
                                 placeholder="0.00"
@@ -469,29 +469,29 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                 </FormCard>
 
                 <div className="flex gap-2 p-1 bg-zinc-900 border border-zinc-800 rounded-lg">
-                    <button 
+                    <button
                         onClick={() => setActiveTab('actividad')}
                         className={`flex-1 py-1.5 rounded-md font-semibold transition-colors text-sm ${activeTab === 'actividad' ? 'bg-zinc-800 text-zinc-50 shadow-sm' : 'text-zinc-400 hover:bg-zinc-800/50'}`}
                     >
                         Actividad
                     </button>
-                    <button 
+                    <button
                         onClick={() => setActiveTab('vehiculo')}
                         className={`flex-1 py-1.5 rounded-md font-semibold transition-colors text-sm ${activeTab === 'vehiculo' ? 'bg-zinc-800 text-zinc-50 shadow-sm' : 'text-zinc-400 hover:bg-zinc-800/50'}`}
                     >
                         Vehículo
                     </button>
                 </div>
-                
+
                 {activeTab === 'actividad' && (
                     <FormCard title="Actividad">
                         <div className="space-y-4">
                             <FormField label="Nombre del Proveedor:">
                                 <div className="relative">
                                     <div className="flex gap-2">
-                                        <TextInput 
-                                            type="text" 
-                                            placeholder="Buscar Proveedor" 
+                                        <TextInput
+                                            type="text"
+                                            placeholder="Buscar Proveedor"
                                             className="flex-grow"
                                             value={proveedorName}
                                             onChange={(e) => {
@@ -524,13 +524,13 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                                     )}
                                 </div>
                             </FormField>
-                            
+
                             <FormField label="Concepto:">
                                 <div className="relative">
                                     <div className="flex gap-2">
-                                        <TextInput 
-                                            type="text" 
-                                            placeholder="Buscar Concepto" 
+                                        <TextInput
+                                            type="text"
+                                            placeholder="Buscar Concepto"
                                             className="flex-grow"
                                             value={conceptoName}
                                             onChange={(e) => {
@@ -563,7 +563,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                                     )}
                                 </div>
                             </FormField>
-                            
+
                             <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                                 <FormField label="¿Soporta IVA?">
                                     <div className="flex items-center gap-2">
@@ -577,51 +577,51 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                                     </div>
                                 </FormField>
                                 <FormField label="Iva (%)">
-                                    <TextInput 
-                                        type="number" 
+                                    <TextInput
+                                        type="number"
                                         value={ivaPorcentaje}
                                         onChange={(e) => setIvaPorcentaje(e.target.value)}
                                     />
                                 </FormField>
                                 <FormField label="Base (€)">
-                                    <TextInput 
-                                        type="number" 
+                                    <TextInput
+                                        type="number"
                                         value={baseImponible}
                                         readOnly
                                     />
                                 </FormField>
                                 <FormField label="Iva(€)">
-                                    <TextInput 
-                                        type="number" 
+                                    <TextInput
+                                        type="number"
                                         value={ivaImporte || '0.00'}
                                         readOnly
                                     />
                                 </FormField>
                                 <FormField label="Kilómetros">
-                                    <TextInput 
-                                        type="number" 
+                                    <TextInput
+                                        type="number"
                                         value={kilometros}
                                         onChange={(e) => setKilometros(e.target.value)}
                                     />
                                 </FormField>
-                                <div/>
+                                <div />
                                 <FormField label="Km.Parc">
-                                    <TextInput 
-                                        type="number" 
+                                    <TextInput
+                                        type="number"
                                         value={kmParciales}
                                         onChange={(e) => setKmParciales(e.target.value)}
                                     />
                                 </FormField>
                                 <FormField label="Litros">
-                                    <TextInput 
-                                        type="number" 
+                                    <TextInput
+                                        type="number"
                                         value={litros}
                                         onChange={(e) => setLitros(e.target.value)}
                                     />
                                 </FormField>
                                 <FormField label="€/L">
-                                    <TextInput 
-                                        type="number" 
+                                    <TextInput
+                                        type="number"
                                         value={precioPorLitro}
                                         readOnly
                                     />
@@ -637,9 +637,9 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                             <FormField label="Nombre del Taller:">
                                 <div className="relative">
                                     <div className="flex gap-2">
-                                        <TextInput 
-                                            type="text" 
-                                            placeholder="Buscar Taller" 
+                                        <TextInput
+                                            type="text"
+                                            placeholder="Buscar Taller"
                                             className="flex-grow"
                                             value={tallerName}
                                             onChange={(e) => {
@@ -674,21 +674,21 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                             </FormField>
 
                             <FormField label="Kms">
-                                <TextInput 
-                                    type="number" 
+                                <TextInput
+                                    type="number"
                                     value={kilometrosVehiculo}
                                     onChange={(e) => setKilometrosVehiculo(e.target.value)}
                                     placeholder="Kilómetros"
                                 />
                             </FormField>
-                            
+
                             <div>
                                 <h3 className="text-md font-bold text-zinc-300 mb-2">Servicios / Reparaciones</h3>
                                 <div className="bg-zinc-950/70 p-3 rounded-md space-y-2 border border-zinc-800">
                                     {services.map((service, index) => (
                                         <div key={index} className="space-y-2">
                                             <div className="grid grid-cols-2 gap-2">
-                                                <TextInput 
+                                                <TextInput
                                                     placeholder="Referencia"
                                                     value={service.referencia || ''}
                                                     onChange={(e) => {
@@ -697,8 +697,8 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                                                         setServices(newServices);
                                                     }}
                                                 />
-                                                <TextInput 
-                                                    placeholder="Importe" 
+                                                <TextInput
+                                                    placeholder="Importe"
                                                     type="number"
                                                     value={service.importe || ''}
                                                     onChange={(e) => {
@@ -709,8 +709,8 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                                                 />
                                             </div>
                                             <div className="grid grid-cols-2 gap-2">
-                                                <TextInput 
-                                                    placeholder="Cantidad" 
+                                                <TextInput
+                                                    placeholder="Cantidad"
                                                     type="number"
                                                     value={service.cantidad || ''}
                                                     onChange={(e) => {
@@ -719,8 +719,8 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                                                         setServices(newServices);
                                                     }}
                                                 />
-                                                <TextInput 
-                                                    placeholder="Desc. %" 
+                                                <TextInput
+                                                    placeholder="Desc. %"
                                                     type="number"
                                                     value={service.descuentoPorcentaje || ''}
                                                     onChange={(e) => {
@@ -730,7 +730,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                                                     }}
                                                 />
                                             </div>
-                                            <TextInput 
+                                            <TextInput
                                                 placeholder="Servicio"
                                                 value={service.descripcion || ''}
                                                 onChange={(e) => {
@@ -750,7 +750,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                             </div>
 
                             <FormField label="Descripción de trabajos realizados">
-                                <TextAreaInput 
+                                <TextAreaInput
                                     rows={4}
                                     value={descripcionTrabajos}
                                     onChange={(e) => setDescripcionTrabajos(e.target.value)}
@@ -759,12 +759,12 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                         </div>
                     </FormCard>
                 )}
-                
+
                 <FormCard title="Resumen de Totales">
                     <div className="grid grid-cols-5 gap-1 text-center text-xs items-end">
                         <div>
                             <label className="font-medium text-zinc-400">Base</label>
-                            <TextInput 
+                            <TextInput
                                 readOnly
                                 value={resumenBase}
                                 className="text-center mt-1.5"
@@ -772,7 +772,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                         </div>
                         <div>
                             <label className="font-medium text-zinc-400">Iva</label>
-                            <TextInput 
+                            <TextInput
                                 value={resumenIvaPorcentaje}
                                 onChange={(e) => {
                                     setResumenIvaPorcentaje(e.target.value);
@@ -783,7 +783,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                         </div>
                         <div>
                             <label className="font-medium text-zinc-400">Iva (€)</label>
-                            <TextInput 
+                            <TextInput
                                 readOnly
                                 value={resumenIvaImporte}
                                 className="text-center mt-1.5"
@@ -791,7 +791,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                         </div>
                         <div>
                             <label className="font-medium text-zinc-400">Desc.</label>
-                            <TextInput 
+                            <TextInput
                                 type="number"
                                 value={resumenDescuento}
                                 onChange={(e) => setResumenDescuento(e.target.value)}
@@ -800,7 +800,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                         </div>
                         <div>
                             <label className="font-medium text-zinc-400">TOTAL</label>
-                            <TextInput 
+                            <TextInput
                                 readOnly
                                 value={importeTotal}
                                 className="text-center mt-1.5"
@@ -810,7 +810,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                 </FormCard>
 
                 <FormCard title="Notas">
-                    <TextAreaInput 
+                    <TextAreaInput
                         rows={4}
                         value={notas}
                         onChange={(e) => setNotas(e.target.value)}
@@ -835,25 +835,25 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                         <h3 className="text-lg font-bold text-zinc-100 mb-4">Nuevo Proveedor</h3>
                         <div className="space-y-4">
                             <FormField label="Nombre *">
-                                <TextInput 
+                                <TextInput
                                     value={modalProveedorName}
                                     onChange={(e) => setModalProveedorName(e.target.value)}
                                 />
                             </FormField>
                             <FormField label="Dirección">
-                                <TextInput 
+                                <TextInput
                                     value={modalProveedorDireccion}
                                     onChange={(e) => setModalProveedorDireccion(e.target.value)}
                                 />
                             </FormField>
                             <FormField label="Teléfono">
-                                <TextInput 
+                                <TextInput
                                     value={modalProveedorTelefono}
                                     onChange={(e) => setModalProveedorTelefono(e.target.value)}
                                 />
                             </FormField>
                             <FormField label="NIF">
-                                <TextInput 
+                                <TextInput
                                     value={modalProveedorNIF}
                                     onChange={(e) => setModalProveedorNIF(e.target.value)}
                                 />
@@ -887,20 +887,20 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                         <h3 className="text-lg font-bold text-zinc-100 mb-4">Nuevo Concepto</h3>
                         <div className="space-y-4">
                             <FormField label="Nombre *">
-                                <TextInput 
+                                <TextInput
                                     value={modalConceptoName}
                                     onChange={(e) => setModalConceptoName(e.target.value)}
                                 />
                             </FormField>
                             <FormField label="Descripción">
-                                <TextAreaInput 
+                                <TextAreaInput
                                     rows={3}
                                     value={modalConceptoDescripcion}
                                     onChange={(e) => setModalConceptoDescripcion(e.target.value)}
                                 />
                             </FormField>
                             <FormField label="Categoría">
-                                <TextInput 
+                                <TextInput
                                     value={modalConceptoCategoria}
                                     onChange={(e) => setModalConceptoCategoria(e.target.value)}
                                 />
@@ -933,19 +933,19 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                         <h3 className="text-lg font-bold text-zinc-100 mb-4">Nuevo Taller</h3>
                         <div className="space-y-4">
                             <FormField label="Nombre *">
-                                <TextInput 
+                                <TextInput
                                     value={modalTallerName}
                                     onChange={(e) => setModalTallerName(e.target.value)}
                                 />
                             </FormField>
                             <FormField label="Dirección">
-                                <TextInput 
+                                <TextInput
                                     value={modalTallerDireccion}
                                     onChange={(e) => setModalTallerDireccion(e.target.value)}
                                 />
                             </FormField>
                             <FormField label="Teléfono">
-                                <TextInput 
+                                <TextInput
                                     value={modalTallerTelefono}
                                     onChange={(e) => setModalTallerTelefono(e.target.value)}
                                 />

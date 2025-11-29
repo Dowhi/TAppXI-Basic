@@ -7,9 +7,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const publicDir = path.join(__dirname, '..', 'public');
 
-const processAirportIcon = async () => {
-    const sourcePath = path.join(publicDir, 'airport-icon.png');
-    const outputPath = path.join(publicDir, 'airport-icon.png');
+const processRadioTowerIcon = async () => {
+    const sourcePath = path.join(publicDir, 'radio-tower-icon.png');
+    const outputPath = path.join(publicDir, 'radio-tower-icon.png');
 
     if (!fs.existsSync(sourcePath)) {
         console.error('❌ Source image not found:', sourcePath);
@@ -19,11 +19,10 @@ const processAirportIcon = async () => {
     // Load the original image
     const image = await loadImage(sourcePath);
 
-    // Scale: 10% more width, 20% more height
-    const scaleWidth = 1.10;
-    const scaleHeight = 1.20;
-    const newWidth = Math.floor(image.width * scaleWidth);
-    const newHeight = Math.floor(image.height * scaleHeight);
+    // Scale down by approx 27% total (0.73)
+    const scaleFactor = 0.73;
+    const newWidth = Math.floor(image.width * scaleFactor);
+    const newHeight = Math.floor(image.height * scaleFactor);
 
     const canvas = createCanvas(newWidth, newHeight);
     const ctx = canvas.getContext('2d');
@@ -65,12 +64,11 @@ const processAirportIcon = async () => {
     // Save the processed image
     const buffer = canvas.toBuffer('image/png');
     fs.writeFileSync(outputPath, buffer);
-    console.log(`✅ Processed airport icon: ${newWidth}x${newHeight}`);
-    console.log(`   Width: ${Math.round(scaleWidth * 100)}% | Height: ${Math.round(scaleHeight * 100)}%`);
+    console.log(`✅ Processed radio tower icon: ${newWidth}x${newHeight} (${Math.round(scaleFactor * 100)}% scale)`);
     console.log(`✅ Changed black lines to white`);
 };
 
-processAirportIcon().catch(err => {
+processRadioTowerIcon().catch(err => {
     console.error('Error:', err);
     process.exit(1);
 });

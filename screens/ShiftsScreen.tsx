@@ -5,7 +5,7 @@ import { Seccion, Turno } from '../types';
 import { getActiveTurno, addTurno, subscribeToActiveTurno, getRecentTurnos } from '../services/api';
 
 // Icons
-const TaxiIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>;
+const TaxiIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z" /></svg>;
 
 const CustomTextField: React.FC<React.InputHTMLAttributes<HTMLInputElement> & { label: string }> = ({ label, ...props }) => (
     <div className="flex flex-col gap-1.5">
@@ -90,7 +90,7 @@ const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
                 setLoading(true);
                 const turno = await getActiveTurno();
                 setTurnoActivo(turno);
-                
+
                 // Suscripción en tiempo real
                 const unsubscribe = subscribeToActiveTurno((turno) => {
                     setTurnoActivo(turno);
@@ -99,7 +99,7 @@ const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
                         loadTurnosRecientes();
                     }
                 });
-                
+
                 return () => unsubscribe();
             } catch (err) {
                 console.error("Error loading turno:", err);
@@ -114,7 +114,7 @@ const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
     useEffect(() => {
         loadTurnosRecientes();
     }, [loadTurnosRecientes]);
-    
+
     const handleStartTurno = async () => {
         if (!kmsIniciales) {
             setError("Por favor, ingresa los kilómetros iniciales");
@@ -170,14 +170,14 @@ const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
     return (
         <div className="bg-zinc-950 min-h-screen text-zinc-100 px-3 pt-3 pb-6 space-y-4">
             {topBar}
-            
+
             <Card>
                 {!turnoActivo ? (
                     <div className="space-y-4">
-                        <CustomTextField 
-                            label="Kilómetros iniciales" 
-                            type="number" 
-                            value={kmsIniciales} 
+                        <CustomTextField
+                            label="Kilómetros iniciales"
+                            type="number"
+                            value={kmsIniciales}
                             onChange={(e) => {
                                 setKmsIniciales(e.target.value);
                                 setError(null);
@@ -189,7 +189,7 @@ const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
                                 {error}
                             </div>
                         )}
-                        <button 
+                        <button
                             onClick={handleStartTurno}
                             disabled={!kmsIniciales || isCreating}
                             className="w-full p-3 bg-zinc-50 text-zinc-900 font-bold rounded-lg disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed transition-colors hover:bg-zinc-200"
@@ -204,14 +204,14 @@ const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
                         <p><span className="font-semibold text-zinc-400">Hora inicio:</span> {formatTime(turnoActivo.fechaInicio)}</p>
                         <p><span className="font-semibold text-zinc-400">Km inicio:</span> {turnoActivo.kilometrosInicio}</p>
                         <p className="text-zinc-500 text-xs mt-4">
-                            Ve a "Carreras" para añadir carreras a este turno. 
+                            Ve a "Carreras" para añadir carreras a este turno.
                             Para cerrar el turno, usa el botón de abajo a la izquierda en la pantalla de Carreras.
                         </p>
                     </div>
                 )}
             </Card>
-            
-             <div>
+
+            <div>
                 <h2 className="text-zinc-100 text-lg font-bold mb-2 tracking-tight">Turnos recientes</h2>
                 {loadingTurnos ? (
                     <div className="text-center p-4 text-zinc-400 text-sm">Cargando turnos...</div>
@@ -223,7 +223,7 @@ const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
                             // Asegurar que las fechas son objetos Date válidos
                             const fechaInicio = turno.fechaInicio instanceof Date ? turno.fechaInicio : new Date(turno.fechaInicio);
                             const fechaFin = turno.fechaFin instanceof Date ? turno.fechaFin : (turno.fechaFin ? new Date(turno.fechaFin) : null);
-                            
+
                             return (
                                 <Card key={turno.id} className="p-3 text-sm">
                                     <div className="flex justify-between items-start mb-2">
@@ -241,7 +241,7 @@ const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
                                             title="Editar turno"
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                                                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                                                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
                                             </svg>
                                         </button>
                                     </div>

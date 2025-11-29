@@ -3,11 +3,16 @@ import { Seccion, CarreraVista } from '../types';
 import { getCarrera, addCarrera, updateCarrera, deleteCarrera, getValesDirectory, ValeDirectoryEntry } from '../services/api';
 import ScreenTopBar from '../components/ScreenTopBar';
 
-const DeleteIcon = () => <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>;
-const EuroIcon: React.FC<{className?: string}> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M15 18.5c-2.51 0-4.68-1.42-5.76-3.5H15v-2H8.58c-.05-.33-.08-.66-.08-1s.03-.67.08-1H15V9H9.24C10.32 6.92 12.5 5.5 15 5.5c1.61 0 3.09.59 4.23 1.57L21 5.3C19.41 3.87 17.3 3 15 3c-3.92 0-7.24 2.51-8.48 6H3v2h3.06c-.04.33-.06.66-.06 1s.02.67.06 1H3v2h3.52c1.24 3.49 4.56 6 8.48 6 2.31 0 4.41-.87 6-2.3l-1.78-1.77C18.09 17.91 16.61 18.5 15 18.5z"/></svg>;
-const CreditCardIcon: React.FC<{className?: string}> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>;
-const BizumIcon: React.FC<{className?: string}> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>;
-const ValesIcon: React.FC<{className?: string}> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2h-2v2h2V4zM9 18H4v-2h5v2zm0-4H4v-2h5v2zm0-4H4V8h5v2zm7 8h-5v-2h5v2zm0-4h-5v-2h5v2zm0-4h-5V8h5v2z"/></svg>;
+const DeleteIcon = () => <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" /></svg>;
+const EuroIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M15 18.5c-2.51 0-4.68-1.42-5.76-3.5H15v-2H8.58c-.05-.33-.08-.66-.08-1s.03-.67.08-1H15V9H9.24C10.32 6.92 12.5 5.5 15 5.5c1.61 0 3.09.59 4.23 1.57L21 5.3C19.41 3.87 17.3 3 15 3c-3.92 0-7.24 2.51-8.48 6H3v2h3.06c-.04.33-.06.66-.06 1s.02.67.06 1H3v2h3.52c1.24 3.49 4.56 6 8.48 6 2.31 0 4.41-.87 6-2.3l-1.78-1.77C18.09 17.91 16.61 18.5 15 18.5z" /></svg>;
+const CreditCardIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z" /></svg>;
+const BizumIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+        <path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z" />
+        <path d="M11.5 14.5h-1v-1h-1c-.55 0-1-.45-1-1v-3c0-.55.45-1 1-1h2v-1h-3v-1.5h3v-1h1v1h1c.55 0 1 .45 1 1v3c0 .55-.45 1-1 1h-2v1h3v1.5h-3v1z" />
+    </svg>
+);
+const ValesIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2h-2v2h2V4zM9 18H4v-2h5v2zm0-4H4v-2h5v2zm0-4H4V8h5v2zm7 8h-5v-2h5v2zm0-4h-5v-2h5v2zm0-4h-5V8h5v2z" /></svg>;
 
 const FormCard: React.FC<{ title: string; children: React.ReactNode; className?: string }> = ({ title, children, className }) => (
     <div className={`bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-4 ${className}`}>
@@ -144,7 +149,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                     });
                     setEmpresaManuallyEdited(false);
                 }
-                
+
                 if (race.cobrado !== race.taximetro) {
                     setCobradoManuallySet(true);
                 }
@@ -387,7 +392,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
         }
         setCobradoManuallySet(true);
     };
-    
+
     const handleCobradoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setCobrado(e.target.value);
         setCobradoManuallySet(true);
@@ -452,7 +457,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
             setIsSubmitting(false);
         }
     };
-    
+
     const handleDelete = async () => {
         if (isEditing && raceId && window.confirm("¿Estás seguro de que quieres eliminar esta carrera?")) {
             setIsSubmitting(true);
@@ -503,7 +508,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
     return (
         <div className="bg-zinc-950 min-h-screen text-zinc-100 px-3 pt-3 pb-24 space-y-4">
             {topBar}
-            
+
             <FormCard title="Detalles de la Carrera">
                 <div className="grid grid-cols-2 gap-4">
                     <FormField label="Taxímetro">
@@ -513,7 +518,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                         >
                             {taximetro || <span className="text-zinc-500">0.00</span>}
                         </button>
-                            </FormField>
+                    </FormField>
                     <FormField label="Cobrado">
                         <button
                             onClick={handleCobradoClick}
@@ -521,35 +526,35 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                         >
                             {cobrado || <span className="text-zinc-500">0.00</span>}
                         </button>
-                         {cobrado && taximetro && cobradoValue !== taximetroValue && (
+                        {cobrado && taximetro && cobradoValue !== taximetroValue && (
                             <p className={`text-xs mt-1.5 ${propinaValue >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                                 {propinaValue >= 0 ? `Propina: ${propinaValue.toFixed(2)}€` : `Diferencia: ${propinaValue.toFixed(2)}€`}
                             </p>
                         )}
-                            </FormField>
+                    </FormField>
                     <FormField label="Forma de Pago" className="col-span-2">
-                         <div className="grid grid-cols-4 gap-2">
+                        <div className="grid grid-cols-4 gap-2">
                             <PaymentOption label="Efectivo" icon={<EuroIcon />} selected={formaPago === 'Efectivo'} onClick={() => handlePaymentSelection('Efectivo')} />
                             <PaymentOption label="Tarjeta" icon={<CreditCardIcon />} selected={formaPago === 'Tarjeta'} onClick={() => handlePaymentSelection('Tarjeta')} />
                             <PaymentOption label="Bizum" icon={<BizumIcon />} selected={formaPago === 'Bizum'} onClick={() => handlePaymentSelection('Bizum')} />
                             <PaymentOption label="Vales" icon={<ValesIcon />} selected={formaPago === 'Vales'} onClick={() => handlePaymentSelection('Vales')} />
-                                </div>
-                                {formaPago === 'Vales' && (
-                                    <div className="mt-3 space-y-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowValeModal(true)}
-                                            className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-3 py-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        >
-                                            {isValeFormComplete ? 'Editar datos del vale' : 'Registrar datos del vale'}
-                                        </button>
-                                        <p className={`text-xs ${isValeFormComplete ? 'text-emerald-400' : 'text-amber-300'}`}>
-                                            {isValeFormComplete ? 'Datos del vale registrados.' : 'Faltan datos del vale por completar.'}
-                                        </p>
-                                    </div>
-                                )}
-                            </FormField>
-                            
+                        </div>
+                        {formaPago === 'Vales' && (
+                            <div className="mt-3 space-y-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowValeModal(true)}
+                                    className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-3 py-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    {isValeFormComplete ? 'Editar datos del vale' : 'Registrar datos del vale'}
+                                </button>
+                                <p className={`text-xs ${isValeFormComplete ? 'text-emerald-400' : 'text-amber-300'}`}>
+                                    {isValeFormComplete ? 'Datos del vale registrados.' : 'Faltan datos del vale por completar.'}
+                                </p>
+                            </div>
+                        )}
+                    </FormField>
+
                     <FormField label="Tipo de Carrera" className="col-span-2">
                         <div className="flex gap-4">
                             <label className="flex items-center gap-2 cursor-pointer">
@@ -576,7 +581,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                             </label>
                         </div>
                     </FormField>
-                    
+
                     <div className="col-span-2 flex justify-around items-center pt-2">
                         <CheckboxField label="Emisora" checked={emisora} onChange={(e) => setEmisora(e.target.checked)} />
                         <CheckboxField label="Aeropuerto" checked={aeropuerto} onChange={(e) => setAeropuerto(e.target.checked)} />
@@ -747,7 +752,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                                 >
                                     9
                                 </button>
-                                
+
                                 {/* Fila 2 */}
                                 <button
                                     onClick={() => handleNumberKeyPress('4')}
@@ -767,7 +772,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                                 >
                                     6
                                 </button>
-                                
+
                                 {/* Fila 3 */}
                                 <button
                                     onClick={() => handleNumberKeyPress('1')}
@@ -787,7 +792,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                                 >
                                     3
                                 </button>
-                                
+
                                 {/* Fila 4 */}
                                 <button
                                     onClick={handleClear}
@@ -808,7 +813,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                                     ⌫
                                 </button>
                             </div>
-                            
+
                             {/* Fila de punto decimal y OK */}
                             <div className="grid grid-cols-2 gap-3">
                                 <button
@@ -863,7 +868,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                                 >
                                     9
                                 </button>
-                                
+
                                 {/* Fila 2 */}
                                 <button
                                     onClick={() => handleCobradoNumberKeyPress('4')}
@@ -883,7 +888,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                                 >
                                     6
                                 </button>
-                                
+
                                 {/* Fila 3 */}
                                 <button
                                     onClick={() => handleCobradoNumberKeyPress('1')}
@@ -903,7 +908,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                                 >
                                     3
                                 </button>
-                                
+
                                 {/* Fila 4 */}
                                 <button
                                     onClick={handleCobradoClear}
@@ -924,7 +929,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                                     ⌫
                                 </button>
                             </div>
-                            
+
                             {/* Fila de punto decimal y OK */}
                             <div className="grid grid-cols-2 gap-3">
                                 <button
