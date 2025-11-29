@@ -8,7 +8,7 @@ const __dirname = path.dirname(__filename);
 const publicDir = path.join(__dirname, '..', 'public');
 
 const cropAndResizeImage = async () => {
-    const sourcePath = path.join(publicDir, 'app-icon-source.png');
+    const sourcePath = path.join(publicDir, 'airplane-source.png');
     const outputPath = path.join(publicDir, 'airport-icon.png');
 
     if (!fs.existsSync(sourcePath)) {
