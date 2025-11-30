@@ -10,7 +10,7 @@ const FontSizeContext = createContext<FontSizeContextType | undefined>(undefined
 export const FontSizeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [fontSize, setFontSizeState] = useState<number>(() => {
         const saved = localStorage.getItem("tamanoFuente") ?? localStorage.getItem("tam\u00f1oFuente");
-        return saved ? parseFloat(saved) : 14;
+        return saved ? parseFloat(saved) : 12;
     });
 
     useEffect(() => {

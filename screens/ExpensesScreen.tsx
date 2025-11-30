@@ -2,6 +2,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Seccion, Proveedor, Concepto, Taller } from '../types';
 import ScreenTopBar from '../components/ScreenTopBar';
 import { addGasto, getProveedores, getConceptos, getTalleres, addProveedor, addConcepto, addTaller } from '../services/api';
+import { 
+    getTemplates, 
+    saveTemplate, 
+    deleteTemplate, 
+    markTemplateAsUsed, 
+    getMostUsedTemplates,
+    ExpenseTemplate 
+} from '../services/expenseTemplates';
 
 // Icons
 const AddIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg>;
@@ -141,6 +149,17 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    // Estados para plantillas
+    const [showTemplatesModal, setShowTemplatesModal] = useState(false);
+    const [templates, setTemplates] = useState<ExpenseTemplate[]>([]);
+    const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
+    const [templateName, setTemplateName] = useState('');
+
+    // Cargar plantillas
+    useEffect(() => {
+        setTemplates(getTemplates());
+    }, []);
+
     // Cargar listas iniciales
     useEffect(() => {
         const loadLists = async () => {
@@ -227,7 +246,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
 
         if (litrosValue > 0 && totalValue > 0) {
             const precio = totalValue / litrosValue;
-            setPrecioPorLitro(precio.toFixed(2));
+            setPrecioPorLitro(precio.toFixed(3));
         } else {
             setPrecioPorLitro('');
         }
@@ -360,39 +379,79 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
         setError(null);
 
         try {
+            // Validar y crear fecha correctamente
+            let fechaGasto: Date;
+            if (fecha && fecha.trim()) {
+                const fechaParsed = new Date(fecha);
+                // Verificar que la fecha sea válida
+                if (isNaN(fechaParsed.getTime())) {
+                    // Si la fecha es inválida, usar fecha actual
+                    fechaGasto = new Date();
+                } else {
+                    fechaGasto = fechaParsed;
+                }
+            } else {
+                fechaGasto = new Date();
+            }
+
             const gastoData: any = {
                 importe: importeValue,
-                fecha: fecha ? new Date(fecha) : new Date(),
-                formaPago: formaPago
+                fecha: fechaGasto,
+                formaPago: formaPago || 'Efectivo'
             };
 
             // Campos específicos de Actividad
             if (activeTab === 'actividad') {
-                if (proveedorName) gastoData.proveedor = proveedorName;
-                if (conceptoName) gastoData.concepto = conceptoName;
-                if (numeroFactura) gastoData.numeroFactura = numeroFactura;
-                if (baseImponible) gastoData.baseImponible = parseFloat(baseImponible);
-                if (ivaImporte) gastoData.ivaImporte = parseFloat(ivaImporte);
-                if (ivaPorcentaje) gastoData.ivaPorcentaje = parseFloat(ivaPorcentaje);
-                if (kilometros) gastoData.kilometros = parseFloat(kilometros);
+                if (proveedorName && proveedorName.trim()) gastoData.proveedor = proveedorName.trim();
+                if (conceptoName && conceptoName.trim()) gastoData.concepto = conceptoName.trim();
+                if (numeroFactura && numeroFactura.trim()) gastoData.numeroFactura = numeroFactura.trim();
+                
+                const baseImponibleValue = baseImponible ? parseFloat(baseImponible) : NaN;
+                if (!isNaN(baseImponibleValue) && baseImponibleValue > 0) {
+                    gastoData.baseImponible = baseImponibleValue;
+                }
+                
+                const ivaImporteValue = ivaImporte ? parseFloat(ivaImporte) : NaN;
+                if (!isNaN(ivaImporteValue) && ivaImporteValue >= 0) {
+                    gastoData.ivaImporte = ivaImporteValue;
+                }
+                
+                const ivaPorcentajeValue = ivaPorcentaje ? parseFloat(ivaPorcentaje) : NaN;
+                if (!isNaN(ivaPorcentajeValue) && ivaPorcentajeValue >= 0) {
+                    gastoData.ivaPorcentaje = ivaPorcentajeValue;
+                }
+                
+                const kilometrosValue = kilometros ? parseFloat(kilometros) : NaN;
+                if (!isNaN(kilometrosValue) && kilometrosValue > 0) {
+                    gastoData.kilometros = kilometrosValue;
+                }
             }
 
             // Campos específicos de Vehículo
             if (activeTab === 'vehiculo') {
-                if (tallerName) gastoData.taller = tallerName;
-                if (kilometrosVehiculo) gastoData.kilometrosVehiculo = parseFloat(kilometrosVehiculo);
-                if (descripcionTrabajos) gastoData.descripcionTrabajos = descripcionTrabajos;
+                if (tallerName && tallerName.trim()) gastoData.taller = tallerName.trim();
+                
+                const kilometrosVehiculoValue = kilometrosVehiculo ? parseFloat(kilometrosVehiculo) : NaN;
+                if (!isNaN(kilometrosVehiculoValue) && kilometrosVehiculoValue > 0) {
+                    gastoData.kilometrosVehiculo = kilometrosVehiculoValue;
+                }
+                
+                // Nota: descripcionTrabajos no está en la interfaz Gasto, se omite
+                // Si necesitas guardarlo, deberías agregarlo a la interfaz Gasto primero
 
-                // Servicios
+                // Servicios - limpiar valores undefined
                 const serviciosValidados = services
                     .filter(s => s.referencia || s.importe || s.cantidad || s.descripcion)
-                    .map(s => ({
-                        referencia: s.referencia,
-                        importe: s.importe ? Number(s.importe) : undefined,
-                        cantidad: s.cantidad ? Number(s.cantidad) : undefined,
-                        descuentoPorcentaje: s.descuentoPorcentaje ? Number(s.descuentoPorcentaje) : undefined,
-                        descripcion: s.descripcion
-                    }));
+                    .map(s => {
+                        const servicio: any = {};
+                        if (s.referencia) servicio.referencia = s.referencia;
+                        if (s.importe !== undefined && !isNaN(Number(s.importe))) servicio.importe = Number(s.importe);
+                        if (s.cantidad !== undefined && !isNaN(Number(s.cantidad))) servicio.cantidad = Number(s.cantidad);
+                        if (s.descuentoPorcentaje !== undefined && !isNaN(Number(s.descuentoPorcentaje))) servicio.descuentoPorcentaje = Number(s.descuentoPorcentaje);
+                        if (s.descripcion) servicio.descripcion = s.descripcion;
+                        return servicio;
+                    })
+                    .filter(s => Object.keys(s).length > 0); // Solo incluir si tiene al menos un campo
 
                 if (serviciosValidados.length > 0) {
                     gastoData.servicios = serviciosValidados;
@@ -400,8 +459,12 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
             }
 
             // Campos comunes
-            if (resumenDescuento) gastoData.descuento = parseFloat(resumenDescuento);
-            if (notas) gastoData.notas = notas;
+            const descuentoValue = resumenDescuento ? parseFloat(resumenDescuento) : NaN;
+            if (!isNaN(descuentoValue) && descuentoValue > 0) {
+                gastoData.descuento = descuentoValue;
+            }
+            
+            if (notas && notas.trim()) gastoData.notas = notas.trim();
 
             await addGasto(gastoData);
 
@@ -424,6 +487,61 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
         }
     };
 
+    // Aplicar plantilla al formulario
+    const applyTemplate = (template: ExpenseTemplate) => {
+        if (template.importe) setImporteTotal(template.importe.toString());
+        if (template.formaPago) setFormaPago(template.formaPago);
+        if (template.proveedor) setProveedorName(template.proveedor);
+        if (template.concepto) setConceptoName(template.concepto);
+        if (template.taller) setTallerName(template.taller);
+        if (template.numeroFactura) setNumeroFactura(template.numeroFactura);
+        if (template.baseImponible) setBaseImponible(template.baseImponible.toString());
+        if (template.ivaPorcentaje) setIvaPorcentaje(template.ivaPorcentaje.toString());
+        if (template.ivaImporte) setIvaImporte(template.ivaImporte.toString());
+        if (template.kilometros) setKilometros(template.kilometros.toString());
+        if (template.kilometrosVehiculo) setKilometrosVehiculo(template.kilometrosVehiculo.toString());
+        if (template.descuento) setResumenDescuento(template.descuento.toString());
+        if (template.servicios) setServices(template.servicios);
+        if (template.notas) setNotas(template.notas);
+        if (template.tipo) setActiveTab(template.tipo);
+        
+        markTemplateAsUsed(template.id);
+        setShowTemplatesModal(false);
+    };
+
+    // Guardar gasto actual como plantilla
+    const handleSaveAsTemplate = () => {
+        if (!templateName.trim()) {
+            alert('Por favor, ingresa un nombre para la plantilla');
+            return;
+        }
+
+        const templateData: Omit<ExpenseTemplate, 'id' | 'createdAt' | 'useCount'> = {
+            nombre: templateName.trim(),
+            importe: parseFloat(importeTotal) || undefined,
+            formaPago: formaPago || undefined,
+            proveedor: proveedorName || undefined,
+            concepto: conceptoName || undefined,
+            taller: tallerName || undefined,
+            numeroFactura: numeroFactura || undefined,
+            baseImponible: baseImponible ? parseFloat(baseImponible) : undefined,
+            ivaPorcentaje: ivaPorcentaje ? parseFloat(ivaPorcentaje) : undefined,
+            ivaImporte: ivaImporte ? parseFloat(ivaImporte) : undefined,
+            kilometros: kilometros ? parseFloat(kilometros) : undefined,
+            kilometrosVehiculo: kilometrosVehiculo ? parseFloat(kilometrosVehiculo) : undefined,
+            descuento: resumenDescuento ? parseFloat(resumenDescuento) : undefined,
+            servicios: services.length > 0 && services[0].importe ? services : undefined,
+            notas: notas || undefined,
+            tipo: activeTab,
+        };
+
+        saveTemplate(templateData);
+        setTemplates(getTemplates());
+        setShowSaveTemplateModal(false);
+        setTemplateName('');
+        alert('Plantilla guardada correctamente');
+    };
+
     return (
         <div className="bg-zinc-950 min-h-screen text-zinc-100 font-sans px-3 pt-3 pb-6">
             <ScreenTopBar title="Gastos" navigateTo={navigateTo} backTarget={Seccion.Home} className="mb-4" />
@@ -433,12 +551,9 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                     <div className="grid grid-cols-2 gap-4">
                         <FormField label="Fecha">
                             <TextInput
-                                type="text"
-                                placeholder="Seleccionar"
+                                type="date"
                                 value={fecha}
                                 className="border-blue-500"
-                                onFocus={(e) => e.target.type = 'date'}
-                                onBlur={(e) => e.target.type = 'text'}
                                 onChange={(e) => setFecha(e.target.value)}
                             />
                         </FormField>
@@ -463,6 +578,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                                 <option>Efectivo</option>
                                 <option>Tarjeta</option>
                                 <option>Bizum</option>
+                                <option>Domiciliado</option>
                             </SelectInput>
                         </FormField>
                     </div>
@@ -817,8 +933,31 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                     />
                 </FormCard>
 
-                <PrimaryButton onClick={handleSaveExpense} disabled={isSaving} className="w-full">
-                    {isSaving ? 'Guardando...' : 'Guardar Gasto'}
+                <div className="flex gap-2">
+                    <PrimaryButton 
+                        onClick={() => setShowTemplatesModal(true)} 
+                        className="flex-1 bg-green-600 hover:bg-green-700"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                        </svg>
+                        Gasto Rápido
+                    </PrimaryButton>
+                    <PrimaryButton onClick={handleSaveExpense} disabled={isSaving} className="flex-1">
+                        {isSaving ? 'Guardando...' : 'Guardar Gasto'}
+                    </PrimaryButton>
+                </div>
+
+                <PrimaryButton 
+                    onClick={() => setShowSaveTemplateModal(true)} 
+                    className="w-full bg-zinc-700 hover:bg-zinc-600"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                        <polyline points="17 21 17 13 7 13 7 21" />
+                        <polyline points="7 3 7 8 15 8" />
+                    </svg>
+                    Guardar como Plantilla
                 </PrimaryButton>
 
                 {error && (
@@ -915,6 +1054,108 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                                         setModalConceptoName('');
                                         setModalConceptoDescripcion('');
                                         setModalConceptoCategoria('');
+                                    }}
+                                    className="px-4 py-2 bg-zinc-800 text-zinc-300 rounded-lg hover:bg-zinc-700 transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Plantillas */}
+            {showTemplatesModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 max-w-md w-full max-h-[80vh] flex flex-col">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-zinc-100">Gastos Rápidos</h3>
+                            <button
+                                onClick={() => setShowTemplatesModal(false)}
+                                className="text-zinc-400 hover:text-zinc-100"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto">
+                            {templates.length === 0 ? (
+                                <div className="text-center py-8 text-zinc-400">
+                                    <p>No hay plantillas guardadas</p>
+                                    <p className="text-sm mt-2">Guarda un gasto como plantilla para usarlo después</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {templates.map((template) => (
+                                        <div
+                                            key={template.id}
+                                            className="w-full p-3 bg-zinc-800 hover:bg-zinc-700 rounded-lg border border-zinc-700 transition-colors"
+                                        >
+                                            <div className="flex justify-between items-start">
+                                                <button
+                                                    onClick={() => applyTemplate(template)}
+                                                    className="flex-1 text-left"
+                                                >
+                                                    <h4 className="font-semibold text-zinc-100">{template.nombre}</h4>
+                                                    <div className="mt-1 text-xs text-zinc-400 space-y-0.5">
+                                                        {template.importe && <p>Importe: {template.importe.toFixed(2)} €</p>}
+                                                        {template.proveedor && <p>Proveedor: {template.proveedor}</p>}
+                                                        {template.concepto && <p>Concepto: {template.concepto}</p>}
+                                                        {template.taller && <p>Taller: {template.taller}</p>}
+                                                    </div>
+                                                </button>
+                                                <div className="flex flex-col items-end gap-1 ml-2">
+                                                    <span className="text-xs text-zinc-500">
+                                                        {template.useCount || 0} usos
+                                                    </span>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (confirm('¿Eliminar esta plantilla?')) {
+                                                                deleteTemplate(template.id);
+                                                                setTemplates(getTemplates());
+                                                            }
+                                                        }}
+                                                        className="text-red-400 hover:text-red-300 text-xs px-2 py-1 rounded hover:bg-red-400/10 transition-colors"
+                                                    >
+                                                        Eliminar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Guardar Plantilla */}
+            {showSaveTemplateModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 max-w-md w-full">
+                        <h3 className="text-lg font-bold text-zinc-100 mb-4">Guardar como Plantilla</h3>
+                        <div className="space-y-4">
+                            <FormField label="Nombre de la plantilla *">
+                                <TextInput
+                                    type="text"
+                                    value={templateName}
+                                    onChange={(e) => setTemplateName(e.target.value)}
+                                    placeholder="Ej: Combustible, Mantenimiento..."
+                                    autoFocus
+                                />
+                            </FormField>
+                            <div className="flex gap-2">
+                                <PrimaryButton onClick={handleSaveAsTemplate} className="flex-1">
+                                    Guardar
+                                </PrimaryButton>
+                                <button
+                                    onClick={() => {
+                                        setShowSaveTemplateModal(false);
+                                        setTemplateName('');
                                     }}
                                     className="px-4 py-2 bg-zinc-800 text-zinc-300 rounded-lg hover:bg-zinc-700 transition-colors"
                                 >

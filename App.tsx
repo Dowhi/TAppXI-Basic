@@ -1,6 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useTheme } from './contexts/ThemeContext';
 import { Seccion } from './types';
+import { startReminderSoundCheck, stopReminderSoundCheck, requestNotificationPermission } from './services/reminderSound';
 import HomeScreen from './screens/HomeScreen';
 import IncomeScreen from './screens/IncomeScreen';
 import AddEditRaceScreen from './screens/AddEditRaceScreen';
@@ -21,6 +22,8 @@ import CalendarScreen from './screens/CalendarScreen';
 import BreakConfigurationScreen from './screens/BreakConfigurationScreen';
 import ReportsScreen from './screens/ReportsScreen';
 import AnalisisAvanzadoScreen from './screens/AnalisisAvanzadoScreen';
+import RemindersScreen from './screens/RemindersScreen';
+import TrainStationScreen from './screens/TrainStationScreen';
 import BottomNavBar from './components/BottomNavBar';
 
 
@@ -30,6 +33,20 @@ const App: React.FC = () => {
     const [editingRaceId, setEditingRaceId] = useState<string | null>(null);
     const [editingTurnoId, setEditingTurnoId] = useState<string | null>(null);
     const { isDark } = useTheme();
+
+    // Iniciar verificación de recordatorios con sonido
+    useEffect(() => {
+        // Solicitar permiso para notificaciones al iniciar
+        requestNotificationPermission();
+        
+        // Iniciar verificación de sonidos
+        startReminderSoundCheck();
+        
+        // Limpiar al desmontar
+        return () => {
+            stopReminderSoundCheck();
+        };
+    }, []);
 
     const navigateTo = useCallback((page: Seccion, id?: string) => {
         if (page === Seccion.IntroducirCarrera) {
@@ -90,6 +107,10 @@ const App: React.FC = () => {
                 return <ReportsScreen navigateTo={navigateTo} />;
             case Seccion.AnalisisAvanzado:
                 return <AnalisisAvanzadoScreen navigateTo={navigateTo} />;
+            case Seccion.Recordatorios:
+                return <RemindersScreen navigateTo={navigateTo} />;
+            case Seccion.EstacionTren:
+                return <TrainStationScreen navigateTo={navigateTo} />;
             default:
                 return <HomeScreen navigateTo={navigateTo} />;
         }

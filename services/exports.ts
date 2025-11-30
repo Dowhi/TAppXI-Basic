@@ -398,4 +398,180 @@ export const exportToPDFAdvanced = (
     doc.save(finalFilename);
 };
 
+/**
+ * Exporta datos a Excel con formato específico para Hacienda (declaración de impuestos)
+ * Formato optimizado para autónomos en España
+ */
+export const exportToHacienda = (
+    data: ExportData,
+    filters: ExportFilter,
+    filename?: string
+): void => {
+    const workbook = XLSX.utils.book_new();
+    const dateStr = new Date().toISOString().split('T')[0];
+    const year = filters.fechaDesde?.getFullYear() || new Date().getFullYear();
+
+    // ========== HOJA 1: RESUMEN FISCAL ==========
+    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
+                   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    
+    // Calcular ingresos y gastos por mes
+    const resumenMensual: Array<{
+        Mes: string;
+        'Ingresos (€)': number;
+        'Gastos Deducibles (€)': number;
+        'Base Imponible Gastos (€)': number;
+        'IVA Soportado (€)': number;
+        'Rendimiento Neto (€)': number;
+        'Nº Carreras': number;
+        'Nº Gastos': number;
+    }> = [];
+
+    for (let mes = 0; mes < 12; mes++) {
+        const fechaInicioMes = new Date(year, mes, 1);
+        const fechaFinMes = new Date(year, mes + 1, 0, 23, 59, 59);
+
+        // Filtrar carreras del mes
+        const carrerasMes = (data.carreras || []).filter(c => {
+            const fecha = c.fechaHora instanceof Date ? c.fechaHora : new Date(c.fechaHora);
+            return fecha >= fechaInicioMes && fecha <= fechaFinMes;
+        });
+
+        // Filtrar gastos del mes
+        const gastosMes = (data.gastos || []).filter(g => {
+            const fecha = g.fecha instanceof Date ? g.fecha : new Date(g.fecha);
+            return fecha >= fechaInicioMes && fecha <= fechaFinMes;
+        });
+
+        const ingresosMes = carrerasMes.reduce((sum, c) => sum + (c.cobrado || 0), 0);
+        const gastosMesTotal = gastosMes.reduce((sum, g) => sum + (g.importe || 0), 0);
+        const baseImponibleGastos = gastosMes.reduce((sum, g) => sum + (g.baseImponible || g.importe || 0), 0);
+        const ivaSoportado = gastosMes.reduce((sum, g) => sum + (g.ivaImporte || 0), 0);
+        const rendimientoNeto = ingresosMes - gastosMesTotal;
+
+        resumenMensual.push({
+            Mes: meses[mes],
+            'Ingresos (€)': ingresosMes,
+            'Gastos Deducibles (€)': gastosMesTotal,
+            'Base Imponible Gastos (€)': baseImponibleGastos,
+            'IVA Soportado (€)': ivaSoportado,
+            'Rendimiento Neto (€)': rendimientoNeto,
+            'Nº Carreras': carrerasMes.length,
+            'Nº Gastos': gastosMes.length,
+        });
+    }
+
+    // Totales anuales
+    const totalIngresos = resumenMensual.reduce((sum, r) => sum + r['Ingresos (€)'], 0);
+    const totalGastos = resumenMensual.reduce((sum, r) => sum + r['Gastos Deducibles (€)'], 0);
+    const totalBaseImponible = resumenMensual.reduce((sum, r) => sum + r['Base Imponible Gastos (€)'], 0);
+    const totalIVASoportado = resumenMensual.reduce((sum, r) => sum + r['IVA Soportado (€)'], 0);
+    const rendimientoNetoAnual = totalIngresos - totalGastos;
+
+    resumenMensual.push({
+        Mes: 'TOTAL ANUAL',
+        'Ingresos (€)': totalIngresos,
+        'Gastos Deducibles (€)': totalGastos,
+        'Base Imponible Gastos (€)': totalBaseImponible,
+        'IVA Soportado (€)': totalIVASoportado,
+        'Rendimiento Neto (€)': rendimientoNetoAnual,
+        'Nº Carreras': (data.carreras || []).length,
+        'Nº Gastos': (data.gastos || []).length,
+    });
+
+    const wsResumen = XLSX.utils.json_to_sheet(resumenMensual);
+    wsResumen['!cols'] = [
+        { wch: 15 }, { wch: 18 }, { wch: 20 }, { wch: 22 }, 
+        { wch: 18 }, { wch: 18 }, { wch: 12 }, { wch: 12 }
+    ];
+    XLSX.utils.book_append_sheet(workbook, wsResumen, 'Resumen Fiscal');
+
+    // ========== HOJA 2: INGRESOS DETALLADOS ==========
+    if (data.carreras && data.carreras.length > 0) {
+        const ingresosData = data.carreras.map(c => {
+            const fecha = c.fechaHora instanceof Date ? c.fechaHora : new Date(c.fechaHora);
+            return {
+                'Fecha': fecha.toLocaleDateString('es-ES'),
+                'Mes': meses[fecha.getMonth()],
+                'Hora': fecha.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+                'Ingreso (€)': c.cobrado || 0,
+                'Taxímetro (€)': c.taximetro || 0,
+                'Forma de Pago': c.formaPago || '',
+                'Tipo': c.tipoCarrera || 'Urbana',
+                'Emisora': c.emisora ? 'Sí' : 'No',
+                'Aeropuerto': c.aeropuerto ? 'Sí' : 'No',
+                'Estación': c.estacion ? 'Sí' : 'No',
+            };
+        });
+
+        const wsIngresos = XLSX.utils.json_to_sheet(ingresosData);
+        wsIngresos['!cols'] = [
+            { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 14 },
+            { wch: 14 }, { wch: 15 }, { wch: 12 }, { wch: 10 },
+            { wch: 10 }, { wch: 10 }
+        ];
+        XLSX.utils.book_append_sheet(workbook, wsIngresos, 'Ingresos Detallados');
+    }
+
+    // ========== HOJA 3: GASTOS DEDUCIBLES ==========
+    if (data.gastos && data.gastos.length > 0) {
+        const gastosData = data.gastos.map(g => {
+            const fecha = g.fecha instanceof Date ? g.fecha : new Date(g.fecha);
+            return {
+                'Fecha': fecha.toLocaleDateString('es-ES'),
+                'Mes': meses[fecha.getMonth()],
+                'Concepto': g.concepto || '',
+                'Proveedor': g.proveedor || '',
+                'NIF Proveedor': '', // Campo para completar manualmente si es necesario
+                'Nº Factura': g.numeroFactura || '',
+                'Base Imponible (€)': g.baseImponible || g.importe || 0,
+                'IVA %': g.ivaPorcentaje || 0,
+                'IVA (€)': g.ivaImporte || 0,
+                'Total (€)': g.importe || 0,
+                'Forma de Pago': g.formaPago || '',
+                'Kilómetros': g.kilometros || 0,
+                'Deducible': 'Sí', // Todos los gastos registrados se consideran deducibles
+            };
+        });
+
+        const wsGastos = XLSX.utils.json_to_sheet(gastosData);
+        wsGastos['!cols'] = [
+            { wch: 12 }, { wch: 12 }, { wch: 25 }, { wch: 25 },
+            { wch: 15 }, { wch: 15 }, { wch: 18 }, { wch: 8 },
+            { wch: 12 }, { wch: 14 }, { wch: 15 }, { wch: 12 },
+            { wch: 10 }
+        ];
+        XLSX.utils.book_append_sheet(workbook, wsGastos, 'Gastos Deducibles');
+    }
+
+    // ========== HOJA 4: INFORMACIÓN FISCAL ==========
+    const infoFiscal = [
+        { 'Concepto': 'Año Fiscal', 'Valor': year.toString() },
+        { 'Concepto': 'Fecha de Generación', 'Valor': new Date().toLocaleDateString('es-ES') },
+        { 'Concepto': 'Período Desde', 'Valor': filters.fechaDesde?.toLocaleDateString('es-ES') || 'N/A' },
+        { 'Concepto': 'Período Hasta', 'Valor': filters.fechaHasta?.toLocaleDateString('es-ES') || 'N/A' },
+        { 'Concepto': '', 'Valor': '' },
+        { 'Concepto': 'TOTAL INGRESOS ANUALES', 'Valor': `${totalIngresos.toFixed(2)} €` },
+        { 'Concepto': 'TOTAL GASTOS DEDUCIBLES', 'Valor': `${totalGastos.toFixed(2)} €` },
+        { 'Concepto': 'BASE IMPONIBLE GASTOS', 'Valor': `${totalBaseImponible.toFixed(2)} €` },
+        { 'Concepto': 'IVA SOPORTADO', 'Valor': `${totalIVASoportado.toFixed(2)} €` },
+        { 'Concepto': 'RENDIMIENTO NETO', 'Valor': `${rendimientoNetoAnual.toFixed(2)} €` },
+        { 'Concepto': '', 'Valor': '' },
+        { 'Concepto': 'NOTAS IMPORTANTES', 'Valor': '' },
+        { 'Concepto': '', 'Valor': '1. Los ingresos de taxistas NO están sujetos a IVA (Régimen Especial)' },
+        { 'Concepto': '', 'Valor': '2. El IVA soportado en gastos puede deducirse según normativa vigente' },
+        { 'Concepto': '', 'Valor': '3. Verificar que todos los gastos sean deducibles según tu actividad' },
+        { 'Concepto': '', 'Valor': '4. Completar NIF de proveedores si es necesario para la declaración' },
+        { 'Concepto': '', 'Valor': '5. Este documento es una ayuda, consulta con tu asesor fiscal' },
+    ];
+
+    const wsInfo = XLSX.utils.json_to_sheet(infoFiscal);
+    wsInfo['!cols'] = [{ wch: 30 }, { wch: 50 }];
+    XLSX.utils.book_append_sheet(workbook, wsInfo, 'Información Fiscal');
+
+    // Generar archivo
+    const finalFilename = filename || `TAppXI_Hacienda_${year}_${dateStr}.xlsx`;
+    XLSX.writeFile(workbook, finalFilename);
+};
+
 

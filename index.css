@@ -1,7 +1,7 @@
 /* Archivo de estilos mejorado: variables de tema, alto contraste y tamaño base de fuente */
 
 html {
-  font-size: var(--base-font-size, 14px);
+  font-size: var(--base-font-size, 12px);
 }
 
 body {

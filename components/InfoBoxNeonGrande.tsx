@@ -38,7 +38,7 @@ const InfoBox: React.FC<InfoBoxProps> = ({ icon, title, value, color = '#00CFFF'
                 </span>
             </div>
             <span
-                className="text-[28px] font-semibold tracking-tight"
+                className="text-3xl font-semibold tracking-tight"
                 style={{ color: palette.tone }}
             >
                 {value}

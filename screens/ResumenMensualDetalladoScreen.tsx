@@ -6,13 +6,13 @@ import { getCarrerasByMonth, getGastosByMonth, getTurnosByMonth } from '../servi
 // Icons
 const ArrowLeftIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-        <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+        <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
     </svg>
 );
 
 const ArrowRightIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-        <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+        <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
     </svg>
 );
 
@@ -73,11 +73,11 @@ const ResumenMensualDetalladoScreen: React.FC<ResumenMensualDetalladoScreenProps
         const sumaTarjeta = carreras
             .filter(c => c.formaPago === 'Tarjeta')
             .reduce((sum, c) => sum + (c.cobrado || 0), 0);
-        
+
         const sumaEmisora = carreras
             .filter(c => c.emisora)
             .reduce((sum, c) => sum + (c.cobrado || 0), 0);
-        
+
         const sumaVales = carreras
             .filter(c => c.formaPago === 'Vales')
             .reduce((sum, c) => sum + (c.cobrado || 0), 0);
@@ -164,7 +164,7 @@ const ResumenMensualDetalladoScreen: React.FC<ResumenMensualDetalladoScreenProps
     const changeMonth = (months: number) => {
         let newMonth = selectedMonth + months;
         let newYear = selectedYear;
-        
+
         if (newMonth < 0) {
             newMonth = 11;
             newYear--;
@@ -172,7 +172,7 @@ const ResumenMensualDetalladoScreen: React.FC<ResumenMensualDetalladoScreenProps
             newMonth = 0;
             newYear++;
         }
-        
+
         setSelectedMonth(newMonth);
         setSelectedYear(newYear);
     };
@@ -197,7 +197,7 @@ const ResumenMensualDetalladoScreen: React.FC<ResumenMensualDetalladoScreenProps
 
             {/* Navegación de Fecha */}
             <div className="bg-zinc-900 py-1 px-4 flex items-center justify-between border border-zinc-800 rounded-xl">
-                <button 
+                <button
                     onClick={() => changeMonth(-1)}
                     className="text-cyan-300 hover:bg-zinc-800 rounded p-1 transition-colors"
                 >
@@ -206,7 +206,7 @@ const ResumenMensualDetalladoScreen: React.FC<ResumenMensualDetalladoScreenProps
                 <span className="text-zinc-100 font-medium text-sm tracking-wide">
                     {meses[selectedMonth]} {selectedYear}
                 </span>
-                <button 
+                <button
                     onClick={() => changeMonth(1)}
                     className="text-cyan-300 hover:bg-zinc-800 rounded p-1 transition-colors"
                 >
@@ -233,27 +233,27 @@ const ResumenMensualDetalladoScreen: React.FC<ResumenMensualDetalladoScreenProps
                         <DataBox label="Días" value={formatNumber(metrics.dias)} />
                         <DataBox label="Carreras" value={formatNumber(metrics.carreras)} />
                         <DataBox label="Turnos" value={formatNumber(metrics.turno1)} />
-                        
+
                         {/* Fila 2 */}
                         <DataBox label="S. Tarjeta" value={formatCurrency(metrics.sumaTarjeta)} />
                         <DataBox label="S. Emisora" value={formatCurrency(metrics.sumaEmisora)} />
                         <DataBox label="S.Vales" value={formatCurrency(metrics.sumaVales)} />
-                        
+
                         {/* Fila 3 */}
                         <DataBox label="C. Tarjeta" value={metrics.countTarjeta > 0 ? formatNumber(metrics.countTarjeta) : ''} />
                         <DataBox label="C. Emisora" value={metrics.countEmisora > 0 ? formatNumber(metrics.countEmisora) : ''} />
                         <DataBox label="C.Vales" value={metrics.countVales > 0 ? formatNumber(metrics.countVales) : ''} />
-                        
+
                         {/* Fila 4 */}
                         <DataBox label="Propinas" value={formatCurrency(metrics.propinas)} />
                         <DataBox label="Aeropuertos" value={formatCurrency(metrics.aeropuerto)} />
                         <DataBox label="Horas" value={metrics.horas > 0 ? formatNumber(metrics.horas) : ''} />
-                        
+
                         {/* Fila 5 */}
                         <DataBox label="Kilometros" value={formatNumber(metrics.kilometros)} />
                         <DataBox label="Ing. Varios" value={formatCurrency(metrics.ingresosVarios)} />
                         <DataBox label="Combustible" value={metrics.combustible > 0 ? formatCurrency(metrics.combustible) : '0.0'} />
-                        
+
                         {/* Fila 6 - Totales */}
                         <DataBox label="NETO" value={formatCurrency(metrics.neto)} />
                         <DataBox label="GASTOS" value={formatCurrency(metrics.gastos)} />
@@ -269,7 +269,7 @@ const ResumenMensualDetalladoScreen: React.FC<ResumenMensualDetalladoScreenProps
 const DataBox: React.FC<{ label: string; value: string }> = ({ label, value }) => {
     return (
         <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-2 flex flex-col justify-center min-h-[56px]">
-            <div className="text-cyan-300 text-[10px] font-semibold uppercase tracking-wide mb-0.5">{label}</div>
+            <div className="text-cyan-300 text-xs font-semibold uppercase tracking-wide mb-0.5">{label}</div>
             <div className="text-zinc-100 text-sm font-semibold">{value || '—'}</div>
         </div>
     );

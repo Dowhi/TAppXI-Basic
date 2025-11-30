@@ -141,7 +141,6 @@ export const uploadBackupToGoogleDrive = async (): Promise<void> => {
             throw new Error("No se recibió confirmación de que el archivo se subió correctamente a Drive.");
         }
 
-        // Validar que el archivo se subió correctamente
         console.log(`Backup subido exitosamente a Drive. ID: ${result.id}, Nombre: ${result.name || fileName}`);
     } catch (error: any) {
         const errorMsg = error?.message || String(error);
@@ -255,48 +254,131 @@ const toRows = <T extends Record<string, any>>(items: T[], columns: string[]): (
     return [header, ...dataRows];
 };
 
+// Convierte un objeto único a filas (para ajustes, breakConfiguration)
+const objectToRows = (obj: any, prefix: string = ''): (string | number | null)[][] => {
+    if (!obj || typeof obj !== 'object') {
+        return [['Clave', 'Valor'], [prefix || 'root', JSON.stringify(obj)]];
+    }
+    
+    const rows: (string | number | null)[][] = [['Clave', 'Valor']];
+    
+    const flatten = (o: any, parentKey: string = '') => {
+        Object.keys(o).forEach((key) => {
+            const fullKey = parentKey ? `${parentKey}.${key}` : key;
+            const value = o[key];
+            
+            if (value === null || value === undefined) {
+                rows.push([fullKey, null]);
+            } else if (value instanceof Date) {
+                rows.push([fullKey, value.toISOString()]);
+            } else if (Array.isArray(value)) {
+                rows.push([fullKey, JSON.stringify(safeSerializeDate(value))]);
+            } else if (typeof value === 'object') {
+                flatten(value, fullKey);
+            } else {
+                rows.push([fullKey, value]);
+            }
+        });
+    };
+    
+    flatten(obj, prefix);
+    return rows;
+};
+
 export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; url: string }> => {
     try {
         const data = await buildBackupPayload();
         const dateStr = new Date().toISOString().split('T')[0];
-        const sheetTitles = ['Carreras', 'Gastos', 'Turnos'];
+        
+        // Crear todas las hojas necesarias
+        const sheetTitles = [
+            'Carreras', 
+            'Gastos', 
+            'Turnos',
+            'Proveedores',
+            'Conceptos',
+            'Talleres',
+            'Ajustes',
+            'BreakConfiguration',
+            'Excepciones'
+        ];
+        
         const { spreadsheetId } = await createSpreadsheetWithSheets(`TAppXI Export ${dateStr}`, sheetTitles);
 
         if (!spreadsheetId) {
             throw new Error("No se recibió el ID de la hoja de cálculo creada.");
         }
 
-        // Definir columnas representativas
+        // Definir columnas para cada tipo de dato
         const carrerasCols = ['id', 'taximetro', 'cobrado', 'formaPago', 'tipoCarrera', 'emisora', 'aeropuerto', 'estacion', 'fechaHora', 'turnoId', 'valeInfo', 'notas'];
         const gastosCols = ['id', 'importe', 'fecha', 'tipo', 'categoria', 'formaPago', 'proveedor', 'concepto', 'taller', 'numeroFactura', 'baseImponible', 'ivaImporte', 'ivaPorcentaje', 'kilometros', 'kilometrosVehiculo', 'descuento', 'servicios', 'notas'];
-        const turnosCols = ['id', 'fechaInicio', 'kilometrosInicio', 'fechaFin', 'kilometrosFin'];
+        const turnosCols = ['id', 'fechaInicio', 'kilometrosInicio', 'fechaFin', 'kilometrosFin', 'numero'];
+        const proveedoresCols = ['id', 'nombre', 'direccion', 'telefono', 'nif', 'createdAt'];
+        const conceptosCols = ['id', 'nombre', 'descripcion', 'categoria', 'createdAt'];
+        const talleresCols = ['id', 'nombre', 'direccion', 'telefono', 'createdAt'];
+        const excepcionesCols = ['id', 'fecha', 'descripcion', 'createdAt'];
 
+        // Convertir datos a filas
         const carrerasRows = toRows((data.carreras as any[]) || [], carrerasCols);
         const gastosRows = toRows((data.gastos as any[]) || [], gastosCols);
         const turnosRows = toRows((data.turnos as any[]) || [], turnosCols);
+        const proveedoresRows = toRows((data.proveedores as any[]) || [], proveedoresCols);
+        const conceptosRows = toRows((data.conceptos as any[]) || [], conceptosCols);
+        const talleresRows = toRows((data.talleres as any[]) || [], talleresCols);
+        const excepcionesRows = toRows((data.excepciones as any[]) || [], excepcionesCols);
+        
+        // Para objetos únicos (ajustes y breakConfiguration)
+        const ajustesRows = objectToRows(data.ajustes, 'ajustes');
+        const breakConfigRows = objectToRows(data.breakConfiguration, 'breakConfiguration');
 
+        // Escribir cada hoja
         console.log(`Escribiendo ${carrerasRows.length} filas en Carreras`);
         if (carrerasRows.length > 0) {
-            console.log("Iniciando escritura en hoja Carreras...");
             await writeSheetValues(spreadsheetId, 'Carreras', carrerasRows);
-            console.log("Escritura en hoja Carreras finalizada.");
         }
+        
         console.log(`Escribiendo ${gastosRows.length} filas en Gastos`);
         if (gastosRows.length > 0) {
-            console.log("Iniciando escritura en hoja Gastos...");
             await writeSheetValues(spreadsheetId, 'Gastos', gastosRows);
-            console.log("Escritura en hoja Gastos finalizada.");
         }
+        
         console.log(`Escribiendo ${turnosRows.length} filas en Turnos`);
         if (turnosRows.length > 0) {
-            console.log("Iniciando escritura en hoja Turnos...");
             await writeSheetValues(spreadsheetId, 'Turnos', turnosRows);
-            console.log("Escritura en hoja Turnos finalizada.");
+        }
+
+        console.log(`Escribiendo ${proveedoresRows.length} filas en Proveedores`);
+        if (proveedoresRows.length > 0) {
+            await writeSheetValues(spreadsheetId, 'Proveedores', proveedoresRows);
+        }
+
+        console.log(`Escribiendo ${conceptosRows.length} filas en Conceptos`);
+        if (conceptosRows.length > 0) {
+            await writeSheetValues(spreadsheetId, 'Conceptos', conceptosRows);
+        }
+
+        console.log(`Escribiendo ${talleresRows.length} filas en Talleres`);
+        if (talleresRows.length > 0) {
+            await writeSheetValues(spreadsheetId, 'Talleres', talleresRows);
+        }
+
+        console.log(`Escribiendo ${ajustesRows.length} filas en Ajustes`);
+        if (ajustesRows.length > 0) {
+            await writeSheetValues(spreadsheetId, 'Ajustes', ajustesRows);
+        }
+
+        console.log(`Escribiendo ${breakConfigRows.length} filas en BreakConfiguration`);
+        if (breakConfigRows.length > 0) {
+            await writeSheetValues(spreadsheetId, 'BreakConfiguration', breakConfigRows);
+        }
+
+        console.log(`Escribiendo ${excepcionesRows.length} filas en Excepciones`);
+        if (excepcionesRows.length > 0) {
+            await writeSheetValues(spreadsheetId, 'Excepciones', excepcionesRows);
         }
 
         const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
-
-        console.log(`Exportación a Google Sheets completada. ID: ${spreadsheetId}`);
+        console.log(`Exportación completa a Google Sheets. ID: ${spreadsheetId}`);
 
         return { spreadsheetId, url };
     } catch (error: any) {

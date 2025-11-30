@@ -6,7 +6,11 @@ import {
   getGastosForCurrentMonth,
   subscribeToActiveTurno,
   subscribeToCarreras,
+  getAjustes,
+  getCarrerasByDate,
+  getWorkingDays,
 } from '../services/api';
+import { getRemindersForToday, checkMaintenanceReminders } from '../services/reminders';
 
 // --- ICONOS MODERNOS, ESTILO COHERENTE (20px, stroke-based) ---
 
@@ -143,6 +147,24 @@ const SummaryIcon = () => (
   </svg>
 );
 
+const BellIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+  </svg>
+);
+
+const TrainIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="4" y="3" width="16" height="12" rx="2" />
+    <path d="M4 15h16" />
+    <circle cx="8" cy="19" r="2" />
+    <circle cx="16" cy="19" r="2" />
+    <path d="M8 19v-4" />
+    <path d="M16 19v-4" />
+  </svg>
+);
+
 // --- COMPONENTE PRINCIPAL (REPLICADO DE LA FOTO) ---
 
 interface HomeScreenProps {
@@ -156,6 +178,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
   const [ingresos, setIngresos] = useState(0);
   const [gastos, setGastos] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [objetivoDiario, setObjetivoDiario] = useState<number>(100);
+  const [ingresosHoy, setIngresosHoy] = useState<number>(0);
+  const [promedioDiasAnteriores, setPromedioDiasAnteriores] = useState<number>(0);
+  const [remindersToday, setRemindersToday] = useState<any[]>([]);
 
   useEffect(() => {
     const unsubscribe = subscribeToActiveTurno((turno) => setTurnoActivo(turno));
@@ -171,12 +197,40 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [ingresosData, gastosData] = await Promise.all([
+        const [ingresosData, gastosData, ajustes] = await Promise.all([
           getIngresosForCurrentMonth(),
           getGastosForCurrentMonth(),
+          getAjustes(),
         ]);
         setIngresos(ingresosData);
         setGastos(gastosData);
+        
+        // Cargar objetivo diario
+        const objetivo = ajustes?.objetivoDiario || parseFloat(localStorage.getItem('objetivoDiario') || '100');
+        setObjetivoDiario(objetivo);
+        
+        // Calcular ingresos de hoy
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        const carrerasHoy = await getCarrerasByDate(hoy);
+        const ingresosHoyValue = carrerasHoy.reduce((sum, c) => sum + (c.cobrado || 0), 0);
+        setIngresosHoy(ingresosHoyValue);
+        
+        // Calcular promedio de últimos 7 días trabajados (excluyendo hoy)
+        const fechaInicio = new Date(hoy);
+        fechaInicio.setDate(fechaInicio.getDate() - 14); // Buscar en últimos 14 días para tener al menos 7 días trabajados
+        const diasTrabajados = await getWorkingDays(fechaInicio, new Date(hoy.getTime() - 1)); // Hasta ayer
+        
+        if (diasTrabajados.length > 0) {
+          const ingresosPorDia = await Promise.all(
+            diasTrabajados.slice(-7).map(async (fecha) => {
+              const carreras = await getCarrerasByDate(fecha);
+              return carreras.reduce((sum, c) => sum + (c.cobrado || 0), 0);
+            })
+          );
+          const promedio = ingresosPorDia.reduce((sum, ing) => sum + ing, 0) / ingresosPorDia.length;
+          setPromedioDiasAnteriores(promedio);
+        }
       } catch (error) {
         console.error('Error fetching home screen ', error);
       } finally {
@@ -185,6 +239,26 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
     };
     fetchData();
   }, []);
+
+  // Cargar recordatorios cuando cambie el turno activo
+  useEffect(() => {
+    // Cargar recordatorios del día
+    const reminders = getRemindersForToday();
+    
+    // Verificar recordatorios de mantenimiento por kilómetros
+    if (turnoActivo && turnoActivo.kilometrosInicio) {
+      const maintenanceReminders = checkMaintenanceReminders(turnoActivo.kilometrosInicio);
+      // Evitar duplicados
+      const existingIds = new Set(reminders.map(r => r.id));
+      maintenanceReminders.forEach(r => {
+        if (!existingIds.has(r.id)) {
+          reminders.push(r);
+        }
+      });
+    }
+    
+    setRemindersToday(reminders);
+  }, [turnoActivo]);
 
   const carrerasDelTurno = useMemo(() => {
     if (!turnoActivo) return [];
@@ -206,6 +280,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
     { label: 'Calenda...', icon: <CalendarIcon />, action: () => navigateTo(Seccion.Calendario) },
     { label: 'Resumen', icon: <SummaryIcon />, action: () => navigateTo(Seccion.Resumen) },
     { label: 'Informes', icon: <AssignmentIcon />, action: () => navigateTo(Seccion.Informes) },
+    { label: 'Recordat...', icon: <BellIcon />, action: () => navigateTo(Seccion.Recordatorios) },
+    { label: 'Estación', icon: <TrainIcon />, action: () => navigateTo(Seccion.EstacionTren) },
     { label: 'Ajustes', icon: <SettingsIcon />, action: () => navigateTo(Seccion.AjustesGenerales) },
   ];
 
@@ -292,6 +368,45 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
             </button>
           </div>
 
+          {/* Alertas de Recordatorios */}
+          {remindersToday.length > 0 && (
+            <div
+              className="rounded-2xl p-4 shadow-xl border-2"
+              style={{
+                backgroundColor: isDark ? '#FEF3C7' : '#FEF3C7',
+                borderColor: '#F59E0B',
+              }}
+            >
+              <div className="flex items-start gap-3">
+                <div className="text-2xl">⚠️</div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-zinc-900 mb-1">
+                    {remindersToday.length} Recordatorio{remindersToday.length > 1 ? 's' : ''} Pendiente{remindersToday.length > 1 ? 's' : ''}
+                  </h3>
+                  <div className="space-y-1 mb-2">
+                    {remindersToday.slice(0, 3).map((reminder) => (
+                      <p key={reminder.id} className="text-sm text-zinc-800">
+                        • {reminder.titulo}
+                        {reminder.tipo === 'mantenimiento' && reminder.kilometrosLimite && (
+                          <span className="text-zinc-600"> ({reminder.kilometrosLimite} km)</span>
+                        )}
+                      </p>
+                    ))}
+                    {remindersToday.length > 3 && (
+                      <p className="text-sm text-zinc-600">y {remindersToday.length - 3} más...</p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => navigateTo(Seccion.Recordatorios)}
+                    className="text-sm font-semibold text-zinc-900 underline hover:no-underline"
+                  >
+                    Ver todos los recordatorios →
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Tarjetas principales (Ingresos, Gastos, Balance) */}
           <div className="flex gap-2 w-full">
             {[
@@ -339,6 +454,122 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
               </div>
             ))}
           </div>
+
+          {/* Tarjeta de Productividad - Progreso vs Objetivo */}
+          {(() => {
+            const porcentajeProgreso = objetivoDiario > 0 ? Math.min((ingresosHoy / objetivoDiario) * 100, 100) : 0;
+            const diferencia = ingresosHoy - objetivoDiario;
+            const porcentajeVsPromedio = promedioDiasAnteriores > 0 
+              ? ((ingresosHoy - promedioDiasAnteriores) / promedioDiasAnteriores) * 100 
+              : 0;
+            
+            // Determinar color según progreso
+            let statusColor: string;
+            let statusIcon: string;
+            let statusText: string;
+            
+            if (porcentajeProgreso >= 100) {
+              statusColor = isDark ? '#00FF94' : '#16A34A'; // Verde
+              statusIcon = '✅';
+              statusText = 'Objetivo alcanzado';
+            } else if (porcentajeProgreso >= 75) {
+              statusColor = isDark ? '#FBBF24' : '#F59E0B'; // Amarillo
+              statusIcon = '⚠️';
+              statusText = 'Buen progreso';
+            } else if (porcentajeProgreso >= 50) {
+              statusColor = isDark ? '#FB923C' : '#F97316'; // Naranja
+              statusIcon = '⚠️';
+              statusText = 'Progreso regular';
+            } else {
+              statusColor = isDark ? '#EF4444' : '#DC2626'; // Rojo
+              statusIcon = '❌';
+              statusText = 'Por debajo del objetivo';
+            }
+
+            return (
+              <div
+                className="rounded-2xl p-4 shadow-xl"
+                style={{
+                  backgroundColor: cardBg,
+                  borderColor: cardBorder,
+                  borderWidth: '1px',
+                  borderStyle: 'solid'
+                }}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">{statusIcon}</span>
+                    <h3 className={`text-base font-bold ${isDark ? 'text-zinc-100' : 'text-zinc-900'}`}>
+                      Progreso del Día
+                    </h3>
+                  </div>
+                  <span 
+                    className="text-sm font-semibold px-2 py-1 rounded-lg"
+                    style={{ 
+                      backgroundColor: statusColor + '20',
+                      color: statusColor 
+                    }}
+                  >
+                    {statusText}
+                  </span>
+                </div>
+
+                {/* Barra de progreso */}
+                <div className="mb-3">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className={`text-xs ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                      {formatCurrency(ingresosHoy)} / {formatCurrency(objetivoDiario)}
+                    </span>
+                    <span 
+                      className="text-sm font-bold"
+                      style={{ color: statusColor }}
+                    >
+                      {porcentajeProgreso.toFixed(0)}%
+                    </span>
+                  </div>
+                  <div 
+                    className="w-full h-3 rounded-full overflow-hidden"
+                    style={{ backgroundColor: isDark ? '#1A1A1F' : '#E5E7EB' }}
+                  >
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{
+                        width: `${porcentajeProgreso}%`,
+                        backgroundColor: statusColor,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Información adicional */}
+                <div className="space-y-1.5">
+                  {diferencia >= 0 ? (
+                    <p className={`text-sm ${isDark ? 'text-green-400' : 'text-green-600'}`}>
+                      ✅ Has superado el objetivo por {formatCurrency(Math.abs(diferencia))}
+                    </p>
+                  ) : (
+                    <p className={`text-sm ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
+                      ⚠️ Te faltan {formatCurrency(Math.abs(diferencia))} para el objetivo
+                    </p>
+                  )}
+                  
+                  {promedioDiasAnteriores > 0 && (
+                    <div className="flex items-center justify-between pt-1 border-t" style={{ borderColor: cardBorder }}>
+                      <span className={`text-xs ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                        Promedio últimos días:
+                      </span>
+                      <span className={`text-xs font-semibold ${porcentajeVsPromedio >= 0 ? (isDark ? 'text-green-400' : 'text-green-600') : (isDark ? 'text-red-400' : 'text-red-600')}`}>
+                        {formatCurrency(promedioDiasAnteriores)} 
+                        {porcentajeVsPromedio !== 0 && (
+                          <span> ({porcentajeVsPromedio >= 0 ? '+' : ''}{porcentajeVsPromedio.toFixed(1)}%)</span>
+                        )}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Estado del turno (como en la foto) */}
           {turnoActivo ? (

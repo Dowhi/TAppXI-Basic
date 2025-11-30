@@ -1,7 +1,8 @@
 ﻿import React, { useState, useEffect, useMemo } from 'react';
-import { Seccion } from '../types';
+import { Seccion, CarreraVista } from '../types';
 import ScreenTopBar from '../components/ScreenTopBar';
-import { getCarrerasByDate, getGastosByDate, isRestDay } from '../services/api';
+import { getCarrerasByDate, getGastosByDate, isRestDay, getCarreras } from '../services/api';
+import { analyzeZoneTimeStats, getTopHours, getTopZones, ZoneTimeAnalysis } from '../services/zoneTimeAnalysis';
 
 interface StatisticsScreenProps {
     navigateTo: (page: Seccion) => void;
@@ -19,6 +20,9 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
     const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | '3months'>('month');
     const [loading, setLoading] = useState(true);
     const [dayData, setDayData] = useState<DayData[]>([]);
+    const [showZoneTimeAnalysis, setShowZoneTimeAnalysis] = useState(false);
+    const [zoneTimeAnalysis, setZoneTimeAnalysis] = useState<ZoneTimeAnalysis | null>(null);
+    const [loadingZoneTime, setLoadingZoneTime] = useState(false);
 
     // Calcular fechas según el período seleccionado
     const dateRange = useMemo(() => {
@@ -111,6 +115,26 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
         
         loadData();
     }, [dateRange]);
+
+    // Cargar análisis de zonas y horarios
+    useEffect(() => {
+        const loadZoneTimeAnalysis = async () => {
+            if (!showZoneTimeAnalysis) return;
+            
+            setLoadingZoneTime(true);
+            try {
+                const allCarreras = await getCarreras();
+                const analysis = analyzeZoneTimeStats(allCarreras, dateRange.start, dateRange.end);
+                setZoneTimeAnalysis(analysis);
+            } catch (error) {
+                console.error('Error cargando análisis de zonas y horarios:', error);
+            } finally {
+                setLoadingZoneTime(false);
+            }
+        };
+
+        loadZoneTimeAnalysis();
+    }, [showZoneTimeAnalysis, dateRange]);
 
     // Calcular estadísticas (solo días trabajados)
     const stats = useMemo(() => {
@@ -568,6 +592,183 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                                     </div>
                                 </div>
                             </div>
+                        </div>
+
+                        {/* Análisis de Zonas y Horarios */}
+                        <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="text-cyan-400 text-lg font-bold">Análisis de Zonas y Horarios</h2>
+                                <button
+                                    onClick={() => setShowZoneTimeAnalysis(!showZoneTimeAnalysis)}
+                                    className="text-cyan-400 hover:text-cyan-300 text-sm font-semibold"
+                                >
+                                    {showZoneTimeAnalysis ? 'Ocultar' : 'Mostrar'}
+                                </button>
+                            </div>
+
+                            {showZoneTimeAnalysis && (
+                                <>
+                                    {loadingZoneTime ? (
+                                        <div className="text-center py-8 text-zinc-400">Cargando análisis...</div>
+                                    ) : zoneTimeAnalysis ? (
+                                        <div className="space-y-6">
+                                            {/* Top Horas */}
+                                            <div>
+                                                <h3 className="text-cyan-300 text-base font-bold mb-3">⏰ Mejores Horas del Día</h3>
+                                                <div className="space-y-2">
+                                                    {getTopHours(zoneTimeAnalysis, 5).map((hour, index) => (
+                                                        <div key={hour.hour} className="bg-zinc-800 rounded-lg p-3">
+                                                            <div className="flex justify-between items-center mb-1">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-cyan-400 font-bold text-lg">
+                                                                        {String(hour.hour).padStart(2, '0')}:00
+                                                                    </span>
+                                                                    <span className="text-zinc-500 text-xs">
+                                                                        {hour.numCarreras} {hour.numCarreras === 1 ? 'carrera' : 'carreras'}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <div className="text-white font-bold">
+                                                                        {hour.totalIngresos.toFixed(2)}€
+                                                                    </div>
+                                                                    <div className="text-zinc-400 text-xs">
+                                                                        {hour.promedioPorCarrera.toFixed(2)}€/carrera
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="w-full bg-zinc-700 rounded-full h-2 mt-2">
+                                                                <div
+                                                                    className="bg-cyan-500 h-2 rounded-full transition-all"
+                                                                    style={{ width: `${hour.porcentajeDelTotal}%` }}
+                                                                ></div>
+                                                            </div>
+                                                            <div className="text-zinc-500 text-xs mt-1">
+                                                                {hour.porcentajeDelTotal.toFixed(1)}% del total
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Top Días de la Semana */}
+                                            <div>
+                                                <h3 className="text-cyan-300 text-base font-bold mb-3">📅 Rendimiento por Día de la Semana</h3>
+                                                <div className="space-y-2">
+                                                    {zoneTimeAnalysis.mejoresDias
+                                                        .filter(d => d.numCarreras > 0)
+                                                        .sort((a, b) => b.totalIngresos - a.totalIngresos)
+                                                        .map((day) => (
+                                                            <div key={day.dayNumber} className="bg-zinc-800 rounded-lg p-3">
+                                                                <div className="flex justify-between items-center mb-1">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-cyan-400 font-bold">
+                                                                            {day.day}
+                                                                        </span>
+                                                                        <span className="text-zinc-500 text-xs">
+                                                                            {day.numCarreras} {day.numCarreras === 1 ? 'carrera' : 'carreras'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="text-right">
+                                                                        <div className="text-white font-bold">
+                                                                            {day.totalIngresos.toFixed(2)}€
+                                                                        </div>
+                                                                        <div className="text-zinc-400 text-xs">
+                                                                            {day.promedioPorCarrera.toFixed(2)}€/carrera
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="w-full bg-zinc-700 rounded-full h-2 mt-2">
+                                                                    <div
+                                                                        className="bg-green-500 h-2 rounded-full transition-all"
+                                                                        style={{ width: `${day.porcentajeDelTotal}%` }}
+                                                                    ></div>
+                                                                </div>
+                                                                <div className="text-zinc-500 text-xs mt-1">
+                                                                    {day.porcentajeDelTotal.toFixed(1)}% del total
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Estadísticas de Zonas */}
+                                            <div>
+                                                <h3 className="text-cyan-300 text-base font-bold mb-3">📍 Rendimiento por Zona</h3>
+                                                <div className="space-y-2">
+                                                    {getTopZones(zoneTimeAnalysis, 10).map((zone) => (
+                                                        <div key={zone.zona} className="bg-zinc-800 rounded-lg p-3">
+                                                            <div className="flex justify-between items-center mb-1">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-cyan-400 font-bold">
+                                                                        {zone.zona}
+                                                                    </span>
+                                                                    <span className="text-zinc-500 text-xs">
+                                                                        {zone.numCarreras} ({zone.porcentajeCarreras.toFixed(1)}%)
+                                                                    </span>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <div className="text-white font-bold">
+                                                                        {zone.totalIngresos.toFixed(2)}€
+                                                                    </div>
+                                                                    <div className="text-zinc-400 text-xs">
+                                                                        {zone.promedioPorCarrera.toFixed(2)}€/carrera
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="w-full bg-zinc-700 rounded-full h-2 mt-2">
+                                                                <div
+                                                                    className="bg-yellow-500 h-2 rounded-full transition-all"
+                                                                    style={{ width: `${zone.porcentajeDelTotal}%` }}
+                                                                ></div>
+                                                            </div>
+                                                            <div className="text-zinc-500 text-xs mt-1">
+                                                                {zone.porcentajeDelTotal.toFixed(1)}% del total de ingresos
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Resumen del Análisis */}
+                                            <div className="bg-zinc-800 rounded-lg p-4 border border-cyan-500/30">
+                                                <h3 className="text-cyan-300 text-base font-bold mb-3">📊 Resumen del Análisis</h3>
+                                                <div className="grid grid-cols-2 gap-3 text-sm">
+                                                    <div>
+                                                        <div className="text-zinc-400">Total Ingresos</div>
+                                                        <div className="text-white font-bold">
+                                                            {zoneTimeAnalysis.totalIngresos.toFixed(2)}€
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-zinc-400">Total Carreras</div>
+                                                        <div className="text-white font-bold">
+                                                            {zoneTimeAnalysis.totalCarreras}
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-zinc-400">Promedio por Carrera</div>
+                                                        <div className="text-white font-bold">
+                                                            {zoneTimeAnalysis.totalCarreras > 0
+                                                                ? (zoneTimeAnalysis.totalIngresos / zoneTimeAnalysis.totalCarreras).toFixed(2)
+                                                                : '0.00'}€
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-zinc-400">Período</div>
+                                                        <div className="text-white font-bold text-xs">
+                                                            {zoneTimeAnalysis.periodo.desde.toLocaleDateString('es-ES')} - {zoneTimeAnalysis.periodo.hasta.toLocaleDateString('es-ES')}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-8 text-zinc-400">
+                                            No hay datos suficientes para el análisis
+                                        </div>
+                                    )}
+                                </>
+                            )}
                         </div>
                     </>
                 )}

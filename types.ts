@@ -24,6 +24,7 @@ export enum Seccion {
     Historico = "Hist�rico",
     ConfiguracionDescansos = "Configuración Descansos",
     AnalisisAvanzado = "Análisis Avanzado",
+    EstacionTren = "Estación Tren",
 }
 
 

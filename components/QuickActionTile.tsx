@@ -25,7 +25,7 @@ const QuickActionTile: React.FC<QuickActionTileProps> = ({ icon, label, onClick 
                 >
                     <span className="w-6 h-6 flex items-center justify-center">{icon}</span>
                 </span>
-                <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9FB5D8] text-center">
+                <span className="text-sm font-semibold uppercase tracking-[0.16em] text-[#9FB5D8] text-center">
                     {label}
                 </span>
             </div>

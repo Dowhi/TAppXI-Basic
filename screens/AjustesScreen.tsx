@@ -7,7 +7,7 @@ import { saveAjustes, getAjustes } from "../services/api";
 import { downloadBackupJson, uploadBackupToGoogleDrive, exportToGoogleSheets, restoreBackup, restoreFromGoogleSheets } from "../services/backup";
 import { listFiles, getFileContent } from "../services/google";
 import { archiveOperationalDataOlderThan, getRelativeCutoffDate } from "../services/maintenance";
-import { exportToExcel, exportToCSV, exportToPDFAdvanced, ExportFilter } from "../services/exports";
+import { exportToExcel, exportToCSV, exportToPDFAdvanced, exportToHacienda, ExportFilter } from "../services/exports";
 import { getCarreras, getGastos, getRecentTurnos } from "../services/api";
 import { saveCustomReport, getCustomReports, deleteCustomReport, markReportAsUsed, CustomReport } from "../services/customReports";
 
@@ -43,6 +43,11 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
     const [exportFechaHasta, setExportFechaHasta] = useState<string>('');
     const [exportTipo, setExportTipo] = useState<'excel' | 'pdf' | 'csv'>('excel');
     const [exporting, setExporting] = useState<boolean>(false);
+    
+    // Exportación para Hacienda
+    const [haciendaFechaDesde, setHaciendaFechaDesde] = useState<string>('');
+    const [haciendaFechaHasta, setHaciendaFechaHasta] = useState<string>('');
+    const [exportingHacienda, setExportingHacienda] = useState<boolean>(false);
 
     // Reportes personalizados
     const [customReports, setCustomReports] = useState<CustomReport[]>([]);
@@ -217,7 +222,7 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
     };
 
     const handleBackupGoogleDrive = async () => {
-        if (uploadingToDrive) return; // Evitar múltiples clics
+        if (uploadingToDrive) return;
 
         setUploadingToDrive(true);
         try {
@@ -248,8 +253,6 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                     errorMessage += `   ${window.location.origin}\n`;
                     errorMessage += "4. Guarda y espera 5-15 minutos\n\n";
                     errorMessage += "📖 Consulta SOLUCION_BACKUP_GOOGLE.md para más ayuda.";
-                } else if (msg.includes('No es un origin válido')) {
-                    errorMessage += msg;
                 } else if (msg.includes('popup_closed_by_user')) {
                     errorMessage += "❌ Inicio de sesión cancelado.\n\n";
                     errorMessage += "Por favor, completa el proceso de autorización cuando se abra la ventana de Google.";
@@ -286,7 +289,7 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
     };
 
     const handleExportGoogleSheets = async () => {
-        if (exportingToSheets) return; // Evitar múltiples clics
+        if (exportingToSheets) return;
 
         setExportingToSheets(true);
         try {
@@ -324,8 +327,6 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                     errorMessage += `   ${window.location.origin}\n`;
                     errorMessage += "4. Guarda y espera 5-15 minutos\n\n";
                     errorMessage += "📖 Consulta SOLUCION_BACKUP_GOOGLE.md para más ayuda.";
-                } else if (msg.includes('No es un origin válido')) {
-                    errorMessage += msg;
                 } else if (msg.includes('popup_closed_by_user')) {
                     errorMessage += "❌ Inicio de sesión cancelado.\n\n";
                     errorMessage += "Por favor, completa el proceso de autorización cuando se abra la ventana de Google.";
@@ -348,7 +349,6 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
         } finally {
             setExportingToSheets(false);
         }
-
     };
 
     const handleListBackups = async () => {
@@ -356,10 +356,9 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
         setShowRestoreModal(true);
         setBackupsList([]);
         try {
-            // Query más amplia para asegurar que encontramos todo lo que tenga "tappxi" o "TAppXI"
             const query = "(name contains 'tappxi' or name contains 'TAppXI') and trashed = false";
             console.log("Buscando backups con query:", query);
-
+            
             const files = await listFiles(query);
             console.log("Archivos encontrados (raw):", files);
 
@@ -372,9 +371,7 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
             setBackupsList(validFiles);
         } catch (e) {
             console.error("Error listando backups:", e);
-            console.error("Error listando backups:", e);
             showAlert("Error al buscar copias de seguridad en Google Drive. Revisa la consola.");
-            setShowRestoreModal(false);
             setShowRestoreModal(false);
         } finally {
             setLoadingBackups(false);
@@ -403,7 +400,6 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                         stats = await restoreBackup(content, onProgress);
                     }
 
-                    // Pequeña pausa para ver el 100%
                     setRestoreProgress(100);
                     setRestoreMessage("¡Restauración completada!");
                     await new Promise(resolve => setTimeout(resolve, 500));
@@ -417,10 +413,6 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                         `La aplicación se recargará para aplicar los cambios.`
                     );
 
-                    // Esperar a que el usuario cierre el alert para recargar
-                    // Como showAlert no es bloqueante, necesitamos un efecto o un callback en el modal de alert
-                    // Para simplificar, recargaremos cuando se cierre el modal de alert.
-                    // Modificaremos closeAlert para manejar esto si es necesario, o simplemente recargamos después de un timeout
                     setTimeout(() => window.location.reload(), 3000);
 
                 } catch (e: any) {
@@ -510,6 +502,62 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
             showAlert("Error al exportar los datos. Por favor, intenta de nuevo.");
         } finally {
             setExporting(false);
+        }
+    };
+
+    const handleExportHacienda = async () => {
+        if (!haciendaFechaDesde || !haciendaFechaHasta) {
+            showAlert("Por favor, selecciona ambas fechas para la exportación fiscal.");
+            return;
+        }
+
+        setExportingHacienda(true);
+        try {
+            const fechaDesde = new Date(haciendaFechaDesde);
+            fechaDesde.setHours(0, 0, 0, 0);
+            const fechaHasta = new Date(haciendaFechaHasta);
+            fechaHasta.setHours(23, 59, 59, 999);
+
+            const [carreras, gastos, turnos] = await Promise.all([
+                getCarreras(),
+                getGastos(),
+                getRecentTurnos(1000),
+            ]);
+
+            // Filtrar por fechas
+            const carrerasFiltradas = carreras.filter(c => {
+                const fecha = c.fechaHora instanceof Date ? c.fechaHora : new Date(c.fechaHora);
+                return fecha >= fechaDesde && fecha <= fechaHasta;
+            });
+
+            const gastosFiltrados = gastos.filter(g => {
+                const fecha = g.fecha instanceof Date ? g.fecha : new Date(g.fecha);
+                return fecha >= fechaDesde && fecha <= fechaHasta;
+            });
+
+            const turnosFiltrados = turnos.filter(t => {
+                const fecha = t.fechaInicio instanceof Date ? t.fechaInicio : new Date(t.fechaInicio);
+                return fecha >= fechaDesde && fecha <= fechaHasta;
+            });
+
+            const filtros: ExportFilter = {
+                fechaDesde,
+                fechaHasta,
+            };
+
+            const data = {
+                carreras: carrerasFiltradas,
+                gastos: gastosFiltrados,
+                turnos: turnosFiltrados,
+            };
+
+            exportToHacienda(data, filtros);
+            showAlert("✅ Exportación para Hacienda completada exitosamente.\n\nEl archivo Excel contiene:\n- Resumen fiscal mensual\n- Ingresos detallados\n- Gastos deducibles\n- Información fiscal");
+        } catch (err) {
+            console.error("Error en exportación para Hacienda:", err);
+            showAlert("Error al exportar los datos fiscales. Por favor, intenta de nuevo.");
+        } finally {
+            setExportingHacienda(false);
         }
     };
 
@@ -877,8 +925,7 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
             </div>
 
             {/* Modal de Selección de Backup */}
-            {
-                showRestoreModal && (
+            {showRestoreModal && (
                     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
                         <div className="bg-zinc-800 rounded-xl w-full max-w-md max-h-[80vh] flex flex-col border border-zinc-700 shadow-2xl">
                             <div className="p-4 border-b border-zinc-700 flex justify-between items-center">
@@ -941,6 +988,40 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                     </div>
                 )
             }
+
+            {/* Modal de Carga para Google Drive */}
+            {uploadingToDrive && (
+                <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4">
+                    <div className="bg-zinc-800 rounded-xl w-full max-w-sm p-6 border border-zinc-700 shadow-2xl flex flex-col items-center text-center">
+                        <div className="w-16 h-16 mb-4 relative flex items-center justify-center">
+                            <svg className="animate-spin w-full h-full text-blue-500 absolute" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-2">Subiendo a Google Drive</h3>
+                        <p className="text-zinc-400 text-sm mb-4">Preparando y subiendo tu copia de seguridad...</p>
+                        <p className="text-xs text-zinc-500 mt-2">Por favor, no cierres la aplicación.</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Carga para Google Sheets */}
+            {exportingToSheets && (
+                <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4">
+                    <div className="bg-zinc-800 rounded-xl w-full max-w-sm p-6 border border-zinc-700 shadow-2xl flex flex-col items-center text-center">
+                        <div className="w-16 h-16 mb-4 relative flex items-center justify-center">
+                            <svg className="animate-spin w-full h-full text-green-500 absolute" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-2">Exportando a Google Sheets</h3>
+                        <p className="text-zinc-400 text-sm mb-4">Creando hojas y exportando tus datos...</p>
+                        <p className="text-xs text-zinc-500 mt-2">Por favor, no cierres la aplicación.</p>
+                    </div>
+                </div>
+            )}
 
             {/* Modal de Progreso de Restauración */}
             {restoring && (
@@ -1077,6 +1158,60 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                             </>
                         )}
                     </button>
+                </div>
+            </div>
+
+            {/* Exportación para Hacienda */}
+            <div className="bg-zinc-800 rounded-lg p-2.5 border border-zinc-700">
+                <h3 className="text-zinc-100 font-bold text-base mb-2">📋 Exportación para Hacienda</h3>
+                <p className="text-zinc-400 text-xs mb-3">
+                    Genera un Excel con formato específico para la declaración de impuestos. Incluye resumen mensual, ingresos y gastos deducibles.
+                </p>
+                <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                        <div>
+                            <label className="block text-zinc-400 text-xs mb-1">Año Fiscal Desde</label>
+                            <input
+                                type="date"
+                                value={haciendaFechaDesde}
+                                onChange={(e) => setHaciendaFechaDesde(e.target.value)}
+                                className="w-full bg-zinc-700 text-zinc-100 border border-zinc-600 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                                placeholder="01/01/2024"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-zinc-400 text-xs mb-1">Año Fiscal Hasta</label>
+                            <input
+                                type="date"
+                                value={haciendaFechaHasta}
+                                onChange={(e) => setHaciendaFechaHasta(e.target.value)}
+                                className="w-full bg-zinc-700 text-zinc-100 border border-zinc-600 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                                placeholder="31/12/2024"
+                            />
+                        </div>
+                    </div>
+                    <button
+                        onClick={handleExportHacienda}
+                        disabled={exportingHacienda || !haciendaFechaDesde || !haciendaFechaHasta}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                        {exportingHacienda ? (
+                            <>
+                                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Generando...
+                            </>
+                        ) : (
+                            <>💰 Exportar para Hacienda</>
+                        )}
+                    </button>
+                    <div className="text-zinc-500 text-xs space-y-1">
+                        <p>• El archivo incluye 4 hojas: Resumen Fiscal, Ingresos, Gastos e Información</p>
+                        <p>• Formato optimizado para autónomos en España</p>
+                        <p>• Los ingresos de taxistas NO están sujetos a IVA</p>
+                    </div>
                 </div>
             </div>
 
