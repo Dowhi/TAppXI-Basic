@@ -6,19 +6,19 @@ import { getTurnosByDate, getCarrerasByDate, getGastosByDate } from '../services
 // Icons
 const CalendarIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-        <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+        <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" />
     </svg>
 );
 
 const ArrowLeftIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-        <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+        <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
     </svg>
 );
 
 const ArrowRightIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-        <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+        <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
     </svg>
 );
 
@@ -84,10 +84,10 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
                 const carreraDate = new Date(c.fechaHora);
                 const turnoStart = new Date(turno.fechaInicio);
                 const turnoEnd = turno.fechaFin ? new Date(turno.fechaFin) : new Date();
-                
+
                 return carreraDate >= turnoStart && carreraDate <= turnoEnd;
             });
-            
+
             const total = carrerasDelTurno.reduce((sum, c) => sum + (c.cobrado || 0), 0);
             const cTarjeta = carrerasDelTurno.filter(c => c.formaPago === 'Tarjeta').length;
             const cEmisora = carrerasDelTurno.filter(c => c.emisora === true).length;
@@ -112,7 +112,15 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
                 sumaEmisora,
                 cVales,
                 sumaVales,
-                turnoIndex: index + 1
+                turnoIndex: index + 1,
+                kmTotal: (turno.kilometrosFin && turno.kilometrosInicio) ? turno.kilometrosFin - turno.kilometrosInicio : 0,
+                horasTotal: (() => {
+                    if (!turno.fechaFin) return 'En curso';
+                    const diff = new Date(turno.fechaFin).getTime() - new Date(turno.fechaInicio).getTime();
+                    const hours = Math.floor(diff / (1000 * 60 * 60));
+                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    return `${hours}h ${minutes}m`;
+                })()
             };
         });
     }, [turnos, carreras]);
@@ -270,6 +278,10 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
                                     <span>Km final:</span>
                                     <span className="font-semibold">{turno.kilometrosFin || 0}</span>
                                 </div>
+                                <div className="flex justify-between text-emerald-300">
+                                    <span>Km Total:</span>
+                                    <span className="font-semibold">{turno.kmTotal} km</span>
+                                </div>
                                 <div className="flex justify-between">
                                     <span>Hora Inicio:</span>
                                     <span className="font-semibold">{formatTime(turno.fechaInicio)}</span>
@@ -277,6 +289,10 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
                                 <div className="flex justify-between">
                                     <span>Hora Fin:</span>
                                     <span className="font-semibold">{formatTime(turno.fechaFin)}</span>
+                                </div>
+                                <div className="flex justify-between text-emerald-300">
+                                    <span>Horas Total:</span>
+                                    <span className="font-semibold">{turno.horasTotal}</span>
                                 </div>
                             </div>
 
