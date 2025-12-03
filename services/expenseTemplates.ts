@@ -127,3 +127,6 @@ export const getRecentTemplates = (limit: number = 5): ExpenseTemplate[] => {
         .slice(0, limit);
 };
 
+
+
+

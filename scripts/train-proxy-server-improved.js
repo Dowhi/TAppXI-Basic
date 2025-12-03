@@ -25,28 +25,29 @@ async function fetchAdifData(stationCode) {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
                 'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
-                'Accept-Encoding': 'gzip, deflate, br',
+                'Accept-Encoding': 'identity', // No comprimir para simplificar
                 'Connection': 'keep-alive',
             }
         };
         
-        https.get(url, options, (res) => {
+        https.get(url, options, async (res) => {
             let data = '';
             
-            // Manejar compresión
+            // Manejar compresión - simplificado
             let stream = res;
-            if (res.headers['content-encoding'] === 'gzip') {
-                const zlib = await import('zlib');
-                stream = res.pipe(zlib.createGunzip());
-            }
             
             stream.on('data', (chunk) => {
-                data += chunk.toString();
+                data += chunk.toString('utf8');
             });
             
             stream.on('end', () => {
                 try {
                     console.log(`HTML recibido: ${data.length} caracteres`);
+                    // Guardar una muestra del HTML para debugging
+                    if (data.length > 0) {
+                        const muestra = data.substring(0, Math.min(2000, data.length));
+                        console.log('Muestra HTML (primeros 2000 chars):', muestra);
+                    }
                     const trenes = parseAdifHTML(data);
                     console.log(`Datos parseados: ${trenes.llegadas.length} llegadas, ${trenes.salidas.length} salidas`);
                     resolve(trenes);
@@ -77,10 +78,27 @@ function parseAdifHTML(html) {
     
     try {
         console.log('Iniciando parseo de HTML...');
+        console.log(`Tamaño HTML: ${html.length} caracteres`);
+        
+        // Verificar si la página tiene contenido relevante
+        const tieneLlegadas = html.toLowerCase().includes('llegada') || html.toLowerCase().includes('arrival');
+        const tieneSalidas = html.toLowerCase().includes('salida') || html.toLowerCase().includes('departure');
+        console.log(`Contiene 'llegada': ${tieneLlegadas}, Contiene 'salida': ${tieneSalidas}`);
         
         // Buscar todas las tablas en la página
         const tables = $('table');
         console.log(`Encontradas ${tables.length} tablas`);
+        
+        // También buscar divs con clases que puedan contener información
+        const divsConHorarios = $('[class*="horario"], [class*="tren"], [class*="schedule"], [id*="horario"], [id*="tren"]');
+        console.log(`Encontrados ${divsConHorarios.length} divs con posibles horarios`);
+        
+        // Buscar cualquier elemento que contenga horas
+        const elementosConHoras = $('*:contains(":")').filter((i, el) => {
+            const texto = $(el).text();
+            return /\d{1,2}:\d{2}/.test(texto);
+        });
+        console.log(`Encontrados ${elementosConHoras.length} elementos con formato de hora`);
         
         tables.each((tableIndex, table) => {
             const $table = $(table);

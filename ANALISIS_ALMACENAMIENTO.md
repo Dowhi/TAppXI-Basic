@@ -187,3 +187,6 @@ Puedo migrar toda la aplicación a IndexedDB manteniendo:
 **Tiempo estimado**: 2-3 horas
 **Resultado**: App sin límites, gratis, rápida y privada
 
+
+
+

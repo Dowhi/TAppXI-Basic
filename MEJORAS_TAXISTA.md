@@ -278,3 +278,6 @@
 
 Estas mejoras tienen **alto impacto** y son relativamente **fáciles de implementar**, haciendo la app mucho más profesional y útil.
 
+
+
+

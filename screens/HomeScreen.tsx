@@ -155,13 +155,14 @@ const BellIcon = () => (
 );
 
 const TrainIcon = () => (
+    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+    </svg>
+);
+
+const PlaneIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <rect x="4" y="3" width="16" height="12" rx="2" />
-    <path d="M4 15h16" />
-    <circle cx="8" cy="19" r="2" />
-    <circle cx="16" cy="19" r="2" />
-    <path d="M8 19v-4" />
-    <path d="M16 19v-4" />
+    <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" />
   </svg>
 );
 
@@ -282,6 +283,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
     { label: 'Informes', icon: <AssignmentIcon />, action: () => navigateTo(Seccion.Informes) },
     { label: 'Recordat...', icon: <BellIcon />, action: () => navigateTo(Seccion.Recordatorios) },
     { label: 'Estación', icon: <TrainIcon />, action: () => navigateTo(Seccion.EstacionTren) },
+    { label: 'Aeropuerto', icon: <PlaneIcon />, action: () => navigateTo(Seccion.Aeropuerto) },
     { label: 'Ajustes', icon: <SettingsIcon />, action: () => navigateTo(Seccion.AjustesGenerales) },
   ];
 

@@ -2,15 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Seccion } from '../types';
 import ScreenTopBar from '../components/ScreenTopBar';
 import { useTheme } from '../contexts/ThemeContext';
-import { getStationInfo, startStationUpdates, StationInfo, TrainArrival, TrainDeparture } from '../services/trainStation';
+import { getAirportInfo, startAirportUpdates, AirportInfo, FlightArrival, FlightDeparture } from '../services/flightStation';
 
-interface TrainStationScreenProps {
+interface FlightStationScreenProps {
     navigateTo: (page: Seccion) => void;
 }
 
-const TrainStationScreen: React.FC<TrainStationScreenProps> = ({ navigateTo }) => {
+const FlightStationScreen: React.FC<FlightStationScreenProps> = ({ navigateTo }) => {
     const { isDark } = useTheme();
-    const [stationInfo, setStationInfo] = useState<StationInfo | null>(null);
+    const [airportInfo, setAirportInfo] = useState<AirportInfo | null>(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'llegadas' | 'salidas'>('llegadas');
     const [error, setError] = useState<string | null>(null);
@@ -22,11 +22,11 @@ const TrainStationScreen: React.FC<TrainStationScreenProps> = ({ navigateTo }) =
         // Cargar información inicial
         const loadInitialData = async () => {
             try {
-                const info = await getStationInfo();
-                setStationInfo(info);
+                const info = await getAirportInfo();
+                setAirportInfo(info);
             } catch (err: any) {
-                console.error('Error cargando información de estación:', err);
-                setError('No se pudo cargar la información de la estación. Por favor, intenta de nuevo.');
+                console.error('Error cargando información del aeropuerto:', err);
+                setError('No se pudo cargar la información del aeropuerto. Por favor, intenta de nuevo.');
             } finally {
                 setLoading(false);
             }
@@ -35,8 +35,8 @@ const TrainStationScreen: React.FC<TrainStationScreenProps> = ({ navigateTo }) =
         loadInitialData();
 
         // Iniciar actualizaciones automáticas cada 60 segundos
-        const stopUpdates = startStationUpdates((info) => {
-            setStationInfo(info);
+        const stopUpdates = startAirportUpdates((info) => {
+            setAirportInfo(info);
             setError(null);
         }, 60000);
 
@@ -51,7 +51,7 @@ const TrainStationScreen: React.FC<TrainStationScreenProps> = ({ navigateTo }) =
     };
 
     const getStatusColor = (estado: string, retraso: number): string => {
-        if (estado === 'cancelado' || estado === 'salido' || estado === 'llegado') {
+        if (estado === 'cancelado' || estado === 'despegado' || estado === 'aterrizado') {
             return isDark ? 'text-zinc-500' : 'text-gray-500';
         }
         if (retraso > 0) {
@@ -62,13 +62,14 @@ const TrainStationScreen: React.FC<TrainStationScreenProps> = ({ navigateTo }) =
 
     const getStatusText = (estado: string, retraso: number): string => {
         if (estado === 'cancelado') return 'Cancelado';
-        if (estado === 'salido') return 'Salido';
-        if (estado === 'llegado') return 'Llegado';
+        if (estado === 'despegado') return 'Despegado';
+        if (estado === 'aterrizado') return 'Aterrizado';
+        if (estado === 'embarcando') return 'Embarcando';
         if (retraso > 0) return `+${retraso} min`;
         return 'A tiempo';
     };
 
-    const renderTrainRow = (train: TrainArrival | TrainDeparture, isArrival: boolean) => {
+    const renderFlightRow = (flight: FlightArrival | FlightDeparture, isArrival: boolean) => {
         const bgColor = isDark ? 'bg-zinc-800' : 'bg-white';
         const borderColor = isDark ? 'border-zinc-700' : 'border-gray-200';
         const textColor = isDark ? 'text-zinc-100' : 'text-gray-900';
@@ -76,51 +77,63 @@ const TrainStationScreen: React.FC<TrainStationScreenProps> = ({ navigateTo }) =
 
         return (
             <div
-                key={train.id}
+                key={flight.id}
                 className={`${bgColor} ${borderColor} border rounded-lg p-3 mb-2 transition-colors`}
             >
                 <div className="flex items-start justify-between">
                     <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                             <span className={`font-bold ${textColor}`}>
-                                {train.numeroTren}
+                                {flight.numeroVuelo}
                             </span>
                             <span className={`text-xs px-2 py-0.5 rounded ${isDark ? 'bg-zinc-700 text-zinc-300' : 'bg-gray-100 text-gray-700'}`}>
-                                {train.tipoTren}
+                                {flight.aerolinea}
                             </span>
+                            {flight.tipoVuelo && (
+                                <span className={`text-xs px-2 py-0.5 rounded ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>
+                                    {flight.tipoVuelo}
+                                </span>
+                            )}
                         </div>
                         <div className={`text-sm ${secondaryTextColor} mb-1`}>
                             {isArrival ? (
                                 <>
-                                    <span className="font-semibold">{train.origen}</span>
+                                    <span className="font-semibold">{flight.origen}</span>
                                     <span className="mx-2">→</span>
-                                    <span>{train.destino}</span>
+                                    <span>{flight.destino}</span>
                                 </>
                             ) : (
                                 <>
-                                    <span>{train.origen}</span>
+                                    <span>{flight.origen}</span>
                                     <span className="mx-2">→</span>
-                                    <span className="font-semibold">{train.destino}</span>
+                                    <span className="font-semibold">{flight.destino}</span>
                                 </>
                             )}
                         </div>
-                        {train.via && (
-                            <div className={`text-xs ${secondaryTextColor}`}>
-                                {train.via}
-                            </div>
-                        )}
+                        <div className="flex items-center gap-3 text-xs">
+                            {flight.terminal && (
+                                <span className={secondaryTextColor}>
+                                    Terminal: {flight.terminal}
+                                </span>
+                            )}
+                            {flight.puerta && (
+                                <span className={secondaryTextColor}>
+                                    Puerta: {flight.puerta}
+                                </span>
+                            )}
+                        </div>
                     </div>
                     <div className="text-right ml-4">
-                        <div className={`text-lg font-bold ${getStatusColor(train.estado, train.retraso)}`}>
-                            {formatTime(train.horaProgramada)}
+                        <div className={`text-lg font-bold ${getStatusColor(flight.estado, flight.retraso)}`}>
+                            {formatTime(flight.horaProgramada)}
                         </div>
-                        {train.horaEstimada && train.retraso > 0 && (
+                        {flight.horaEstimada && flight.retraso > 0 && (
                             <div className={`text-sm ${isDark ? 'text-red-400' : 'text-red-600'}`}>
-                                Est: {formatTime(train.horaEstimada)}
+                                Est: {formatTime(flight.horaEstimada)}
                             </div>
                         )}
-                        <div className={`text-xs mt-1 ${getStatusColor(train.estado, train.retraso)}`}>
-                            {getStatusText(train.estado, train.retraso)}
+                        <div className={`text-xs mt-1 ${getStatusColor(flight.estado, flight.retraso)}`}>
+                            {getStatusText(flight.estado, flight.retraso)}
                         </div>
                     </div>
                 </div>
@@ -135,16 +148,16 @@ const TrainStationScreen: React.FC<TrainStationScreenProps> = ({ navigateTo }) =
 
     return (
         <div className={`${bgColor} min-h-screen flex flex-col`}>
-            <ScreenTopBar 
-                title="Estación Santa Justa" 
-                navigateTo={navigateTo} 
-                backTarget={Seccion.Home} 
+            <ScreenTopBar
+                title="Aeropuerto San Pablo"
+                navigateTo={navigateTo}
+                backTarget={Seccion.Home}
             />
 
             <div className="flex-1 overflow-y-auto p-4">
                 {loading ? (
                     <div className="flex items-center justify-center py-12">
-                        <div className={`${secondaryTextColor}`}>Cargando información de trenes...</div>
+                        <div className={`${secondaryTextColor}`}>Cargando información de vuelos...</div>
                     </div>
                 ) : error ? (
                     <div className={`${cardBg} rounded-lg p-6 border ${isDark ? 'border-red-500/50' : 'border-red-300'}`}>
@@ -152,36 +165,29 @@ const TrainStationScreen: React.FC<TrainStationScreenProps> = ({ navigateTo }) =
                             ⚠️ Error
                         </div>
                         <div className={secondaryTextColor}>{error}</div>
-                        <div className={`${secondaryTextColor} text-xs mt-4`}>
-                            <p className="mb-2">Nota: Esta funcionalidad requiere acceso a una API de información de trenes.</p>
-                            <p>Actualmente se muestran datos de ejemplo. Para datos reales, se necesita:</p>
-                            <ul className="list-disc list-inside mt-2 space-y-1">
-                                <li>API oficial de ADIF/Renfe (no disponible públicamente)</li>
-                                <li>Servicio backend propio con scraping</li>
-                                <li>API de terceros que proporcione esta información</li>
-                            </ul>
-                        </div>
                     </div>
-                ) : stationInfo ? (
+                ) : airportInfo ? (
                     <>
-                        {/* Información de la estación */}
+                        {/* Información del aeropuerto */}
                         <div className={`${cardBg} rounded-lg p-4 mb-4 border ${isDark ? 'border-zinc-700' : 'border-gray-200'}`}>
                             <div className="flex items-center justify-between">
                                 <div>
                                     <h2 className={`${textColor} font-bold text-lg mb-1`}>
-                                        🚂 {stationInfo.nombre}
+                                        ✈️ {airportInfo.nombre}
                                     </h2>
                                     <div className={`${secondaryTextColor} text-xs`}>
-                                        Última actualización: {stationInfo.ultimaActualizacion.toLocaleTimeString('es-ES', { 
-                                            hour: '2-digit', 
+                                        Código IATA: {airportInfo.codigo}
+                                    </div>
+                                    <div className={`${secondaryTextColor} text-xs`}>
+                                        Última actualización: {airportInfo.ultimaActualizacion.toLocaleTimeString('es-ES', {
+                                            hour: '2-digit',
                                             minute: '2-digit',
                                             second: '2-digit'
                                         })}
                                     </div>
                                 </div>
                                 <div className="flex flex-col items-end gap-1">
-                                    {stationInfo && (stationInfo.llegadas.length > 0 || stationInfo.salidas.length > 0) && 
-                                     import.meta.env.VITE_TRAIN_PROXY_URL ? (
+                                    {airportInfo && airportInfo.isRealData ? (
                                         <div className={`text-xs px-3 py-1 rounded-full ${isDark ? 'bg-green-500/20 text-green-400' : 'bg-green-100 text-green-700'}`}>
                                             ✅ Datos Reales
                                         </div>
@@ -202,48 +208,46 @@ const TrainStationScreen: React.FC<TrainStationScreenProps> = ({ navigateTo }) =
                             <div className="flex gap-2">
                                 <button
                                     onClick={() => setActiveTab('llegadas')}
-                                    className={`flex-1 py-2 px-4 rounded-lg font-semibold text-sm transition-all ${
-                                        activeTab === 'llegadas'
+                                    className={`flex-1 py-2 px-4 rounded-lg font-semibold text-sm transition-all ${activeTab === 'llegadas'
                                             ? isDark
                                                 ? 'bg-cyan-500 text-white'
                                                 : 'bg-blue-600 text-white'
                                             : isDark
                                                 ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                    }`}
+                                        }`}
                                 >
-                                    Llegadas ({stationInfo.llegadas.length})
+                                    Llegadas ({airportInfo.llegadas.length})
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('salidas')}
-                                    className={`flex-1 py-2 px-4 rounded-lg font-semibold text-sm transition-all ${
-                                        activeTab === 'salidas'
+                                    className={`flex-1 py-2 px-4 rounded-lg font-semibold text-sm transition-all ${activeTab === 'salidas'
                                             ? isDark
                                                 ? 'bg-cyan-500 text-white'
                                                 : 'bg-blue-600 text-white'
                                             : isDark
                                                 ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                    }`}
+                                        }`}
                                 >
-                                    Salidas ({stationInfo.salidas.length})
+                                    Salidas ({airportInfo.salidas.length})
                                 </button>
                             </div>
                         </div>
 
-                        {/* Lista de trenes */}
+                        {/* Lista de vuelos */}
                         <div>
                             {activeTab === 'llegadas' ? (
                                 <>
                                     <h3 className={`${textColor} font-bold text-base mb-3`}>
                                         Próximas Llegadas
                                     </h3>
-                                    {stationInfo.llegadas.length === 0 ? (
+                                    {airportInfo.llegadas.length === 0 ? (
                                         <div className={`${secondaryTextColor} text-center py-8`}>
                                             No hay llegadas programadas
                                         </div>
                                     ) : (
-                                        stationInfo.llegadas.map(train => renderTrainRow(train, true))
+                                        airportInfo.llegadas.map(flight => renderFlightRow(flight, true))
                                     )}
                                 </>
                             ) : (
@@ -251,12 +255,12 @@ const TrainStationScreen: React.FC<TrainStationScreenProps> = ({ navigateTo }) =
                                     <h3 className={`${textColor} font-bold text-base mb-3`}>
                                         Próximas Salidas
                                     </h3>
-                                    {stationInfo.salidas.length === 0 ? (
+                                    {airportInfo.salidas.length === 0 ? (
                                         <div className={`${secondaryTextColor} text-center py-8`}>
                                             No hay salidas programadas
                                         </div>
                                     ) : (
-                                        stationInfo.salidas.map(train => renderTrainRow(train, false))
+                                        airportInfo.salidas.map(flight => renderFlightRow(flight, false))
                                     )}
                                 </>
                             )}
@@ -267,16 +271,13 @@ const TrainStationScreen: React.FC<TrainStationScreenProps> = ({ navigateTo }) =
                             <div className={`text-xs ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>
                                 <p className="font-semibold mb-1">ℹ️ Información</p>
                                 <p className="mb-2">
-                                    Los datos se actualizan automáticamente cada minuto. 
-                                    Los horarios mostrados son aproximados basados en servicios típicos de Renfe.
+                                    Los datos se actualizan automáticamente cada minuto.
+                                    Los horarios mostrados son aproximados basados en vuelos típicos del aeropuerto.
                                 </p>
                                 <p>
-                                    <strong>Para información oficial en tiempo real:</strong> Consulta la web de 
-                                    <a href="https://www.adif.es/es/-/51003-sevilla-sta.-justa" target="_blank" rel="noopener noreferrer" className="underline ml-1">
-                                        ADIF
-                                    </a> o 
-                                    <a href="https://www.renfe.com" target="_blank" rel="noopener noreferrer" className="underline ml-1">
-                                        Renfe
+                                    <strong>Para información oficial en tiempo real:</strong> Consulta la web de
+                                    <a href="https://www.aena.es/es/sevilla/sevilla.html" target="_blank" rel="noopener noreferrer" className="underline ml-1">
+                                        AENA
                                     </a>.
                                 </p>
                             </div>
@@ -288,5 +289,7 @@ const TrainStationScreen: React.FC<TrainStationScreenProps> = ({ navigateTo }) =
     );
 };
 
-export default TrainStationScreen;
+export default FlightStationScreen;
+
+
 

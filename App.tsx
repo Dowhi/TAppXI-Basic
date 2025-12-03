@@ -24,6 +24,7 @@ import ReportsScreen from './screens/ReportsScreen';
 import AnalisisAvanzadoScreen from './screens/AnalisisAvanzadoScreen';
 import RemindersScreen from './screens/RemindersScreen';
 import TrainStationScreen from './screens/TrainStationScreen';
+import FlightStationScreen from './screens/FlightStationScreen';
 import BottomNavBar from './components/BottomNavBar';
 
 
@@ -111,6 +112,8 @@ const App: React.FC = () => {
                 return <RemindersScreen navigateTo={navigateTo} />;
             case Seccion.EstacionTren:
                 return <TrainStationScreen navigateTo={navigateTo} />;
+            case Seccion.Aeropuerto:
+                return <FlightStationScreen navigateTo={navigateTo} />;
             default:
                 return <HomeScreen navigateTo={navigateTo} />;
         }

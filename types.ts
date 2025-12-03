@@ -25,6 +25,7 @@ export enum Seccion {
     ConfiguracionDescansos = "Configuración Descansos",
     AnalisisAvanzado = "Análisis Avanzado",
     EstacionTren = "Estación Tren",
+    Aeropuerto = "Aeropuerto",
 }
 
 

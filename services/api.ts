@@ -1482,3 +1482,84 @@ export const getTotalGastosByYear = async (year: number): Promise<number> => {
 
 
 
+// --- Eliminación Total de Datos ---
+
+export interface DeleteProgress {
+    percentage: number;
+    message: string;
+}
+
+export const deleteAllData = async (
+    onProgress?: (progress: DeleteProgress) => void
+): Promise<void> => {
+    try {
+        const collections = [
+            { name: 'carreras', ref: carrerasCollection, label: 'Carreras' },
+            { name: 'gastos', ref: gastosCollection, label: 'Gastos' },
+            { name: 'turnos', ref: turnosCollection, label: 'Turnos' },
+            { name: 'talleres', ref: talleresCollection, label: 'Talleres' },
+            { name: 'proveedores', ref: proveedoresCollection, label: 'Proveedores' },
+            { name: 'conceptos', ref: conceptosCollection, label: 'Conceptos' },
+            { name: 'ajustes', ref: ajustesCollection, label: 'Ajustes' },
+            { name: 'breakConfigurations', ref: breakConfigurationsCollection, label: 'Configuración de Descansos' },
+            { name: 'excepciones', ref: excepcionesCollection, label: 'Excepciones' },
+        ];
+
+        const totalCollections = collections.length;
+
+        for (let i = 0; i < collections.length; i++) {
+            const collection = collections[i];
+            const percentage = Math.floor((i / totalCollections) * 100);
+
+            if (onProgress) {
+                onProgress({
+                    percentage,
+                    message: `Eliminando ${collection.label}...`
+                });
+            }
+
+            // Get all documents in the collection
+            const snapshot = await collection.ref.get();
+
+            // Delete documents in batches of 500 (Firestore limit)
+            const batchSize = 500;
+            const docs = snapshot.docs;
+
+            for (let j = 0; j < docs.length; j += batchSize) {
+                const batch = db.batch();
+                const batchDocs = docs.slice(j, j + batchSize);
+
+                batchDocs.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+
+                await batch.commit();
+
+                // Update progress within collection deletion
+                const collectionProgress = Math.floor((j + batchDocs.length) / docs.length * 100);
+                const overallPercentage = Math.floor(
+                    ((i + (collectionProgress / 100)) / totalCollections) * 100
+                );
+
+                if (onProgress && docs.length > batchSize) {
+                    onProgress({
+                        percentage: overallPercentage,
+                        message: `Eliminando ${collection.label}... (${j + batchDocs.length}/${docs.length})`
+                    });
+                }
+            }
+        }
+
+        // Final progress update
+        if (onProgress) {
+            onProgress({
+                percentage: 100,
+                message: 'Eliminación completada'
+            });
+        }
+
+    } catch (error) {
+        console.error('Error eliminando todos los datos:', error);
+        throw error;
+    }
+};

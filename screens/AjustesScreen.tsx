@@ -3,7 +3,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useFontSize } from "../contexts/FontSizeContext";
 import ScreenTopBar from "../components/ScreenTopBar";
 import { Seccion } from "../types";
-import { saveAjustes, getAjustes } from "../services/api";
+import { saveAjustes, getAjustes, deleteAllData, DeleteProgress } from "../services/api";
 import { downloadBackupJson, uploadBackupToGoogleDrive, exportToGoogleSheets, restoreBackup, restoreFromGoogleSheets } from "../services/backup";
 import { listFiles, getFileContent } from "../services/google";
 import { archiveOperationalDataOlderThan, getRelativeCutoffDate } from "../services/maintenance";
@@ -43,7 +43,7 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
     const [exportFechaHasta, setExportFechaHasta] = useState<string>('');
     const [exportTipo, setExportTipo] = useState<'excel' | 'pdf' | 'csv'>('excel');
     const [exporting, setExporting] = useState<boolean>(false);
-    
+
     // Exportación para Hacienda
     const [haciendaFechaDesde, setHaciendaFechaDesde] = useState<string>('');
     const [haciendaFechaHasta, setHaciendaFechaHasta] = useState<string>('');
@@ -66,6 +66,11 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
     // Progress state
     const [restoreProgress, setRestoreProgress] = useState<number>(0);
     const [restoreMessage, setRestoreMessage] = useState<string>("");
+
+    // Deletion progress state
+    const [isDeleting, setIsDeleting] = useState<boolean>(false);
+    const [deletionProgress, setDeletionProgress] = useState<number>(0);
+    const [deletionMessage, setDeletionMessage] = useState<string>("");
 
     // Custom Modal State
     const [alertMessage, setAlertMessage] = useState<string | null>(null);
@@ -91,10 +96,11 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
     };
 
     const handleConfirm = () => {
-        if (onConfirmAction) {
-            onConfirmAction();
-        }
+        const action = onConfirmAction;
         closeConfirm();
+        if (action) {
+            action();
+        }
     };
 
     useEffect(() => {
@@ -358,7 +364,7 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
         try {
             const query = "(name contains 'tappxi' or name contains 'TAppXI') and trashed = false";
             console.log("Buscando backups con query:", query);
-            
+
             const files = await listFiles(query);
             console.log("Archivos encontrados (raw):", files);
 
@@ -434,8 +440,48 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
             () => {
                 showConfirm(
                     "ULTIMA CONFIRMACION: Esta accion eliminara todos los datos permanentemente. Continuar?",
-                    () => {
-                        showAlert("Funcion de eliminacion total disponible proximamente.");
+                    async () => {
+                        // Cerrar el modal de confirmación primero
+                        closeConfirm();
+
+                        // Esperar un momento para que el modal se cierre
+                        await new Promise(resolve => setTimeout(resolve, 100));
+
+                        setIsDeleting(true);
+                        setDeletionProgress(0);
+                        setDeletionMessage("Iniciando eliminación...");
+
+                        try {
+                            const onProgress = (progress: DeleteProgress) => {
+                                setDeletionProgress(progress.percentage);
+                                setDeletionMessage(progress.message);
+                            };
+
+                            await deleteAllData(onProgress);
+
+                            // Limpiar localStorage después de eliminar datos de Firestore
+                            setDeletionMessage("Limpiando datos locales...");
+                            localStorage.clear();
+
+                            setDeletionProgress(100);
+                            setDeletionMessage("¡Eliminación completada!");
+                            await new Promise(resolve => setTimeout(resolve, 500));
+
+                            showAlert(
+                                "✅ Todos los datos han sido eliminados correctamente.\n\n" +
+                                "La aplicación se recargará para reflejar los cambios."
+                            );
+
+                            setTimeout(() => window.location.reload(), 3000);
+
+                        } catch (e: any) {
+                            console.error("Error eliminando datos:", e);
+                            showAlert(`❌ Error al eliminar los datos: ${e.message}`);
+                        } finally {
+                            setIsDeleting(false);
+                            setDeletionProgress(0);
+                            setDeletionMessage("");
+                        }
                     }
                 );
             }
@@ -926,67 +972,67 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
 
             {/* Modal de Selección de Backup */}
             {showRestoreModal && (
-                    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-                        <div className="bg-zinc-800 rounded-xl w-full max-w-md max-h-[80vh] flex flex-col border border-zinc-700 shadow-2xl">
-                            <div className="p-4 border-b border-zinc-700 flex justify-between items-center">
-                                <h3 className="text-lg font-bold text-white">Seleccionar Copia de Seguridad</h3>
-                                <button
-                                    onClick={() => setShowRestoreModal(false)}
-                                    className="text-zinc-400 hover:text-white"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+                    <div className="bg-zinc-800 rounded-xl w-full max-w-md max-h-[80vh] flex flex-col border border-zinc-700 shadow-2xl">
+                        <div className="p-4 border-b border-zinc-700 flex justify-between items-center">
+                            <h3 className="text-lg font-bold text-white">Seleccionar Copia de Seguridad</h3>
+                            <button
+                                onClick={() => setShowRestoreModal(false)}
+                                className="text-zinc-400 hover:text-white"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-4">
+                            {loadingBackups ? (
+                                <div className="flex flex-col items-center justify-center py-8 text-zinc-400">
+                                    <svg className="animate-spin h-8 w-8 mb-3 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                     </svg>
-                                </button>
-                            </div>
+                                    <p>Buscando backups en Drive...</p>
+                                </div>
+                            ) : backupsList.length === 0 ? (
+                                <div className="text-center py-8 text-zinc-400">
+                                    <p>No se encontraron copias de seguridad recientes.</p>
+                                    <p className="text-xs mt-2 opacity-70">Asegúrate de haber subido backups previamente.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {backupsList.map((file) => (
+                                        <button
+                                            key={file.id}
+                                            onClick={() => handleRestoreBackup(file.id, file.name, file.mimeType)}
+                                            disabled={restoring}
+                                            className="w-full text-left p-3 rounded-lg bg-zinc-700/50 hover:bg-zinc-700 border border-zinc-600 transition-colors group"
+                                        >
+                                            <div className="font-medium text-zinc-200 group-hover:text-white truncate flex items-center gap-2">
+                                                <span>{file.mimeType === 'application/vnd.google-apps.spreadsheet' ? '📊' : '📄'}</span>
+                                                <span>{file.name}</span>
+                                            </div>
+                                            <div className="text-xs text-zinc-400 mt-1">
+                                                {new Date(file.createdTime).toLocaleString()}
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
 
-                            <div className="flex-1 overflow-y-auto p-4">
-                                {loadingBackups ? (
-                                    <div className="flex flex-col items-center justify-center py-8 text-zinc-400">
-                                        <svg className="animate-spin h-8 w-8 mb-3 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        <p>Buscando backups en Drive...</p>
-                                    </div>
-                                ) : backupsList.length === 0 ? (
-                                    <div className="text-center py-8 text-zinc-400">
-                                        <p>No se encontraron copias de seguridad recientes.</p>
-                                        <p className="text-xs mt-2 opacity-70">Asegúrate de haber subido backups previamente.</p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-2">
-                                        {backupsList.map((file) => (
-                                            <button
-                                                key={file.id}
-                                                onClick={() => handleRestoreBackup(file.id, file.name, file.mimeType)}
-                                                disabled={restoring}
-                                                className="w-full text-left p-3 rounded-lg bg-zinc-700/50 hover:bg-zinc-700 border border-zinc-600 transition-colors group"
-                                            >
-                                                <div className="font-medium text-zinc-200 group-hover:text-white truncate flex items-center gap-2">
-                                                    <span>{file.mimeType === 'application/vnd.google-apps.spreadsheet' ? '📊' : '📄'}</span>
-                                                    <span>{file.name}</span>
-                                                </div>
-                                                <div className="text-xs text-zinc-400 mt-1">
-                                                    {new Date(file.createdTime).toLocaleString()}
-                                                </div>
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="p-4 border-t border-zinc-700 bg-zinc-800/50 rounded-b-xl">
-                                <button
-                                    onClick={() => setShowRestoreModal(false)}
-                                    className="w-full py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg transition-colors font-medium"
-                                >
-                                    Cancelar
-                                </button>
-                            </div>
+                        <div className="p-4 border-t border-zinc-700 bg-zinc-800/50 rounded-b-xl">
+                            <button
+                                onClick={() => setShowRestoreModal(false)}
+                                className="w-full py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg transition-colors font-medium"
+                            >
+                                Cancelar
+                            </button>
                         </div>
                     </div>
-                )
+                </div>
+            )
             }
 
             {/* Modal de Carga para Google Drive */}
@@ -1331,6 +1377,37 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                     </button>
                 </div>
             </div>
+
+            {/* Modal de progreso de eliminación */}
+            {isDeleting && (
+                <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[80] px-4">
+                    <div className="bg-zinc-800 rounded-lg p-6 max-w-md w-full border border-red-500 shadow-2xl">
+                        <h3 className="text-xl font-bold text-red-400 mb-4 text-center">
+                            Eliminando Datos
+                        </h3>
+
+                        <div className="mb-4">
+                            <div className="bg-zinc-700 rounded-full h-4 overflow-hidden">
+                                <div
+                                    className="bg-red-500 h-full transition-all duration-300"
+                                    style={{ width: `${deletionProgress}%` }}
+                                />
+                            </div>
+                            <p className="text-center text-zinc-300 mt-2 text-sm">
+                                {deletionProgress}%
+                            </p>
+                        </div>
+
+                        <p className="text-zinc-300 text-center text-sm">
+                            {deletionMessage}
+                        </p>
+
+                        <div className="mt-4 text-zinc-500 text-xs text-center">
+                            Por favor, no cierres esta ventana...
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 };
