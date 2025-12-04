@@ -189,7 +189,11 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                 p.nombre.toLowerCase().includes(proveedorName.toLowerCase())
             );
             setFilteredProveedores(filtered);
-            setShowProveedorDropdown(filtered.length > 0);
+            // Solo mostrar dropdown si hay coincidencias Y el nombre no coincide exactamente con algún proveedor
+            const exactMatch = proveedoresList.some(p => 
+                p.nombre.toLowerCase() === proveedorName.toLowerCase()
+            );
+            setShowProveedorDropdown(filtered.length > 0 && !exactMatch);
         }
     }, [proveedorName, proveedoresList]);
 
@@ -203,7 +207,11 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                 c.nombre.toLowerCase().includes(conceptoName.toLowerCase())
             );
             setFilteredConceptos(filtered);
-            setShowConceptoDropdown(filtered.length > 0);
+            // Solo mostrar dropdown si hay coincidencias Y el nombre no coincide exactamente con algún concepto
+            const exactMatch = conceptosList.some(c => 
+                c.nombre.toLowerCase() === conceptoName.toLowerCase()
+            );
+            setShowConceptoDropdown(filtered.length > 0 && !exactMatch);
         }
     }, [conceptoName, conceptosList]);
 
@@ -217,7 +225,11 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                 t.nombre.toLowerCase().includes(tallerName.toLowerCase())
             );
             setFilteredTalleres(filtered);
-            setShowTallerDropdown(filtered.length > 0);
+            // Solo mostrar dropdown si hay coincidencias Y el nombre no coincide exactamente con algún taller
+            const exactMatch = talleresList.some(t => 
+                t.nombre.toLowerCase() === tallerName.toLowerCase()
+            );
+            setShowTallerDropdown(filtered.length > 0 && !exactMatch);
         }
     }, [tallerName, talleresList]);
 
@@ -397,29 +409,38 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
             const gastoData: any = {
                 importe: importeValue,
                 fecha: fechaGasto,
-                formaPago: formaPago || 'Efectivo'
+                formaPago: formaPago || 'Efectivo',
+                tipo: activeTab // SIEMPRE guardar el tipo
             };
+
+            // Campos comunes (aplican a ambos tipos)
+            if (numeroFactura && numeroFactura.trim()) {
+                gastoData.numeroFactura = numeroFactura.trim();
+            }
+            
+            // Base imponible, IVA - campos comunes
+            const baseImponibleValue = baseImponible ? parseFloat(baseImponible) : NaN;
+            if (!isNaN(baseImponibleValue) && baseImponibleValue > 0) {
+                gastoData.baseImponible = baseImponibleValue;
+            } else if (!isNaN(baseImponibleValue) && baseImponibleValue === 0) {
+                // Permitir 0 explícitamente
+                gastoData.baseImponible = 0;
+            }
+            
+            const ivaImporteValue = ivaImporte ? parseFloat(ivaImporte) : NaN;
+            if (!isNaN(ivaImporteValue) && ivaImporteValue >= 0) {
+                gastoData.ivaImporte = ivaImporteValue;
+            }
+            
+            const ivaPorcentajeValue = ivaPorcentaje ? parseFloat(ivaPorcentaje) : NaN;
+            if (!isNaN(ivaPorcentajeValue) && ivaPorcentajeValue >= 0) {
+                gastoData.ivaPorcentaje = ivaPorcentajeValue;
+            }
 
             // Campos específicos de Actividad
             if (activeTab === 'actividad') {
                 if (proveedorName && proveedorName.trim()) gastoData.proveedor = proveedorName.trim();
                 if (conceptoName && conceptoName.trim()) gastoData.concepto = conceptoName.trim();
-                if (numeroFactura && numeroFactura.trim()) gastoData.numeroFactura = numeroFactura.trim();
-                
-                const baseImponibleValue = baseImponible ? parseFloat(baseImponible) : NaN;
-                if (!isNaN(baseImponibleValue) && baseImponibleValue > 0) {
-                    gastoData.baseImponible = baseImponibleValue;
-                }
-                
-                const ivaImporteValue = ivaImporte ? parseFloat(ivaImporte) : NaN;
-                if (!isNaN(ivaImporteValue) && ivaImporteValue >= 0) {
-                    gastoData.ivaImporte = ivaImporteValue;
-                }
-                
-                const ivaPorcentajeValue = ivaPorcentaje ? parseFloat(ivaPorcentaje) : NaN;
-                if (!isNaN(ivaPorcentajeValue) && ivaPorcentajeValue >= 0) {
-                    gastoData.ivaPorcentaje = ivaPorcentajeValue;
-                }
                 
                 const kilometrosValue = kilometros ? parseFloat(kilometros) : NaN;
                 if (!isNaN(kilometrosValue) && kilometrosValue > 0) {
@@ -435,9 +456,6 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                 if (!isNaN(kilometrosVehiculoValue) && kilometrosVehiculoValue > 0) {
                     gastoData.kilometrosVehiculo = kilometrosVehiculoValue;
                 }
-                
-                // Nota: descripcionTrabajos no está en la interfaz Gasto, se omite
-                // Si necesitas guardarlo, deberías agregarlo a la interfaz Gasto primero
 
                 // Servicios - limpiar valores undefined
                 const serviciosValidados = services
@@ -458,13 +476,43 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                 }
             }
 
-            // Campos comunes
+            // Campos comunes adicionales
             const descuentoValue = resumenDescuento ? parseFloat(resumenDescuento) : NaN;
-            if (!isNaN(descuentoValue) && descuentoValue > 0) {
+            if (!isNaN(descuentoValue) && descuentoValue >= 0) {
                 gastoData.descuento = descuentoValue;
             }
             
+            // Para gastos de vehículo, también guardar base e IVA del resumen si están presentes
+            if (activeTab === 'vehiculo') {
+                const resumenBaseValue = resumenBase ? parseFloat(resumenBase) : NaN;
+                if (!isNaN(resumenBaseValue) && resumenBaseValue > 0) {
+                    // Si no hay baseImponible, usar la del resumen
+                    if (!gastoData.baseImponible) {
+                        gastoData.baseImponible = resumenBaseValue;
+                    }
+                }
+                
+                const resumenIvaImporteValue = resumenIvaImporte ? parseFloat(resumenIvaImporte) : NaN;
+                if (!isNaN(resumenIvaImporteValue) && resumenIvaImporteValue >= 0) {
+                    // Si no hay ivaImporte, usar el del resumen
+                    if (gastoData.ivaImporte === undefined) {
+                        gastoData.ivaImporte = resumenIvaImporteValue;
+                    }
+                }
+                
+                const resumenIvaPorcentajeValue = resumenIvaPorcentaje ? parseFloat(resumenIvaPorcentaje) : NaN;
+                if (!isNaN(resumenIvaPorcentajeValue) && resumenIvaPorcentajeValue >= 0) {
+                    // Si no hay ivaPorcentaje, usar el del resumen
+                    if (gastoData.ivaPorcentaje === undefined) {
+                        gastoData.ivaPorcentaje = resumenIvaPorcentajeValue;
+                    }
+                }
+            }
+            
             if (notas && notas.trim()) gastoData.notas = notas.trim();
+
+            // Debug: mostrar qué se está guardando
+            console.log('Guardando gasto:', gastoData);
 
             await addGasto(gastoData);
 
@@ -612,10 +660,22 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                                             value={proveedorName}
                                             onChange={(e) => {
                                                 setProveedorName(e.target.value);
-                                                setShowProveedorDropdown(true);
+                                                // El useEffect manejará cuándo mostrar el dropdown
                                             }}
                                             onFocus={() => {
-                                                if (filteredProveedores.length > 0) setShowProveedorDropdown(true);
+                                                // Solo mostrar si hay coincidencias y no hay coincidencia exacta
+                                                const exactMatch = proveedoresList.some(p => 
+                                                    p.nombre.toLowerCase() === proveedorName.toLowerCase()
+                                                );
+                                                if (filteredProveedores.length > 0 && !exactMatch) {
+                                                    setShowProveedorDropdown(true);
+                                                }
+                                            }}
+                                            onBlur={() => {
+                                                // Ocultar con delay para permitir el click
+                                                setTimeout(() => {
+                                                    setShowProveedorDropdown(false);
+                                                }, 200);
                                             }}
                                         />
                                         <PrimaryButton onClick={() => setShowProveedorModal(true)}>
@@ -623,7 +683,10 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                                         </PrimaryButton>
                                     </div>
                                     {showProveedorDropdown && filteredProveedores.length > 0 && (
-                                        <div className="absolute z-10 w-full mt-1 bg-zinc-800 border border-zinc-700 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                                        <div 
+                                            className="absolute z-10 w-full mt-1 bg-zinc-800 border border-zinc-700 rounded-md shadow-lg max-h-48 overflow-y-auto"
+                                            onMouseDown={(e) => e.preventDefault()}
+                                        >
                                             {filteredProveedores.map(proveedor => (
                                                 <button
                                                     key={proveedor.id}
@@ -654,7 +717,19 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                                                 setShowConceptoDropdown(true);
                                             }}
                                             onFocus={() => {
-                                                if (filteredConceptos.length > 0) setShowConceptoDropdown(true);
+                                                // Solo mostrar dropdown si hay coincidencias y no hay coincidencia exacta
+                                                const exactMatch = conceptosList.some(c => 
+                                                    c.nombre.toLowerCase() === conceptoName.toLowerCase()
+                                                );
+                                                if (filteredConceptos.length > 0 && !exactMatch) {
+                                                    setShowConceptoDropdown(true);
+                                                }
+                                            }}
+                                            onBlur={() => {
+                                                // Ocultar dropdown cuando se pierde el foco (con un pequeño delay para permitir el click)
+                                                setTimeout(() => {
+                                                    setShowConceptoDropdown(false);
+                                                }, 200);
                                             }}
                                         />
                                         <PrimaryButton onClick={() => setShowConceptoModal(true)}>
@@ -662,7 +737,10 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                                         </PrimaryButton>
                                     </div>
                                     {showConceptoDropdown && filteredConceptos.length > 0 && (
-                                        <div className="absolute z-10 w-full mt-1 bg-zinc-800 border border-zinc-700 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                                        <div 
+                                            className="absolute z-10 w-full mt-1 bg-zinc-800 border border-zinc-700 rounded-md shadow-lg max-h-48 overflow-y-auto"
+                                            onMouseDown={(e) => e.preventDefault()}
+                                        >
                                             {filteredConceptos.map(concepto => (
                                                 <button
                                                     key={concepto.id}
@@ -760,10 +838,22 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                                             value={tallerName}
                                             onChange={(e) => {
                                                 setTallerName(e.target.value);
-                                                setShowTallerDropdown(true);
+                                                // El useEffect manejará cuándo mostrar el dropdown
                                             }}
                                             onFocus={() => {
-                                                if (filteredTalleres.length > 0) setShowTallerDropdown(true);
+                                                // Solo mostrar si hay coincidencias y no hay coincidencia exacta
+                                                const exactMatch = talleresList.some(t => 
+                                                    t.nombre.toLowerCase() === tallerName.toLowerCase()
+                                                );
+                                                if (filteredTalleres.length > 0 && !exactMatch) {
+                                                    setShowTallerDropdown(true);
+                                                }
+                                            }}
+                                            onBlur={() => {
+                                                // Ocultar con delay para permitir el click
+                                                setTimeout(() => {
+                                                    setShowTallerDropdown(false);
+                                                }, 200);
                                             }}
                                         />
                                         <PrimaryButton onClick={() => setShowTallerModal(true)}>
@@ -771,7 +861,10 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                                         </PrimaryButton>
                                     </div>
                                     {showTallerDropdown && filteredTalleres.length > 0 && (
-                                        <div className="absolute z-10 w-full mt-1 bg-zinc-800 border border-zinc-700 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                                        <div 
+                                            className="absolute z-10 w-full mt-1 bg-zinc-800 border border-zinc-700 rounded-md shadow-lg max-h-48 overflow-y-auto"
+                                            onMouseDown={(e) => e.preventDefault()}
+                                        >
                                             {filteredTalleres.map(taller => (
                                                 <button
                                                     key={taller.id}

@@ -211,8 +211,8 @@ export const addGasto = async (gasto: Omit<Gasto, 'id'>) => {
         importe: gasto.importe,
         // @ts-ignore
         fecha: gasto.fecha ? firebase.firestore.Timestamp.fromDate(gasto.fecha) : firebase.firestore.FieldValue.serverTimestamp(),
-        // Campos opcionales
-        ...(gasto.tipo && { tipo: gasto.tipo }),
+        // Campos opcionales - tipo siempre se guarda si existe
+        ...(gasto.tipo !== undefined && gasto.tipo !== null && { tipo: gasto.tipo }),
         ...(gasto.categoria && { categoria: gasto.categoria }),
         ...(gasto.formaPago && { formaPago: gasto.formaPago }),
         ...(gasto.proveedor && { proveedor: gasto.proveedor }),
@@ -398,6 +398,41 @@ export const addConcepto = async (concepto: { nombre: string; descripcion?: stri
     };
     const docRef = await conceptosCollection.add(dataToAdd);
     return docRef.id;
+};
+
+// Funciones de restauración para proveedores, conceptos, talleres
+export const restoreProveedor = async (proveedor: any) => {
+    const dataToSave: any = {
+        nombre: proveedor.nombre || '',
+        direccion: proveedor.direccion || null,
+        telefono: proveedor.telefono || null,
+        nif: proveedor.nif || null,
+        // @ts-ignore
+        createdAt: proveedor.createdAt ? firebase.firestore.Timestamp.fromDate(new Date(proveedor.createdAt)) : firebase.firestore.FieldValue.serverTimestamp()
+    };
+    await proveedoresCollection.doc(proveedor.id).set(dataToSave);
+};
+
+export const restoreConcepto = async (concepto: any) => {
+    const dataToSave: any = {
+        nombre: concepto.nombre || '',
+        descripcion: concepto.descripcion || null,
+        categoria: concepto.categoria || null,
+        // @ts-ignore
+        createdAt: concepto.createdAt ? firebase.firestore.Timestamp.fromDate(new Date(concepto.createdAt)) : firebase.firestore.FieldValue.serverTimestamp()
+    };
+    await conceptosCollection.doc(concepto.id).set(dataToSave);
+};
+
+export const restoreTaller = async (taller: any) => {
+    const dataToSave: any = {
+        nombre: taller.nombre || '',
+        direccion: taller.direccion || null,
+        telefono: taller.telefono || null,
+        // @ts-ignore
+        createdAt: taller.createdAt ? firebase.firestore.Timestamp.fromDate(new Date(taller.createdAt)) : firebase.firestore.FieldValue.serverTimestamp()
+    };
+    await talleresCollection.doc(taller.id).set(dataToSave);
 };
 
 // Get functions for dropdowns
@@ -698,6 +733,12 @@ export const subscribeToCarreras = (
             }
         }, (error: any) => {
             console.error("Error subscribing to carreras:", error);
+            if (error?.code === 'permission-denied') {
+                console.error("FirebaseError: Missing or insufficient permissions.");
+                console.error("SOLUCIÓN: Configura las reglas de Firestore para permitir acceso.");
+                console.error("Ve a Firebase Console > Firestore Database > Reglas");
+                console.error("Y aplica las reglas del archivo firestore.rules");
+            }
             if (errorCallback) errorCallback(error);
         });
     return unsubscribe;
@@ -761,6 +802,12 @@ export const subscribeToActiveTurno = (
             }
         }, (error: any) => {
             console.error("Error subscribing to active turno:", error);
+            if (error?.code === 'permission-denied') {
+                console.error("FirebaseError: Missing or insufficient permissions.");
+                console.error("SOLUCIÓN: Configura las reglas de Firestore para permitir acceso.");
+                console.error("Ve a Firebase Console > Firestore Database > Reglas");
+                console.error("Y aplica las reglas del archivo firestore.rules");
+            }
             callback(null);
             if (errorCallback) errorCallback(error);
         });
@@ -780,13 +827,24 @@ export interface Ajustes {
 
 export const saveAjustes = async (ajustes: Ajustes): Promise<void> => {
     try {
+        // Limpiar y asegurar valores por defecto (eliminar undefined)
+        const cleanAjustes: any = {
+            temaOscuro: ajustes.temaOscuro ?? false,
+            tamanoFuente: ajustes.tamanoFuente ?? 14,
+            "tam\u00f1oFuente": ajustes.tamanoFuente ?? 14,
+            letraDescanso: ajustes.letraDescanso ?? '',
+            objetivoDiario: ajustes.objetivoDiario ?? 100,
+        };
+        
+        // Eliminar cualquier campo undefined
+        Object.keys(cleanAjustes).forEach(key => {
+            if (cleanAjustes[key] === undefined) {
+                delete cleanAjustes[key];
+            }
+        });
+
         const ajustesSnapshot = await ajustesCollection.limit(1).get();
-        const dataToSave = {
-            ...ajustes,
-            // escribir ambos nombres de campo por compatibilidad
-            tamanoFuente: ajustes.tamanoFuente,
-            "tam\u00f1oFuente": ajustes.tamanoFuente,
-        } as any;
+        const dataToSave = cleanAjustes;
 
         if (!ajustesSnapshot.empty) {
             const docId = ajustesSnapshot.docs[0].id;
@@ -814,8 +872,14 @@ export const getAjustes = async (): Promise<Ajustes | null> => {
             letraDescanso: raw.letraDescanso ?? '',
             objetivoDiario: raw.objetivoDiario ?? 100,
         };
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error obteniendo ajustes:', error);
+        if (error?.code === 'permission-denied') {
+            console.error('FirebaseError: Missing or insufficient permissions.');
+            console.error('SOLUCIÓN: Configura las reglas de Firestore para permitir acceso.');
+            console.error('Ve a Firebase Console > Firestore Database > Reglas');
+            console.error('Y aplica las reglas del archivo firestore.rules');
+        }
         return null;
     }
 };
@@ -867,8 +931,14 @@ export const getBreakConfiguration = async (): Promise<BreakConfiguration | null
             userBreakLetter: data.userBreakLetter ?? 'A',
             updatedAt: data.updatedAt ? data.updatedAt.toDate() : null,
         };
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error obteniendo configuracion de descansos:', error);
+        if (error?.code === 'permission-denied') {
+            console.error('FirebaseError: Missing or insufficient permissions.');
+            console.error('SOLUCIÓN: Configura las reglas de Firestore para permitir acceso.');
+            console.error('Ve a Firebase Console > Firestore Database > Reglas');
+            console.error('Y aplica las reglas del archivo firestore.rules');
+        }
         return null;
     }
 };
@@ -904,6 +974,23 @@ const docToExcepcion = (doc: any): Excepcion => {
     };
 };
 
+export const restoreExcepcion = async (excepcion: any) => {
+    const dataToSave: any = {
+        // @ts-ignore
+        fechaDesde: firebase.firestore.Timestamp.fromDate(new Date(excepcion.fechaDesde)),
+        // @ts-ignore
+        fechaHasta: firebase.firestore.Timestamp.fromDate(new Date(excepcion.fechaHasta)),
+        tipo: excepcion.tipo || '',
+        aplicaPar: excepcion.aplicaPar || false,
+        aplicaImpar: excepcion.aplicaImpar || false,
+        descripcion: excepcion.descripcion || '',
+        nuevaLetra: excepcion.nuevaLetra || null,
+        // @ts-ignore
+        createdAt: excepcion.createdAt ? firebase.firestore.Timestamp.fromDate(new Date(excepcion.createdAt)) : firebase.firestore.FieldValue.serverTimestamp()
+    };
+    await excepcionesCollection.doc(excepcion.id).set(dataToSave);
+};
+
 export const addExcepcion = async (excepcion: ExcepcionData): Promise<string> => {
     const dataToAdd: any = {
         // @ts-ignore
@@ -927,8 +1014,19 @@ export const addExcepcion = async (excepcion: ExcepcionData): Promise<string> =>
 };
 
 export const getExcepciones = async (): Promise<Excepcion[]> => {
-    const snapshot = await excepcionesCollection.orderBy('createdAt', 'desc').get();
-    return snapshot.docs.map(docToExcepcion);
+    try {
+        const snapshot = await excepcionesCollection.orderBy('createdAt', 'desc').get();
+        return snapshot.docs.map(docToExcepcion);
+    } catch (error: any) {
+        console.error('Error obteniendo excepciones:', error);
+        if (error?.code === 'permission-denied') {
+            console.error('FirebaseError: Missing or insufficient permissions.');
+            console.error('SOLUCIÓN: Configura las reglas de Firestore para permitir acceso.');
+            console.error('Ve a Firebase Console > Firestore Database > Reglas');
+            console.error('Y aplica las reglas del archivo firestore.rules');
+        }
+        return [];
+    }
 };
 
 export const updateExcepcion = async (id: string, excepcion: ExcepcionData): Promise<void> => {
@@ -1558,8 +1656,30 @@ export const deleteAllData = async (
             });
         }
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error eliminando todos los datos:', error);
+        if (error?.code === 'permission-denied') {
+            const permissionError = new Error(
+                'Missing or insufficient permissions.\n\n' +
+                'SOLUCIÓN:\n' +
+                '1. Ve a Firebase Console: https://console.firebase.google.com/\n' +
+                '2. Selecciona tu proyecto\n' +
+                '3. Ve a Firestore Database > Reglas\n' +
+                '4. Copia y pega estas reglas:\n\n' +
+                'rules_version = \'2\';\n' +
+                'service cloud.firestore {\n' +
+                '  match /databases/{database}/documents {\n' +
+                '    match /{document=**} {\n' +
+                '      allow read, write: if true;\n' +
+                '    }\n' +
+                '  }\n' +
+                '}\n\n' +
+                '5. Haz clic en "Publicar"\n' +
+                '6. Recarga la aplicación'
+            );
+            permissionError.name = 'FirebasePermissionError';
+            throw permissionError;
+        }
         throw error;
     }
 };

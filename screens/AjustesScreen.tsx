@@ -476,7 +476,20 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
 
                         } catch (e: any) {
                             console.error("Error eliminando datos:", e);
-                            showAlert(`❌ Error al eliminar los datos: ${e.message}`);
+                            let errorMessage = `❌ Error al eliminar los datos: ${e.message}`;
+                            
+                            if (e?.message?.includes('permission') || e?.code === 'permission-denied') {
+                                errorMessage += '\n\n🔧 SOLUCIÓN:\n';
+                                errorMessage += '1. Ve a Firebase Console: https://console.firebase.google.com/\n';
+                                errorMessage += '2. Selecciona tu proyecto (tappxi-21346)\n';
+                                errorMessage += '3. Ve a Firestore Database > Reglas\n';
+                                errorMessage += '4. Copia y pega las reglas del archivo firestore.rules\n';
+                                errorMessage += '5. Haz clic en "Publicar"\n';
+                                errorMessage += '6. Recarga la aplicación\n\n';
+                                errorMessage += '📖 Consulta PASOS_SOLUCION_PERMISOS.md para instrucciones detalladas.';
+                            }
+                            
+                            showAlert(errorMessage);
                         } finally {
                             setIsDeleting(false);
                             setDeletionProgress(0);

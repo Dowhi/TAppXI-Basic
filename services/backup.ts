@@ -10,6 +10,10 @@ import {
     restoreCarrera,
     restoreGasto,
     restoreTurno,
+    restoreProveedor,
+    restoreConcepto,
+    restoreTaller,
+    restoreExcepcion,
     saveAjustes,
     saveBreakConfiguration,
     getAllTurnos
@@ -52,6 +56,19 @@ const safeSerializeDate = (value: any): any => {
 };
 
 export const buildBackupPayload = async (): Promise<BackupPayload> => {
+    // Función auxiliar para manejar errores de permisos
+    const safeGet = async <T>(fn: () => Promise<T>, defaultValue: T): Promise<T> => {
+        try {
+            return await fn();
+        } catch (error: any) {
+            if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+                console.warn(`Error de permisos al obtener datos: ${error.message}`);
+                return defaultValue;
+            }
+            throw error;
+        }
+    };
+
     const [
         ajustes,
         breakConfiguration,
@@ -63,16 +80,15 @@ export const buildBackupPayload = async (): Promise<BackupPayload> => {
         conceptos,
         talleres,
     ] = await Promise.all([
-        getAjustes(),
-        getBreakConfiguration(),
-        getExcepciones(),
-        getCarreras(),
-        getGastos(),
-
-        getAllTurnos(),
-        getProveedores(),
-        getConceptos(),
-        getTalleres(),
+        safeGet(() => getAjustes(), null),
+        safeGet(() => getBreakConfiguration(), null),
+        safeGet(() => getExcepciones(), []),
+        safeGet(() => getCarreras(), []),
+        safeGet(() => getGastos(), []),
+        safeGet(() => getAllTurnos(), []),
+        safeGet(() => getProveedores(), []),
+        safeGet(() => getConceptos(), []),
+        safeGet(() => getTalleres(), []),
     ]);
 
     const payload: BackupPayload = {
@@ -165,7 +181,7 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
         turnos: 0
     };
 
-    const totalSteps = 5; // Ajustes, Config, Carreras, Gastos, Turnos
+    const totalSteps = 9; // Ajustes, Config, Carreras, Gastos, Turnos, Proveedores, Conceptos, Talleres, Excepciones
     let currentStep = 0;
 
     const reportProgress = (msg: string) => {
@@ -178,7 +194,14 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
     // Restaurar Ajustes
     reportProgress("Restaurando ajustes...");
     if (jsonData.ajustes) {
-        await saveAjustes(jsonData.ajustes);
+        // Limpiar ajustes antes de guardar (convertir undefined a valores por defecto)
+        const cleanAjustes = {
+            temaOscuro: jsonData.ajustes.temaOscuro ?? false,
+            tamanoFuente: jsonData.ajustes.tamanoFuente ?? jsonData.ajustes['tam\u00f1oFuente'] ?? 14,
+            letraDescanso: jsonData.ajustes.letraDescanso ?? '',
+            objetivoDiario: jsonData.ajustes.objetivoDiario ?? 100,
+        };
+        await saveAjustes(cleanAjustes);
     }
     currentStep++;
 
@@ -229,6 +252,58 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
             stats.turnos++;
             if (i % 10 === 0 && onProgress) {
                 onProgress(Math.round((4 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando turnos (${i + 1}/${total})...`);
+            }
+        }
+    }
+    currentStep++;
+
+    // Restaurar Proveedores
+    reportProgress("Restaurando proveedores...");
+    if (jsonData.proveedores && Array.isArray(jsonData.proveedores)) {
+        const total = jsonData.proveedores.length;
+        for (let i = 0; i < total; i++) {
+            await restoreProveedor(jsonData.proveedores[i]);
+            if (i % 10 === 0 && onProgress) {
+                onProgress(Math.round((5 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando proveedores (${i + 1}/${total})...`);
+            }
+        }
+    }
+    currentStep++;
+
+    // Restaurar Conceptos
+    reportProgress("Restaurando conceptos...");
+    if (jsonData.conceptos && Array.isArray(jsonData.conceptos)) {
+        const total = jsonData.conceptos.length;
+        for (let i = 0; i < total; i++) {
+            await restoreConcepto(jsonData.conceptos[i]);
+            if (i % 10 === 0 && onProgress) {
+                onProgress(Math.round((6 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando conceptos (${i + 1}/${total})...`);
+            }
+        }
+    }
+    currentStep++;
+
+    // Restaurar Talleres
+    reportProgress("Restaurando talleres...");
+    if (jsonData.talleres && Array.isArray(jsonData.talleres)) {
+        const total = jsonData.talleres.length;
+        for (let i = 0; i < total; i++) {
+            await restoreTaller(jsonData.talleres[i]);
+            if (i % 10 === 0 && onProgress) {
+                onProgress(Math.round((7 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando talleres (${i + 1}/${total})...`);
+            }
+        }
+    }
+    currentStep++;
+
+    // Restaurar Excepciones
+    reportProgress("Restaurando excepciones...");
+    if (jsonData.excepciones && Array.isArray(jsonData.excepciones)) {
+        const total = jsonData.excepciones.length;
+        for (let i = 0; i < total; i++) {
+            await restoreExcepcion(jsonData.excepciones[i]);
+            if (i % 10 === 0 && onProgress) {
+                onProgress(Math.round((8 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando excepciones (${i + 1}/${total})...`);
             }
         }
     }
@@ -441,51 +516,256 @@ const parseNumber = (val: any): number => {
     return 0;
 };
 
+// Función segura para parsear fechas
+const parseDate = (val: any): Date | null => {
+    if (!val) return null;
+    if (val instanceof Date) {
+        // Verificar que la fecha es válida
+        if (isNaN(val.getTime())) return null;
+        return val;
+    }
+    if (typeof val === 'string') {
+        // Intentar parsear diferentes formatos
+        const trimmed = val.trim();
+        if (!trimmed || trimmed === '') return null;
+        
+        // Intentar parsear ISO string
+        let date = new Date(trimmed);
+        if (!isNaN(date.getTime())) return date;
+        
+        // Intentar parsear formato español DD/MM/YYYY
+        const spanishFormat = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(trimmed);
+        if (spanishFormat) {
+            const [, day, month, year] = spanishFormat;
+            date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+            if (!isNaN(date.getTime())) return date;
+        }
+        
+        // Si no se puede parsear, retornar null
+        return null;
+    }
+    if (typeof val === 'number') {
+        // Timestamp
+        const date = new Date(val);
+        if (!isNaN(date.getTime())) return date;
+        return null;
+    }
+    return null;
+};
+
 export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?: (progress: number, message: string) => void): Promise<{ carreras: number; gastos: number; turnos: number }> => {
     try {
         console.log(`Iniciando restauración desde Sheet ID: ${spreadsheetId}`);
         if (onProgress) onProgress(0, "Descargando datos de Google Sheets...");
 
-        // Leer hojas
-        const [carrerasRows, gastosRows, turnosRows] = await Promise.all([
-            readSheetValues(spreadsheetId, 'Carreras!A:Z'),
-            readSheetValues(spreadsheetId, 'Gastos!A:Z'),
-            readSheetValues(spreadsheetId, 'Turnos!A:Z'),
+        // Leer todas las hojas
+        const [
+            carrerasRows, 
+            gastosRows, 
+            turnosRows, 
+            proveedoresRows, 
+            conceptosRows, 
+            talleresRows,
+            ajustesRows,
+            breakConfigRows,
+            excepcionesRows
+        ] = await Promise.all([
+            readSheetValues(spreadsheetId, 'Carreras!A:Z').catch(() => []),
+            readSheetValues(spreadsheetId, 'Gastos!A:Z').catch(() => []),
+            readSheetValues(spreadsheetId, 'Turnos!A:Z').catch(() => []),
+            readSheetValues(spreadsheetId, 'Proveedores!A:Z').catch(() => []),
+            readSheetValues(spreadsheetId, 'Conceptos!A:Z').catch(() => []),
+            readSheetValues(spreadsheetId, 'Talleres!A:Z').catch(() => []),
+            readSheetValues(spreadsheetId, 'Ajustes!A:B').catch(() => []),
+            readSheetValues(spreadsheetId, 'BreakConfiguration!A:B').catch(() => []),
+            readSheetValues(spreadsheetId, 'Excepciones!A:Z').catch(() => []),
         ]);
 
         if (onProgress) onProgress(10, "Procesando datos...");
 
-        console.log(`Leídas filas: Carreras=${carrerasRows.length}, Gastos=${gastosRows.length}, Turnos=${turnosRows.length}`);
+        console.log(`Leídas filas: Carreras=${carrerasRows.length}, Gastos=${gastosRows.length}, Turnos=${turnosRows.length}, Proveedores=${proveedoresRows.length}, Conceptos=${conceptosRows.length}, Talleres=${talleresRows.length}, Excepciones=${excepcionesRows.length}`);
 
         const carrerasRaw = fromRows(carrerasRows);
         const gastosRaw = fromRows(gastosRows);
         const turnosRaw = fromRows(turnosRows);
+        const proveedoresRaw = fromRows(proveedoresRows);
+        const conceptosRaw = fromRows(conceptosRows);
+        const talleresRaw = fromRows(talleresRows);
+        const excepcionesRaw = fromRows(excepcionesRows);
 
         // Procesar tipos de datos (números, fechas si es necesario)
-        const carreras = carrerasRaw.map(c => ({
-            ...c,
-            taximetro: parseNumber(c.taximetro),
-            cobrado: parseNumber(c.cobrado),
-        }));
+        const carreras = carrerasRaw.map(c => {
+            const fechaHora = parseDate(c.fechaHora);
+            return {
+                ...c,
+                taximetro: parseNumber(c.taximetro),
+                cobrado: parseNumber(c.cobrado),
+                fechaHora: fechaHora || new Date(), // Si no se puede parsear, usar fecha actual
+            };
+        });
 
-        const gastos = gastosRaw.map(g => ({
-            ...g,
-            importe: parseNumber(g.importe),
-            baseImponible: parseNumber(g.baseImponible),
-            ivaImporte: parseNumber(g.ivaImporte),
-            ivaPorcentaje: parseNumber(g.ivaPorcentaje),
-            kilometros: parseNumber(g.kilometros),
-            kilometrosVehiculo: parseNumber(g.kilometrosVehiculo),
-            descuento: parseNumber(g.descuento),
-        }));
+        const gastos = gastosRaw.map(g => {
+            const fecha = parseDate(g.fecha);
+            return {
+                ...g,
+                importe: parseNumber(g.importe),
+                baseImponible: parseNumber(g.baseImponible),
+                ivaImporte: parseNumber(g.ivaImporte),
+                ivaPorcentaje: parseNumber(g.ivaPorcentaje),
+                kilometros: parseNumber(g.kilometros),
+                kilometrosVehiculo: parseNumber(g.kilometrosVehiculo),
+                descuento: parseNumber(g.descuento),
+                fecha: fecha || new Date(), // Si no se puede parsear, usar fecha actual
+            };
+        });
 
-        const turnos = turnosRaw.map(t => ({
-            ...t,
-            kilometrosInicio: parseNumber(t.kilometrosInicio),
-            kilometrosFin: t.kilometrosFin ? parseNumber(t.kilometrosFin) : null,
-        }));
+        const turnos = turnosRaw.map(t => {
+            const fechaInicio = parseDate(t.fechaInicio);
+            const fechaFin = parseDate(t.fechaFin);
+            return {
+                ...t,
+                kilometrosInicio: parseNumber(t.kilometrosInicio),
+                kilometrosFin: t.kilometrosFin ? parseNumber(t.kilometrosFin) : null,
+                fechaInicio: fechaInicio || new Date(), // Si no se puede parsear, usar fecha actual
+                fechaFin: fechaFin || null,
+            };
+        });
 
-        // Construir payload parcial (solo lo que tenemos en sheets)
+        // Función auxiliar para limpiar objetos y convertir undefined a null
+        const cleanObject = (obj: any): any => {
+            if (obj === null || obj === undefined) return null;
+            if (Array.isArray(obj)) {
+                return obj.map(cleanObject);
+            }
+            if (typeof obj === 'object') {
+                const cleaned: any = {};
+                for (const key in obj) {
+                    if (obj[key] !== undefined) {
+                        cleaned[key] = cleanObject(obj[key]);
+                    }
+                }
+                return cleaned;
+            }
+            return obj;
+        };
+
+        // Procesar ajustes (formato clave-valor)
+        let ajustes = null;
+        if (ajustesRows.length > 1) {
+            ajustes = {};
+            for (let i = 1; i < ajustesRows.length; i++) {
+                const [key, value] = ajustesRows[i];
+                if (key && value !== null && value !== undefined && value !== '') {
+                    // Reconstruir estructura anidada
+                    const keys = key.split('.');
+                    let current = ajustes;
+                    for (let j = 0; j < keys.length - 1; j++) {
+                        if (!current[keys[j]]) current[keys[j]] = {};
+                        current = current[keys[j]];
+                    }
+                    // Intentar parsear JSON si es necesario
+                    let finalValue = value;
+                    if (typeof value === 'string' && (value.startsWith('{') || value.startsWith('['))) {
+                        try {
+                            finalValue = JSON.parse(value);
+                        } catch {
+                            // Dejar como string
+                        }
+                    }
+                    current[keys[keys.length - 1]] = finalValue;
+                }
+            }
+            // Limpiar el objeto ajustes para eliminar undefined y asegurar valores por defecto
+            ajustes = cleanObject(ajustes);
+            // Asegurar valores por defecto para campos requeridos
+            if (ajustes) {
+                ajustes.temaOscuro = ajustes.temaOscuro ?? false;
+                ajustes.tamanoFuente = ajustes.tamanoFuente ?? ajustes['tam\u00f1oFuente'] ?? 14;
+                ajustes.letraDescanso = ajustes.letraDescanso ?? '';
+                ajustes.objetivoDiario = ajustes.objetivoDiario ?? 100;
+                // Eliminar la clave con tilde si existe
+                if (ajustes['tam\u00f1oFuente'] !== undefined) {
+                    delete ajustes['tam\u00f1oFuente'];
+                }
+            }
+        }
+
+        // Procesar breakConfiguration (formato clave-valor)
+        let breakConfiguration = null;
+        if (breakConfigRows.length > 1) {
+            breakConfiguration = {};
+            for (let i = 1; i < breakConfigRows.length; i++) {
+                const [key, value] = breakConfigRows[i];
+                if (key && value !== null && value !== undefined && value !== '') {
+                    const keys = key.split('.');
+                    let current = breakConfiguration;
+                    for (let j = 0; j < keys.length - 1; j++) {
+                        if (!current[keys[j]]) current[keys[j]] = {};
+                        current = current[keys[j]];
+                    }
+                    let finalValue = value;
+                    if (typeof value === 'string' && (value.startsWith('{') || value.startsWith('['))) {
+                        try {
+                            finalValue = JSON.parse(value);
+                        } catch {
+                            // Dejar como string
+                        }
+                    }
+                    current[keys[keys.length - 1]] = finalValue;
+                }
+            }
+            // Limpiar el objeto breakConfiguration
+            breakConfiguration = cleanObject(breakConfiguration);
+            // Asegurar valores por defecto
+            if (breakConfiguration) {
+                breakConfiguration.startDate = breakConfiguration.startDate ?? '';
+                breakConfiguration.startDayLetter = breakConfiguration.startDayLetter ?? 'A';
+                breakConfiguration.weekendPattern = breakConfiguration.weekendPattern ?? 'Sabado: AC / Domingo: BD';
+                breakConfiguration.userBreakLetter = breakConfiguration.userBreakLetter ?? 'A';
+            }
+        }
+
+        // Procesar excepciones con validación de fechas
+        const excepciones = excepcionesRaw.map(e => {
+            const fechaDesde = parseDate(e.fechaDesde);
+            const fechaHasta = parseDate(e.fechaHasta);
+            const createdAt = parseDate(e.createdAt);
+            
+            // Si alguna fecha es inválida, usar valores por defecto
+            return {
+                ...e,
+                fechaDesde: fechaDesde || new Date(),
+                fechaHasta: fechaHasta || new Date(),
+                createdAt: createdAt || new Date(),
+            };
+        });
+
+        // Procesar proveedores, conceptos y talleres con validación de fechas
+        const proveedores = proveedoresRaw.map(p => {
+            const createdAt = parseDate(p.createdAt);
+            return {
+                ...p,
+                createdAt: createdAt || new Date(),
+            };
+        });
+
+        const conceptos = conceptosRaw.map(c => {
+            const createdAt = parseDate(c.createdAt);
+            return {
+                ...c,
+                createdAt: createdAt || new Date(),
+            };
+        });
+
+        const talleres = talleresRaw.map(t => {
+            const createdAt = parseDate(t.createdAt);
+            return {
+                ...t,
+                createdAt: createdAt || new Date(),
+            };
+        });
+
+        // Construir payload completo
         const payload: Partial<BackupPayload> = {
             meta: {
                 app: 'TAppXI',
@@ -495,13 +775,12 @@ export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?
             carreras,
             gastos,
             turnos,
-            // Los demás arrays vacíos o null, restoreBackup maneja nulls
-            ajustes: null,
-            breakConfiguration: null,
-            excepciones: [],
-            proveedores: [],
-            conceptos: [],
-            talleres: [],
+            proveedores,
+            conceptos,
+            talleres,
+            excepciones,
+            ajustes,
+            breakConfiguration,
         };
 
         return await restoreBackup(payload, onProgress);
