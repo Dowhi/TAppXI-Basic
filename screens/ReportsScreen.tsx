@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Seccion } from '../types';
 import ScreenTopBar from '../components/ScreenTopBar';
-import { getCarreras, getGastos } from '../services/api';
+import { getCarreras, getGastos, getAllTurnos } from '../services/api';
 import jsPDF from 'jspdf';
 
 // Importar jspdf-autotable - versión 5.x
@@ -36,7 +36,7 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigateTo }) => {
         const hoy = new Date();
         const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
         const ultimoDia = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
-        
+
         setFechaDesde(primerDia.toISOString().split('T')[0]);
         setFechaHasta(ultimoDia.toISOString().split('T')[0]);
     }, []);
@@ -55,9 +55,10 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigateTo }) => {
             fechaHastaObj.setHours(23, 59, 59, 999);
 
             // Obtener todos los datos
-            const [carreras, gastos] = await Promise.all([
+            const [carreras, gastos, turnos] = await Promise.all([
                 getCarreras(),
-                getGastos()
+                getGastos(),
+                getAllTurnos()
             ]);
 
             // Filtrar por fechas
@@ -71,11 +72,16 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigateTo }) => {
                 return fecha >= fechaDesdeObj && fecha <= fechaHastaObj;
             });
 
+            const turnosFiltrados = turnos.filter(t => {
+                const fecha = t.fechaInicio instanceof Date ? t.fechaInicio : new Date(t.fechaInicio);
+                return fecha >= fechaDesdeObj && fecha <= fechaHastaObj;
+            });
+
             // Aplicar filtros adicionales
             let gastosFinales = gastosFiltrados;
             console.log('Filtros aplicados:', filtros);
             console.log('Gastos antes de filtrar:', gastosFiltrados.length);
-            
+
             if (filtros.tipo === 'gastos' || filtros.tipo === 'todos') {
                 if (filtros.gastosFiltro === 'actividad') {
                     // Filtrar solo gastos de actividad (tipo === 'actividad' o 'Actividad')
@@ -89,22 +95,25 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigateTo }) => {
                     const gastosAntes = gastosFinales.length;
                     gastosFinales = gastosFinales.filter(g => {
                         const tipo = String(g.tipo || '').toLowerCase().trim();
-                        
+
                         // Verificar si es tipo vehículo (puede estar guardado como 'vehiculo', 'Vehículo', etc.)
-                        const esTipoVehiculo = tipo === 'vehiculo' || 
-                                              tipo === 'vehículo' || 
-                                              tipo === 'vehicle' ||
-                                              tipo === 'vehicul' ||
-                                              (tipo.length > 0 && tipo.includes('vehic'));
-                        
+                        const esTipoVehiculo = tipo === 'vehiculo' ||
+                            tipo === 'vehículo' ||
+                            tipo === 'vehicle' ||
+                            tipo === 'vehicul' ||
+                            (tipo.length > 0 && tipo.includes('vehic'));
+
                         // O si tiene campos de vehículo (taller, kilometrosVehiculo, o servicios)
                         const tieneTaller = g.taller != null && String(g.taller).trim() !== '';
                         const tieneKilometros = g.kilometrosVehiculo != null && Number(g.kilometrosVehiculo) > 0;
                         const tieneServicios = g.servicios && Array.isArray(g.servicios) && g.servicios.length > 0;
-                        const tieneCamposVehiculo = tieneTaller || tieneKilometros || tieneServicios;
-                        
+                        // También incluir si tiene litros (combustible)
+                        const tieneCombustible = (g.litros != null && Number(g.litros) > 0) || (g.precioPorLitro != null && Number(g.precioPorLitro) > 0);
+
+                        const tieneCamposVehiculo = tieneTaller || tieneKilometros || tieneServicios || tieneCombustible;
+
                         const resultado = esTipoVehiculo || tieneCamposVehiculo;
-                        
+
                         // Debug: mostrar todos los gastos para ver qué tienen
                         console.log('Gasto evaluado:', {
                             id: g.id,
@@ -117,22 +126,24 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigateTo }) => {
                             tieneCamposVehiculo,
                             resultado
                         });
-                        
+
                         return resultado;
                     });
-                    
+
                     console.log(`Filtro Vehículo: ${gastosFinales.length} gastos encontrados de ${gastosAntes} totales`);
                     console.log('Gastos filtrados:', gastosFinales.map(g => ({ id: g.id, tipo: g.tipo, taller: g.taller })));
                 } else if (filtros.gastosFiltro === 'conceptos' && filtros.concepto) {
                     gastosFinales = gastosFinales.filter(g => g.concepto?.toLowerCase().includes(filtros.concepto!.toLowerCase()));
                 } else if (filtros.gastosFiltro === 'proveedores' && filtros.proveedor) {
                     gastosFinales = gastosFinales.filter(g => g.proveedor?.toLowerCase().includes(filtros.proveedor!.toLowerCase()));
+                } else if (filtros.gastosFiltro === 'iva') {
+                    // Filtrar solo gastos con IVA > 0
+                    gastosFinales = gastosFinales.filter(g => g.ivaPorcentaje != null && Number(g.ivaPorcentaje) > 0);
                 }
-                // El filtro 'iva' no necesita lógica adicional, solo muestra todos los gastos con su desglose de IVA
             }
 
             // Generar PDF
-            generarPDF(carrerasFiltradas, gastosFinales, fechaDesdeObj, fechaHastaObj, filtros);
+            generarPDF(carrerasFiltradas, gastosFinales, turnosFiltrados, fechaDesdeObj, fechaHastaObj, filtros);
         } catch (error) {
             console.error('Error al generar informe:', error);
             alert('Error al generar el informe. Por favor, intenta de nuevo.');
@@ -144,6 +155,7 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigateTo }) => {
     const generarPDF = (
         carreras: any[],
         gastos: any[],
+        turnos: any[],
         fechaDesde: Date,
         fechaHasta: Date,
         filtros: ReportFilter
@@ -151,25 +163,47 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigateTo }) => {
         const doc = new jsPDF();
         const pageWidth = doc.internal.pageSize.getWidth();
         const pageHeight = doc.internal.pageSize.getHeight();
-        let yPos = 20;
+        let yPos = 15; // Reduced initial Y position
 
         // Encabezado
-        doc.setFontSize(18);
+        doc.setFontSize(16); // Slightly smaller title
         doc.setTextColor(0, 0, 0);
         doc.text('INFORME FISCAL Y CONTABLE', pageWidth / 2, yPos, { align: 'center' });
-        yPos += 10;
+        yPos += 7; // Reduced gap
 
-        doc.setFontSize(12);
+        doc.setFontSize(10); // Smaller metadata
         doc.text(`Período: ${fechaDesde.toLocaleDateString('es-ES')} - ${fechaHasta.toLocaleDateString('es-ES')}`, pageWidth / 2, yPos, { align: 'center' });
-        yPos += 10;
+        yPos += 6; // Reduced gap
 
+        // Mostrar filtros aplicados
+        let textoFiltros = 'Filtros: ';
+        if (filtros.tipo === 'todos') textoFiltros += 'Todos';
+        else if (filtros.tipo === 'ingresos') textoFiltros += 'Solo Ingresos';
+        else if (filtros.tipo === 'gastos') {
+            textoFiltros += 'Solo Gastos';
+            if (filtros.gastosFiltro) {
+                // Capitalizar primera letra
+                const filtroCapitalizado = filtros.gastosFiltro.charAt(0).toUpperCase() + filtros.gastosFiltro.slice(1);
+                textoFiltros += ` - ${filtroCapitalizado}`;
+
+                if (filtros.gastosFiltro === 'conceptos' && filtros.concepto) {
+                    textoFiltros += ` (${filtros.concepto})`;
+                }
+                if (filtros.gastosFiltro === 'proveedores' && filtros.proveedor) {
+                    textoFiltros += ` (${filtros.proveedor})`;
+                }
+            }
+        }
+
+        doc.setFontSize(10);
+        doc.text(textoFiltros, pageWidth / 2, yPos, { align: 'center' });
+        yPos += 6;
+
+        doc.setTextColor(100, 100, 100); // Gray for generation date
+        doc.setFontSize(9);
         doc.text(`Fecha de generación: ${new Date().toLocaleDateString('es-ES')} ${new Date().toLocaleTimeString('es-ES')}`, pageWidth / 2, yPos, { align: 'center' });
-        yPos += 15;
-
-        // Resumen Ejecutivo
-        doc.setFontSize(14);
-        doc.text('RESUMEN EJECUTIVO', 14, yPos);
-        yPos += 8;
+        doc.setTextColor(0, 0, 0); // Reset color
+        yPos += 10; // Reduced gap before summary
 
         const totalIngresos = carreras.reduce((sum, c) => sum + (c.cobrado || 0), 0);
         const totalGastos = gastos.reduce((sum, g) => sum + (g.importe || 0), 0);
@@ -177,19 +211,76 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigateTo }) => {
         const totalIVAGastos = gastos.reduce((sum, g) => sum + (g.ivaImporte || 0), 0);
         const balance = totalIngresos - totalGastos;
 
-        doc.setFontSize(10);
-        doc.text(`Total Ingresos: ${totalIngresos.toFixed(2)} €`, 14, yPos);
-        yPos += 6;
-        doc.text(`Total Gastos: ${totalGastos.toFixed(2)} €`, 14, yPos);
-        yPos += 6;
-        doc.text(`Base Imponible (Gastos): ${baseImponibleGastos.toFixed(2)} €`, 14, yPos);
-        yPos += 6;
-        doc.text(`IVA (Gastos): ${totalIVAGastos.toFixed(2)} €`, 14, yPos);
-        yPos += 6;
-        doc.text(`Balance Neto: ${balance.toFixed(2)} €`, 14, yPos);
-        yPos += 10;
+        // =====================
+        // RESUMEN EJECUTIVO (TABLA)
+        // =====================
+        doc.setFontSize(12); // Smaller section title
+        doc.text('RESUMEN EJECUTIVO', 14, yPos);
+        yPos += 5; // Reduced gap
 
-        // INGRESOS
+        // Tabla resumen tipo hoja de cálculo
+        // @ts-ignore
+        autoTableModule.default(doc, {
+            startY: yPos,
+            head: [[
+                'Total Ingresos (€)',
+                'Total Gastos (€)',
+                'Balance Neto (€)'
+            ]],
+            body: [[
+                totalIngresos.toFixed(2),
+                totalGastos.toFixed(2),
+                balance.toFixed(2)
+            ]],
+            theme: 'grid',
+            styles: {
+                fontSize: 9, // Smaller font
+                halign: 'center',
+                cellPadding: 1.5 // Reduced padding
+            },
+            headStyles: {
+                fillColor: [245, 245, 245], // Lighter gray
+                textColor: [0, 0, 0],
+                fontStyle: 'bold',
+                lineWidth: 0.1,
+                lineColor: [200, 200, 200]
+            },
+            margin: { left: 14, right: 14 }
+        });
+
+        // Segunda fila (Base + IVA)
+        const resumenY = (doc as any).lastAutoTable.finalY + 2; // Reduced gap between tables
+
+        // @ts-ignore
+        autoTableModule.default(doc, {
+            startY: resumenY,
+            head: [[
+                'Base Imponible Gastos (€)',
+                'IVA Gastos (€)'
+            ]],
+            body: [[
+                baseImponibleGastos.toFixed(2),
+                totalIVAGastos.toFixed(2)
+            ]],
+            theme: 'grid',
+            styles: {
+                fontSize: 9, // Smaller font
+                halign: 'center',
+                cellPadding: 1.5 // Reduced padding
+            },
+            headStyles: {
+                fillColor: [245, 245, 245], // Lighter gray
+                textColor: [0, 0, 0],
+                fontStyle: 'bold',
+                lineWidth: 0.1,
+                lineColor: [200, 200, 200]
+            },
+            margin: { left: 30, right: 30 }
+        });
+
+        yPos = (doc as any).lastAutoTable.finalY + 8; // Reduced gap after summary
+
+        // DETALLE DE INGRESOS (Daily aggregation)
         if (filtros.tipo === 'ingresos' || filtros.tipo === 'todos') {
             if (yPos > pageHeight - 60) {
                 doc.addPage();
@@ -197,73 +288,244 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigateTo }) => {
             }
 
             doc.setFontSize(14);
+            // Alineación a la izquierda (x=14)
             doc.text('DETALLE DE INGRESOS', 14, yPos);
             yPos += 8;
 
-            if (carreras.length > 0) {
-                const ingresosData = carreras.map(c => {
-                    const fecha = c.fechaHora instanceof Date ? c.fechaHora : new Date(c.fechaHora);
-                    return [
-                        fecha.toLocaleDateString('es-ES'),
-                        fecha.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
-                        c.taximetro?.toFixed(2) || '0.00',
-                        c.cobrado?.toFixed(2) || '0.00',
-                        c.formaPago || 'N/A',
-                        c.emisora ? 'Sí' : 'No',
-                        c.aeropuerto ? 'Sí' : 'No'
-                    ];
-                });
+            // Agrupar datos por día
+            const datosPorDia: {
+                [key: string]: {
+                    fecha: Date,
+                    ingresos: number,
+                    kilometros: number,
+                    horasMs: number,
+                    carrerasTotal: number,
+                    carrerasTarjeta: number,
+                    carrerasEmisora: number,
+                    carrerasVales: number,
+                    importeTarjeta: number,
+                    importeEmisora: number,
+                    importeVales: number
+                }
+            } = {};
 
-                // Usar autoTable - en versión 5.x se usa como función
-                // @ts-ignore
-                if (typeof autoTableModule.default === 'function') {
-                    // @ts-ignore
-                    autoTableModule.default(doc, {
-                        startY: yPos,
-                        head: [['Fecha', 'Hora', 'Taxímetro', 'Cobrado', 'Forma Pago', 'Emisora', 'Aeropuerto']],
-                        body: ingresosData,
-                        theme: 'striped',
-                        headStyles: { fillColor: [0, 150, 200], textColor: 255, fontStyle: 'bold' },
-                        styles: { fontSize: 8 },
-                        margin: { left: 14, right: 14 }
-                    });
-                } else {
-                    // Fallback: usar doc.autoTable si está disponible
-                    // @ts-ignore
-                    doc.autoTable({
-                        startY: yPos,
-                        head: [['Fecha', 'Hora', 'Taxímetro', 'Cobrado', 'Forma Pago', 'Emisora', 'Aeropuerto']],
-                        body: ingresosData,
-                        theme: 'striped',
-                        headStyles: { fillColor: [0, 150, 200], textColor: 255, fontStyle: 'bold' },
-                        styles: { fontSize: 8 },
-                        margin: { left: 14, right: 14 }
-                    });
+            // Inicializar días con turnos (para tener días sin carreras pero con trabajo)
+            turnos.forEach(t => {
+                const fecha = t.fechaInicio instanceof Date ? t.fechaInicio : new Date(t.fechaInicio);
+                const key = fecha.toISOString().split('T')[0];
+
+                if (!datosPorDia[key]) {
+                    datosPorDia[key] = {
+                        fecha: new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate()),
+                        ingresos: 0,
+                        kilometros: 0,
+                        horasMs: 0,
+                        carrerasTotal: 0,
+                        carrerasTarjeta: 0,
+                        carrerasEmisora: 0,
+                        carrerasVales: 0,
+                        importeTarjeta: 0,
+                        importeEmisora: 0,
+                        importeVales: 0
+                    };
                 }
 
-                yPos = (doc as any).lastAutoTable.finalY + 10;
+                // Calcular Km
+                if (t.kilometrosFin && t.kilometrosInicio) {
+                    datosPorDia[key].kilometros += (t.kilometrosFin - t.kilometrosInicio);
+                }
 
-                // Resumen de ingresos por forma de pago
-                const ingresosPorFormaPago: { [key: string]: number } = {};
-                carreras.forEach(c => {
-                    const forma = c.formaPago || 'Sin especificar';
-                    ingresosPorFormaPago[forma] = (ingresosPorFormaPago[forma] || 0) + (c.cobrado || 0);
-                });
+                // Calcular Horas
+                if (t.fechaFin && t.fechaInicio) {
+                    const inicio = t.fechaInicio instanceof Date ? t.fechaInicio : new Date(t.fechaInicio);
+                    const fin = t.fechaFin instanceof Date ? t.fechaFin : new Date(t.fechaFin);
+                    datosPorDia[key].horasMs += (fin.getTime() - inicio.getTime());
+                }
+            });
 
-                doc.setFontSize(12);
-                doc.text('Resumen por Forma de Pago:', 14, yPos);
-                yPos += 6;
-                doc.setFontSize(10);
-                Object.entries(ingresosPorFormaPago).forEach(([forma, total]) => {
-                    doc.text(`${forma}: ${total.toFixed(2)} €`, 20, yPos);
-                    yPos += 5;
+            // Procesar Carreras
+            carreras.forEach(c => {
+                const fecha = c.fechaHora instanceof Date ? c.fechaHora : new Date(c.fechaHora);
+                const key = fecha.toISOString().split('T')[0]; // YYYY-MM-DD
+
+                if (!datosPorDia[key]) {
+                    datosPorDia[key] = {
+                        fecha: new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate()),
+                        ingresos: 0,
+                        kilometros: 0,
+                        horasMs: 0,
+                        carrerasTotal: 0,
+                        carrerasTarjeta: 0,
+                        carrerasEmisora: 0,
+                        carrerasVales: 0,
+                        importeTarjeta: 0,
+                        importeEmisora: 0,
+                        importeVales: 0
+                    };
+                }
+
+                const datos = datosPorDia[key];
+                datos.ingresos += (c.cobrado || 0);
+                datos.carrerasTotal++;
+
+                if (c.formaPago === 'Tarjeta') {
+                    datos.carrerasTarjeta++;
+                    datos.importeTarjeta += (c.cobrado || 0);
+                }
+                if (c.formaPago === 'Vales') {
+                    datos.carrerasVales++;
+                    datos.importeVales += (c.cobrado || 0);
+                }
+                if (c.emisora) {
+                    datos.carrerasEmisora++;
+                    datos.importeEmisora += (c.cobrado || 0);
+                }
+            });
+
+            // Procesar Gastos
+            gastos.forEach(g => {
+                const fecha = g.fecha instanceof Date ? g.fecha : new Date(g.fecha);
+                const key = fecha.toISOString().split('T')[0];
+
+                if (!datosPorDia[key]) {
+                    datosPorDia[key] = {
+                        fecha: new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate()),
+                        ingresos: 0,
+                        kilometros: 0,
+                        horasMs: 0,
+                        carrerasTotal: 0,
+                        carrerasTarjeta: 0,
+                        carrerasEmisora: 0,
+                        carrerasVales: 0,
+                        importeTarjeta: 0,
+                        importeEmisora: 0,
+                        importeVales: 0
+                    };
+                }
+
+                // datosPorDia[key].egresos += (g.importe || 0); // This line is removed as per instruction
+            });
+
+            // Agrupar por meses para la visualización
+            const diasOrdenados = Object.values(datosPorDia)
+                .sort((a, b) => a.fecha.getTime() - b.fecha.getTime())
+                .filter(d => d.ingresos > 0); // Solo mostrar días con ingresos
+
+            const tableBody: any[] = [];
+            let currentMonth = -1;
+            const mesesNombres = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
+
+            diasOrdenados.forEach(d => {
+                const mes = d.fecha.getMonth();
+                if (mes !== currentMonth) {
+                    currentMonth = mes;
+                    // Fila de cabecera de mes
+                    tableBody.push([{
+                        content: mesesNombres[mes],
+                        colSpan: 11, // Ajustado a 11 columnas (sin DIAS)
+                        styles: {
+                            fontStyle: 'bold',
+                            fillColor: [240, 240, 240],
+                            textColor: [0, 0, 0],
+                            halign: 'left'
+                        }
+                    }]);
+                }
+
+                const fechaStr = d.fecha.toLocaleDateString('es-ES');
+
+                // Formatear horas
+                const hours = Math.floor(d.horasMs / (1000 * 60 * 60));
+                const minutes = Math.floor((d.horasMs % (1000 * 60 * 60)) / (1000 * 60));
+                const horasStr = `${hours}h ${minutes}m`;
+
+                tableBody.push([
+                    fechaStr,
+                    d.ingresos.toFixed(2),
+                    d.kilometros.toFixed(0), // KILOMETROS
+                    horasStr, // HORAS
+                    // DIAS column removed
+                    d.carrerasTotal.toString(),
+                    d.carrerasTarjeta.toString(),
+                    d.carrerasEmisora.toString(),
+                    d.carrerasVales.toString(),
+                    d.importeTarjeta.toFixed(2),
+                    d.importeEmisora.toFixed(2),
+                    d.importeVales.toFixed(2)
+                ]);
+            });
+
+            // @ts-ignore
+            if (typeof autoTableModule.default === 'function') {
+                // @ts-ignore
+                autoTableModule.default(doc, {
+                    startY: yPos,
+                    head: [
+                        [
+                            { content: 'FECHA', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fillColor: [0, 0, 255] } },
+                            { content: 'INGRESOS', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fillColor: [0, 0, 255] } },
+                            { content: 'Kms.', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fillColor: [0, 0, 255] } },
+                            { content: 'HORAS', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fillColor: [0, 0, 255] } },
+                            // DIAS column removed
+                            { content: 'CARRERAS', colSpan: 4, styles: { halign: 'center', fillColor: [205, 200, 0], textColor: [0, 0, 0] } },
+                            { content: 'IMPORTE EN €', colSpan: 3, styles: { halign: 'center', fillColor: [255, 200, 0], textColor: [0, 0, 0] } }
+                        ],
+                        [
+                            { content: 'TOTAL', styles: { fillColor: [205, 200, 0], textColor: [0, 0, 0] } },
+                            { content: 'TARJ.', styles: { fillColor: [205, 200, 0], textColor: [0, 0, 0] } },
+                            { content: 'EMIS.', styles: { fillColor: [205, 200, 0], textColor: [0, 0, 0] } },
+                            { content: 'VALES', styles: { fillColor: [205, 200, 0], textColor: [0, 0, 0] } },
+                            { content: 'TARJETAS', styles: { fillColor: [255, 200, 0], textColor: [0, 0, 0] } },
+                            { content: 'EMISORA', styles: { fillColor: [255, 200, 0], textColor: [0, 0, 0] } },
+                            { content: 'VALES', styles: { fillColor: [255, 200, 0], textColor: [0, 0, 0] } }
+                        ]
+                    ],
+                    body: tableBody,
+                    theme: 'grid',
+                    headStyles: {
+                        textColor: [255, 255, 255],
+                        fontStyle: 'bold',
+                        lineWidth: 0.1,
+                        lineColor: [200, 200, 200]
+                    },
+                    styles: {
+                        fontSize: 8,
+                        cellPadding: 1, // Reduced padding for compactness
+                        halign: 'center',
+                        valign: 'middle'
+                    },
+                    columnStyles: {
+                        0: { cellWidth: 20, halign: 'center' }, // Fecha
+                        1: { cellWidth: 20, halign: 'right' }, // Ingresos
+                        2: { cellWidth: 20, halign: 'center' }, // Kilometros
+                        3: { cellWidth: 20, halign: 'center', fontStyle: 'bold' }, // Horas
+                        // DIAS removed, shift indices
+                        4: { cellWidth: 14 }, // Carreras Total
+                        5: { cellWidth: 15 }, // Carreras Tarjetas
+                        6: { cellWidth: 15 }, // Carreras Emisora
+                        7: { cellWidth: 14 }, // Carreras Vales
+                        8: { cellWidth: 18, halign: 'right' }, // Importe Tarjetas
+                        9: { cellWidth: 18, halign: 'right' }, // Importe Emisora
+                        10: { cellWidth: 18, halign: 'right' } // Importe Vales
+                    },
+                    margin: { left: 10, right: 10 }
                 });
-                yPos += 5;
             } else {
-                doc.setFontSize(10);
-                doc.text('No hay ingresos en el período seleccionado', 14, yPos);
-                yPos += 10;
+                // Fallback
+                // @ts-ignore
+                doc.autoTable({
+                    startY: yPos,
+                    head: [
+                        ['FECHA', 'INGRESOS', 'KILOMETROS', 'HORAS', 'CARRERAS', '', '', '', 'IMPORTE EN €', '', ''],
+                        ['', '', '', '', 'TOTAL', 'TARJ.', 'EMIS.', 'VALES', 'TARJETAS', 'EMISORA', 'VALES']
+                    ],
+                    body: tableBody,
+                    theme: 'grid',
+                    styles: { fontSize: 8, halign: 'center' }
+                });
             }
+
+            yPos = (doc as any).lastAutoTable.finalY + 10;
         }
 
         // GASTOS
@@ -278,282 +540,176 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigateTo }) => {
             yPos += 8;
 
             if (gastos.length > 0) {
-                // Formato especial para gastos de vehículo (Solo Gastos + Vehículo)
-                if (filtros.gastosFiltro === 'vehiculo' && filtros.tipo === 'gastos') {
-                    // Crear estructura de datos: fila principal + filas de servicios
-                    const tableData: any[] = [];
-                    
-                    gastos.forEach(g => {
+                // Agrupar por meses (Lógica unificada para todos los reportes de gastos)
+                const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+                const gastosPorMes: { [key: number]: any[] } = {};
+
+                // Ordenar por fecha ascendente
+                const gastosOrdenados = [...gastos].sort((a, b) => {
+                    const fechaA = a.fecha instanceof Date ? a.fecha : new Date(a.fecha);
+                    const fechaB = b.fecha instanceof Date ? b.fecha : new Date(b.fecha);
+                    return fechaA.getTime() - fechaB.getTime();
+                });
+
+                gastosOrdenados.forEach(g => {
+                    const fecha = g.fecha instanceof Date ? g.fecha : new Date(g.fecha);
+                    const mesIndex = fecha.getMonth();
+                    if (!gastosPorMes[mesIndex]) {
+                        gastosPorMes[mesIndex] = [];
+                    }
+                    gastosPorMes[mesIndex].push(g);
+                });
+
+                const tableBody: any[] = [];
+
+                // Construir cuerpo de la tabla con cabeceras de mes
+                Object.keys(gastosPorMes).sort((a, b) => Number(a) - Number(b)).forEach(mesIndexStr => {
+                    const mesIndex = Number(mesIndexStr);
+                    // Fila de cabecera de mes
+                    tableBody.push([{
+                        content: meses[mesIndex],
+                        colSpan: 11,
+                        styles: {
+                            fontStyle: 'bold',
+                            fillColor: [240, 240, 240],
+                            textColor: [0, 0, 0],
+                            halign: 'left'
+                        }
+                    }]);
+
+                    // Filas de gastos del mes
+                    gastosPorMes[mesIndex].forEach(g => {
                         const fecha = g.fecha instanceof Date ? g.fecha : new Date(g.fecha);
-                        const base = (g.baseImponible || g.importe || 0);
-                        const ivaPorcentaje = g.ivaPorcentaje || 0;
-                        const ivaImporte = g.ivaImporte || 0;
-                        const total = g.importe || 0;
-                        
-                        // Fila principal del gasto (todas las columnas llenas)
-                        tableData.push([
+                        const esVehiculoConServicios = g.tipo?.toLowerCase() === 'vehiculo' && g.servicios && Array.isArray(g.servicios) && g.servicios.length > 0;
+
+
+                        // Fila principal - mismo formato para todos los gastos
+                        // Columnas: Fecha, €, Proveedor, Concepto, Factura, F. Pago, Base, %, IVA, Kms., Notas
+                        tableBody.push([
                             fecha.toLocaleDateString('es-ES'),
-                            g.taller || 'Sin taller',
+                            g.importe?.toFixed(2) || '0.00',
+                            g.proveedor || g.taller || 'Sin proveedor',
+                            g.concepto || 'Sin concepto',
                             g.numeroFactura || 'Sin factura',
                             g.formaPago || 'N/A',
-                            g.kilometrosVehiculo ? g.kilometrosVehiculo.toFixed(0) : 'N/A',
-                            base.toFixed(2),
-                            `${ivaPorcentaje}%`,
-                            ivaImporte.toFixed(2),
-                            total.toFixed(2)
+                            (g.baseImponible || g.importe || 0).toFixed(2),
+                            g.ivaPorcentaje ? `${g.ivaPorcentaje}%` : '0%',
+                            (g.ivaImporte || 0).toFixed(2),
+                            g.kilometros ? g.kilometros.toFixed(0) : (g.kilometrosVehiculo ? g.kilometrosVehiculo.toFixed(0) : 'N/A'),
+                            g.notas || ''
                         ]);
-                        
-                        // Filas de servicios (columnas principales vacías, detalles en columnas correspondientes)
-                        if (g.servicios && Array.isArray(g.servicios) && g.servicios.length > 0) {
-                            // Agregar fila de encabezado de servicios
-                            tableData.push([
-                                '', // Fecha vacía
-                                'Servicio', // Encabezado en columna Taller
-                                'Referencia', // Encabezado en columna Nº Factura
-                                'Cant.', // Encabezado en columna Forma Pago
-                                '', // Km Vehiculo vacío
-                                '', // Base vacía
-                                'Precio', // Encabezado en columna IVA %
-                                '', // IVA € vacío
-                                'Total' // Encabezado en columna Total
-                            ]);
-                            
+
+                        // Si es vehículo con servicios, agregar filas de servicios
+                        if (esVehiculoConServicios) {
                             g.servicios.forEach((s: any) => {
-                                const servicioDesc = s.descripcion || 'Sin descripción';
-                                const referencia = s.referencia || '';
-                                const cantidad = s.cantidad || 1;
-                                const precio = s.precio || s.importe || 0;
-                                const totalServicio = s.importe || (precio * cantidad);
-                                
-                                // Fila de servicio: columnas principales vacías, detalles en columnas correspondientes
-                                tableData.push([
+                                tableBody.push([
                                     '', // Fecha vacía
-                                    servicioDesc, // Servicio en columna Taller
-                                    referencia, // Referencia en columna Nº Factura
-                                    cantidad.toString(), // Cant. en columna Forma Pago
-                                    '', // Km Vehiculo vacío
-                                    '', // Base vacía
-                                    precio.toFixed(2), // Precio en columna IVA %
-                                    '', // IVA € vacío
-                                    totalServicio.toFixed(2) // Total del servicio en columna Total
+                                    s.importe ? s.importe.toFixed(2) : '0.00', // €
+                                    '', // Proveedor vacío
+                                    s.descripcion || 'Sin descripción', // Concepto
+                                    s.referencia || 'Sin ref.', // Factura
+                                    s.precio ? s.precio.toFixed(2) : '0.00', // F. Pago (reutilizado para Precio)
+                                    s.descuento ? s.descuento.toFixed(2) : '0.00', // Base (reutilizado para Descuento)
+                                    '', // % vacío
+                                    '', // IVA vacío
+                                    s.cantidad || '1', // Kms (reutilizado para Cantidad)
+                                    '' // Notas vacío
                                 ]);
                             });
                         }
                     });
-                    
-                    // Usar autoTable con formato especial
-                    // @ts-ignore
-                    if (typeof autoTableModule.default === 'function') {
-                        // @ts-ignore
-                        autoTableModule.default(doc, {
-                            startY: yPos,
-                            head: [
-                                ['Fecha', 'Taller', 'Nº Factura', 'Forma Pago', 'Km Vehiculo', 'Base', 'IVA %', 'IVA €', 'Total']
-                            ],
-                            body: tableData,
-                            theme: 'striped',
-                            headStyles: { fillColor: [200, 0, 0], textColor: 255, fontStyle: 'bold', fontSize: 8 },
-                            styles: { fontSize: 7, cellPadding: 2 },
-                            margin: { left: 10, right: 10 },
-                            columnStyles: {
-                                0: { cellWidth: 18 }, // Fecha
-                                1: { cellWidth: 35 }, // Taller / Servicio
-                                2: { cellWidth: 25 }, // Nº Factura / Referencia
-                                3: { cellWidth: 20 }, // Forma Pago / Cant.
-                                4: { cellWidth: 18 }, // Km Vehiculo
-                                5: { cellWidth: 18 }, // Base
-                                6: { cellWidth: 12 }, // IVA % / Precio
-                                7: { cellWidth: 15 }, // IVA €
-                                8: { cellWidth: 18 }  // Total
-                            },
-                            didParseCell: (data: any) => {
-                                const row = tableData[data.row.index];
-                                if (!row) return;
-                                
-                                // Estilo para filas principales (con fecha)
-                                if (row[0] !== '' && row[1] !== 'Servicio') {
-                                    data.cell.styles.fontStyle = 'bold';
-                                }
-                                // Estilo para fila de encabezado de servicios
-                                else if (row[1] === 'Servicio') {
-                                    data.cell.styles.fontStyle = 'bold';
-                                    data.cell.styles.fillColor = [230, 230, 230];
-                                    data.cell.styles.textColor = [100, 100, 100];
-                                }
-                                // Estilo para filas de servicio (sin fecha y no es encabezado)
-                                else if (row[0] === '' && row[1] !== 'Servicio') {
-                                    data.cell.styles.fillColor = [250, 250, 250];
-                                    data.cell.styles.fontStyle = 'normal';
-                                }
-                                // Asegurar que el texto se muestre correctamente
-                                if (data.cell.text && data.cell.text.length > 0) {
-                                    data.cell.text = String(data.cell.text);
-                                }
-                            }
-                        });
-                    } else {
-                        // Fallback
-                        // @ts-ignore
-                        doc.autoTable({
-                            startY: yPos,
-                            head: [
-                                ['Fecha', 'Taller', 'Nº Factura', 'Forma Pago', 'Km Vehiculo', 'Base', 'IVA %', 'IVA €', 'Total']
-                            ],
-                            body: tableData,
-                            theme: 'striped',
-                            headStyles: { fillColor: [200, 0, 0], textColor: 255, fontStyle: 'bold', fontSize: 8 },
-                            styles: { fontSize: 7, cellPadding: 2 },
-                            margin: { left: 10, right: 10 },
-                            columnStyles: {
-                                0: { cellWidth: 18 },
-                                1: { cellWidth: 35 },
-                                2: { cellWidth: 25 },
-                                3: { cellWidth: 20 },
-                                4: { cellWidth: 18 },
-                                5: { cellWidth: 18 },
-                                6: { cellWidth: 12 },
-                                7: { cellWidth: 15 },
-                                8: { cellWidth: 18 }
-                            },
-                            didParseCell: (data: any) => {
-                                const row = tableData[data.row.index];
-                                if (!row) return;
-                                
-                                // Estilo para filas principales (con fecha)
-                                if (row[0] !== '' && row[1] !== 'Servicio') {
-                                    data.cell.styles.fontStyle = 'bold';
-                                }
-                                // Estilo para fila de encabezado de servicios
-                                else if (row[1] === 'Servicio') {
-                                    data.cell.styles.fontStyle = 'bold';
-                                    data.cell.styles.fillColor = [230, 230, 230];
-                                    data.cell.styles.textColor = [100, 100, 100];
-                                }
-                                // Estilo para filas de servicio (sin fecha y no es encabezado)
-                                else if (row[0] === '' && row[1] !== 'Servicio') {
-                                    data.cell.styles.fillColor = [250, 250, 250];
-                                    data.cell.styles.fontStyle = 'normal';
-                                }
-                                if (data.cell.text && data.cell.text.length > 0) {
-                                    data.cell.text = String(data.cell.text);
-                                }
-                            }
-                        });
-                    }
-                } else {
-                    // Formato normal para otros filtros
-                    const gastosData = gastos.map(g => {
-                        const fecha = g.fecha instanceof Date ? g.fecha : new Date(g.fecha);
-                        
-                        // Formatear servicios si existen
-                        let serviciosTexto = 'N/A';
-                        if (g.servicios && Array.isArray(g.servicios) && g.servicios.length > 0) {
-                            serviciosTexto = g.servicios.map((s: any) => {
-                                const partes = [];
-                                if (s.descripcion) partes.push(s.descripcion);
-                                if (s.referencia) partes.push(`Ref: ${s.referencia}`);
-                                if (s.cantidad) partes.push(`Cant: ${s.cantidad}`);
-                                if (s.importe) partes.push(`${s.importe.toFixed(2)}€`);
-                                return partes.join(' | ');
-                            }).join('; ');
-                        }
-                        
-                        // Columnas solicitadas: Fecha, Taller, Nº Factura, Base Imp., IVA %, IVA €, Total, Forma Pago, Km. Vehiculo, Servicio
-                        return [
-                            fecha.toLocaleDateString('es-ES'),
-                            g.taller || 'Sin taller',
-                            g.numeroFactura || 'Sin factura',
-                            (g.baseImponible || g.importe || 0).toFixed(2),
-                            g.ivaPorcentaje ? `${g.ivaPorcentaje}%` : '0%',
-                            (g.ivaImporte || 0).toFixed(2),
-                            g.importe?.toFixed(2) || '0.00',
-                            g.formaPago || 'N/A',
-                            g.kilometrosVehiculo ? g.kilometrosVehiculo.toFixed(0) : 'N/A',
-                            serviciosTexto
-                        ];
-                    });
+                });
 
-                // Usar autoTable - en versión 5.x se usa como función
+                // Usar autoTable con el nuevo formato unificado
                 // @ts-ignore
                 if (typeof autoTableModule.default === 'function') {
                     // @ts-ignore
                     autoTableModule.default(doc, {
                         startY: yPos,
-                        head: [['Fecha', 'Taller', 'Nº Factura', 'Base Imp.', 'IVA %', 'IVA €', 'Total', 'Forma Pago', 'Km. Vehiculo', 'Servicio']],
-                        body: gastosData,
+                        head: [['Fecha', '€', 'Proveedor', 'Concepto', 'Factura', 'F. Pago', 'Base', '%', 'IVA', 'Kms.', 'Notas']],
+                        body: tableBody,
                         theme: 'striped',
-                        headStyles: { fillColor: [200, 0, 0], textColor: 255, fontStyle: 'bold', fontSize: 7 },
-                        styles: { fontSize: 6, cellPadding: 1.5, overflow: 'linebreak', cellWidth: 'wrap' },
-                        margin: { left: 10, right: 10 },
+                        headStyles: { fillColor: [0, 0, 200], textColor: 255, fontStyle: 'bold', fontSize: 8, halign: 'center' },
+                        styles: { fontSize: 7, cellPadding: 1, overflow: 'linebreak', cellWidth: 'wrap', halign: 'center' },
                         columnStyles: {
-                            0: { cellWidth: 13 },
-                            1: { cellWidth: 35 },
-                            2: { cellWidth: 30 },
-                            3: { cellWidth: 10 },
-                            4: { cellWidth: 10 },
-                            5: { cellWidth: 10 },
-                            6: { cellWidth: 10 },
-                            7: { cellWidth: 12 },
-                            8: { cellWidth: 12 },
-                            9: { cellWidth: 70 }
+                            0: { cellWidth: 14 }, // Fecha
+                            1: { cellWidth: 11, halign: 'right' }, // €
+                            2: { cellWidth: 34, halign: 'left' }, // Proveedor
+                            3: { cellWidth: 23, halign: 'left' }, // Concepto
+                            4: { cellWidth: 30, halign: 'left' }, // Factura
+                            5: { cellWidth: 15, halign: 'left' }, // Forma Pago
+                            6: { cellWidth: 10, halign: 'right' }, // B. Imp.
+                            7: { cellWidth: 9 }, // IVA %
+                            8: { cellWidth: 10, halign: 'right' }, // IVA €
+                            9: { cellWidth: 10 }, // Kms.
+                            10: { cellWidth: 'auto', halign: 'left' } // Notas
                         },
+                        margin: { left: 10, right: 10 },
                         didParseCell: (data: any) => {
-                            // Asegurar que el texto se muestre correctamente
                             if (data.cell.text && data.cell.text.length > 0) {
                                 data.cell.text = String(data.cell.text);
                             }
                         }
                     });
                 } else {
-                    // Fallback: usar doc.autoTable si está disponible
+                    // Fallback
                     // @ts-ignore
                     doc.autoTable({
                         startY: yPos,
-                        head: [['Fecha', 'Taller', 'Nº Factura', 'Base Imp.', 'IVA %', 'IVA €', 'Total', 'Forma Pago', 'Km. Vehiculo', 'Servicio']],
-                        body: gastosData,
+                        head: [['Fecha', '€', 'Proveedor', 'Concepto', 'Factura', 'F. Pago', 'Base', '%', 'IVA', 'Kms.', 'Notas']],
+                        body: tableBody,
                         theme: 'striped',
-                        headStyles: { fillColor: [200, 0, 0], textColor: 255, fontStyle: 'bold', fontSize: 7 },
-                        styles: { fontSize: 6, cellPadding: 1.5, overflow: 'linebreak', cellWidth: 'wrap' },
-                        margin: { left: 10, right: 10 },
+                        headStyles: { fillColor: [0, 0, 200], textColor: 255, fontStyle: 'bold', fontSize: 8, halign: 'center' },
+                        styles: { fontSize: 7, cellPadding: 1, overflow: 'linebreak', cellWidth: 'wrap', halign: 'center' },
                         columnStyles: {
-                            0: { cellWidth: 25 },
-                            1: { cellWidth: 40 },
-                            2: { cellWidth: 30 },
-                            3: { cellWidth: 22 },
-                            4: { cellWidth: 15 },
-                            5: { cellWidth: 18 },
-                            6: { cellWidth: 22 },
-                            7: { cellWidth: 25 },
-                            8: { cellWidth: 20 },
-                            9: { cellWidth: 70 }
+                            0: { cellWidth: 14 }, // Fecha
+                            1: { cellWidth: 11, halign: 'right' }, // €
+                            2: { cellWidth: 34, halign: 'left' }, // Proveedor
+                            3: { cellWidth: 23, halign: 'left' }, // Concepto
+                            4: { cellWidth: 30, halign: 'left' }, // Factura
+                            5: { cellWidth: 15, halign: 'left' }, // Forma Pago
+                            6: { cellWidth: 10, halign: 'right' }, // B. Imp.
+                            7: { cellWidth: 9 }, // IVA %
+                            8: { cellWidth: 10, halign: 'right' }, // IVA €
+                            9: { cellWidth: 10 }, // Kms.
+                            10: { cellWidth: 'auto', halign: 'left' } // Notas
                         },
+                        margin: { left: 10, right: 10 },
                         didParseCell: (data: any) => {
-                            // Asegurar que el texto se muestre correctamente
                             if (data.cell.text && data.cell.text.length > 0) {
                                 data.cell.text = String(data.cell.text);
                             }
                         }
                     });
                 }
-                }
+
+
 
                 yPos = (doc as any).lastAutoTable.finalY + 10;
 
-                // Resumen de gastos por proveedor
-                const gastosPorProveedor: { [key: string]: number } = {};
+                // Resumen de gastos por proveedor o taller
+                const esVehiculo = filtros.gastosFiltro === 'vehiculo';
+                const tituloResumen = esVehiculo ? 'Resumen por Taller:' : 'Resumen por Proveedor:';
+
+                const gastosAgrupados: { [key: string]: number } = {};
                 gastos.forEach(g => {
-                    const proveedor = g.proveedor || 'Sin proveedor';
-                    gastosPorProveedor[proveedor] = (gastosPorProveedor[proveedor] || 0) + (g.importe || 0);
+                    let key;
+                    if (esVehiculo) {
+                        key = g.taller || 'Sin taller';
+                    } else {
+                        key = g.proveedor || 'Sin proveedor';
+                    }
+                    gastosAgrupados[key] = (gastosAgrupados[key] || 0) + (g.importe || 0);
                 });
 
                 doc.setFontSize(12);
-                doc.text('Resumen por Proveedor:', 14, yPos);
+                doc.text(tituloResumen, 14, yPos);
                 yPos += 6;
                 doc.setFontSize(10);
-                Object.entries(gastosPorProveedor)
+                Object.entries(gastosAgrupados)
                     .sort((a, b) => b[1] - a[1])
-                    .forEach(([proveedor, total]) => {
-                        doc.text(`${proveedor}: ${total.toFixed(2)} €`, 20, yPos);
+                    .forEach(([nombre, total]) => {
+                        doc.text(`${nombre}: ${total.toFixed(2)} €`, 20, yPos);
                         yPos += 5;
                     });
                 yPos += 5;
@@ -639,7 +795,7 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigateTo }) => {
                 {/* Selector de Fechas */}
                 <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
                     <h2 className="text-cyan-400 text-lg font-bold mb-4">Período del Informe</h2>
-                    
+
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-zinc-300 text-sm mb-2">Fecha Desde</label>
@@ -665,7 +821,7 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigateTo }) => {
                 {/* Filtros */}
                 <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
                     <h2 className="text-cyan-400 text-lg font-bold mb-4">Filtros del Informe</h2>
-                    
+
                     {/* Tipo de Informe */}
                     <div className="mb-4">
                         <label className="block text-zinc-300 text-sm mb-2">Tipo de Informe</label>
@@ -721,11 +877,17 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigateTo }) => {
                                     <label className="block text-zinc-300 text-sm mb-2">Concepto</label>
                                     <input
                                         type="text"
+                                        list="conceptos-list"
                                         value={filtros.concepto || ''}
                                         onChange={(e) => setFiltros({ ...filtros, concepto: e.target.value })}
                                         placeholder="Buscar por concepto..."
                                         className="w-full bg-zinc-800 border-2 border-green-500 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-green-400"
                                     />
+                                    <datalist id="conceptos-list">
+                                        {valoresUnicos.conceptos.map((c, i) => (
+                                            <option key={i} value={c} />
+                                        ))}
+                                    </datalist>
                                 </div>
                             )}
 
@@ -774,7 +936,7 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigateTo }) => {
                     ) : (
                         <>
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
                             </svg>
                             Generar Informe PDF
                         </>

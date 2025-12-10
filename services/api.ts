@@ -66,6 +66,9 @@ const docToGasto = (doc: any): Gasto => {
         ivaPorcentaje: data.ivaPorcentaje,
         kilometros: data.kilometros,
         kilometrosVehiculo: data.kilometrosVehiculo,
+        kmParciales: data.kmParciales,
+        litros: data.litros,
+        precioPorLitro: data.precioPorLitro,
         descuento: data.descuento,
         servicios: data.servicios,
         notas: data.notas,
@@ -224,6 +227,9 @@ export const addGasto = async (gasto: Omit<Gasto, 'id'>) => {
         ...(gasto.ivaPorcentaje !== undefined && { ivaPorcentaje: gasto.ivaPorcentaje }),
         ...(gasto.kilometros !== undefined && { kilometros: gasto.kilometros }),
         ...(gasto.kilometrosVehiculo !== undefined && { kilometrosVehiculo: gasto.kilometrosVehiculo }),
+        ...(gasto.kmParciales !== undefined && { kmParciales: gasto.kmParciales }),
+        ...(gasto.litros !== undefined && { litros: gasto.litros }),
+        ...(gasto.precioPorLitro !== undefined && { precioPorLitro: gasto.precioPorLitro }),
         ...(gasto.descuento !== undefined && { descuento: gasto.descuento }),
         ...(gasto.servicios && { servicios: gasto.servicios }),
         ...(gasto.notas && { notas: gasto.notas }),
@@ -255,6 +261,65 @@ export const restoreGasto = async (gasto: Gasto) => {
     };
 
     await gastosCollection.doc(gasto.id).set(dataToSave);
+};
+
+export const getGastoById = async (id: string): Promise<Gasto | null> => {
+    try {
+        const doc = await gastosCollection.doc(id).get();
+        if (!doc.exists) {
+            return null;
+        }
+        return docToGasto(doc);
+    } catch (error) {
+        console.error('Error getting gasto by id:', error);
+        return null;
+    }
+};
+
+export const updateGasto = async (id: string, gasto: Partial<Omit<Gasto, 'id' | 'fecha'>> & { fecha?: Date }) => {
+    const updates: any = {};
+
+    // Siempre actualizar importe y fecha si están presentes
+    if (gasto.importe !== undefined) updates.importe = gasto.importe;
+    if (gasto.fecha !== undefined) {
+        // @ts-ignore
+        updates.fecha = firebase.firestore.Timestamp.fromDate(gasto.fecha);
+    }
+
+    // Actualizar tipo y formaPago si están presentes
+    if (gasto.tipo !== undefined) updates.tipo = gasto.tipo;
+    if (gasto.formaPago !== undefined) updates.formaPago = gasto.formaPago;
+
+    // Campos opcionales - actualizar todos los que están presentes en el objeto
+    // Usar Object.keys para iterar sobre todas las propiedades
+    const camposOpcionales = ['categoria', 'proveedor', 'concepto', 'taller', 'numeroFactura',
+        'baseImponible', 'ivaImporte', 'ivaPorcentaje', 'kilometros',
+        'kilometrosVehiculo', 'kmParciales', 'litros', 'precioPorLitro',
+        'descuento', 'servicios', 'notas'];
+
+    camposOpcionales.forEach(campo => {
+        if (campo in gasto) {
+            updates[campo] = gasto[campo as keyof typeof gasto] !== undefined
+                ? gasto[campo as keyof typeof gasto]
+                : null;
+        }
+    });
+
+    console.log('Actualizando gasto ID:', id);
+    console.log('Datos recibidos:', gasto);
+    console.log('Updates a aplicar:', updates);
+
+    try {
+        await gastosCollection.doc(id).update(updates);
+        console.log('Gasto actualizado exitosamente');
+    } catch (error) {
+        console.error('Error al actualizar gasto en Firebase:', error);
+        throw error;
+    }
+};
+
+export const deleteGasto = async (id: string) => {
+    return gastosCollection.doc(id).delete();
 };
 
 export const updateCarrera = async (id: string, carrera: Partial<CarreraInputData>) => {
@@ -551,6 +616,10 @@ export const closeTurno = async (turnoId: string, kilometrosFin: number): Promis
     });
 };
 
+export const deleteTurno = async (id: string) => {
+    return turnosCollection.doc(id).delete();
+};
+
 export const getRecentTurnos = async (limit: number = 10): Promise<Turno[]> => {
     // Obtener todos los turnos y filtrar/ordenar en memoria
     // Esto es necesario porque Firestore no permite usar != con orderBy fácilmente
@@ -654,7 +723,7 @@ export const getCarrerasByMonth = async (month: number, year: number): Promise<C
 };
 
 // Obtener gastos por mes (mes y año)
-export const getGastosByMonth = async (month: number, year: number): Promise<Gasto[]> => {
+export const getGastosByMonth = async (month: number, year: number, forceRefresh: boolean = false): Promise<Gasto[]> => {
     const startOfMonth = new Date(year, month, 1);
     startOfMonth.setHours(0, 0, 0, 0);
     const endOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
@@ -664,13 +733,20 @@ export const getGastosByMonth = async (month: number, year: number): Promise<Gas
     // @ts-ignore
     const endTimestamp = firebase.firestore.Timestamp.fromDate(endOfMonth);
 
-    const snapshot = await gastosCollection
+    let query = gastosCollection
         .where('fecha', '>=', startTimestamp)
         .where('fecha', '<=', endTimestamp)
-        .orderBy('fecha', 'desc')
-        .get();
+        .orderBy('fecha', 'desc');
 
-    return snapshot.docs.map(docToGasto);
+    // Si se fuerza la recarga, obtener desde el servidor (evitar caché)
+    // @ts-ignore
+    const snapshot = forceRefresh
+        ? await query.get({ source: 'server' })
+        : await query.get();
+
+    const gastos = snapshot.docs.map(docToGasto);
+    console.log(`getGastosByMonth: ${gastos.length} gastos encontrados para ${month + 1}/${year}${forceRefresh ? ' (desde servidor)' : ''}`);
+    return gastos;
 };
 
 // Obtener turnos por mes (mes y año)
@@ -781,6 +857,41 @@ export const subscribeToGastos = (
     return unsubscribe;
 };
 
+export const subscribeToGastosByMonth = (
+    month: number,
+    year: number,
+    callback: (gastos: Gasto[]) => void,
+    errorCallback?: (error: any) => void
+): () => void => {
+    const startOfMonth = new Date(year, month, 1);
+    startOfMonth.setHours(0, 0, 0, 0);
+    const endOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+    // @ts-ignore
+    const startTimestamp = firebase.firestore.Timestamp.fromDate(startOfMonth);
+    // @ts-ignore
+    const endTimestamp = firebase.firestore.Timestamp.fromDate(endOfMonth);
+
+    const unsubscribe = gastosCollection
+        .where('fecha', '>=', startTimestamp)
+        .where('fecha', '<=', endTimestamp)
+        .orderBy('fecha', 'desc')
+        .onSnapshot((snapshot: any) => {
+            try {
+                const gastos = snapshot.docs.map(docToGasto);
+                console.log(`📡 Listener: ${gastos.length} gastos actualizados para ${month + 1}/${year}`);
+                callback(gastos);
+            } catch (error) {
+                console.error("Error processing gastos by month:", error);
+                if (errorCallback) errorCallback(error);
+            }
+        }, (error: any) => {
+            console.error("Error subscribing to gastos by month:", error);
+            if (errorCallback) errorCallback(error);
+        });
+    return unsubscribe;
+};
+
 export const subscribeToActiveTurno = (
     callback: (turno: Turno | null) => void,
     errorCallback?: (error: any) => void
@@ -835,7 +946,7 @@ export const saveAjustes = async (ajustes: Ajustes): Promise<void> => {
             letraDescanso: ajustes.letraDescanso ?? '',
             objetivoDiario: ajustes.objetivoDiario ?? 100,
         };
-        
+
         // Eliminar cualquier campo undefined
         Object.keys(cleanAjustes).forEach(key => {
             if (cleanAjustes[key] === undefined) {

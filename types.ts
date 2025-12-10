@@ -20,6 +20,7 @@ export enum Seccion {
     ResumenMensual = "Resumen Mensual",
     ResumenMensualDetallado = "Resumen Mensual Detallado",
     ResumenGastosMensual = "Resumen de Gastos Mensual",
+    EditarGasto = "Editar Gasto",
     ResumenMensualIngresos = "Resumen Mensual Ingresos",
     Historico = "Hist�rico",
     ConfiguracionDescansos = "Configuración Descansos",
@@ -81,6 +82,9 @@ export interface Gasto {
     ivaPorcentaje?: number;
     kilometros?: number;
     kilometrosVehiculo?: number;
+    kmParciales?: number;
+    litros?: number;
+    precioPorLitro?: number;
     descuento?: number;
     servicios?: Array<{
         referencia?: string;

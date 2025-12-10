@@ -192,3 +192,6 @@ Puedo migrar toda la aplicación a IndexedDB manteniendo:
 
 
 
+
+
+

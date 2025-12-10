@@ -121,3 +121,6 @@ Si después de seguir todos estos pasos los errores persisten:
 2. Verifica que el proyecto Firebase esté activo (no suspendido)
 3. Verifica que no hayas excedido los límites del plan gratuito de Firebase
 
+
+
+

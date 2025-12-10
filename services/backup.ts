@@ -334,14 +334,14 @@ const objectToRows = (obj: any, prefix: string = ''): (string | number | null)[]
     if (!obj || typeof obj !== 'object') {
         return [['Clave', 'Valor'], [prefix || 'root', JSON.stringify(obj)]];
     }
-    
+
     const rows: (string | number | null)[][] = [['Clave', 'Valor']];
-    
+
     const flatten = (o: any, parentKey: string = '') => {
         Object.keys(o).forEach((key) => {
             const fullKey = parentKey ? `${parentKey}.${key}` : key;
             const value = o[key];
-            
+
             if (value === null || value === undefined) {
                 rows.push([fullKey, null]);
             } else if (value instanceof Date) {
@@ -355,7 +355,7 @@ const objectToRows = (obj: any, prefix: string = ''): (string | number | null)[]
             }
         });
     };
-    
+
     flatten(obj, prefix);
     return rows;
 };
@@ -364,20 +364,21 @@ export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; u
     try {
         const data = await buildBackupPayload();
         const dateStr = new Date().toISOString().split('T')[0];
-        
+
         // Crear todas las hojas necesarias
         const sheetTitles = [
-            'Carreras', 
-            'Gastos', 
+            'Carreras',
+            'Gastos',
             'Turnos',
             'Proveedores',
             'Conceptos',
             'Talleres',
             'Ajustes',
             'BreakConfiguration',
-            'Excepciones'
+            'Excepciones',
+            'Servicios'
         ];
-        
+
         const { spreadsheetId } = await createSpreadsheetWithSheets(`TAppXI Export ${dateStr}`, sheetTitles);
 
         if (!spreadsheetId) {
@@ -387,6 +388,7 @@ export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; u
         // Definir columnas para cada tipo de dato
         const carrerasCols = ['id', 'taximetro', 'cobrado', 'formaPago', 'tipoCarrera', 'emisora', 'aeropuerto', 'estacion', 'fechaHora', 'turnoId', 'valeInfo', 'notas'];
         const gastosCols = ['id', 'importe', 'fecha', 'tipo', 'categoria', 'formaPago', 'proveedor', 'concepto', 'taller', 'numeroFactura', 'baseImponible', 'ivaImporte', 'ivaPorcentaje', 'kilometros', 'kilometrosVehiculo', 'descuento', 'servicios', 'notas'];
+        const serviciosCols = ['GastoID', 'Fecha', 'Servicio', 'Referencia', 'Importe', 'Cantidad', 'Descuento', 'Descripcion'];
         const turnosCols = ['id', 'fechaInicio', 'kilometrosInicio', 'fechaFin', 'kilometrosFin', 'numero'];
         const proveedoresCols = ['id', 'nombre', 'direccion', 'telefono', 'nif', 'createdAt'];
         const conceptosCols = ['id', 'nombre', 'descripcion', 'categoria', 'createdAt'];
@@ -395,13 +397,57 @@ export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; u
 
         // Convertir datos a filas
         const carrerasRows = toRows((data.carreras as any[]) || [], carrerasCols);
-        const gastosRows = toRows((data.gastos as any[]) || [], gastosCols);
+
+        // Filtrar gastos: Vehículo va a Servicios, pero TAMBIÉN se queda en Gastos (encabezado)
+        const allGastos = (data.gastos as any[]) || [];
+        // const gastosGenerales = allGastos.filter(g => g.tipo !== 'vehiculo'); // Ya no filtramos, queremos todos en Gastos
+        const gastosVehiculo = allGastos.filter(g => g.tipo === 'vehiculo');
+
+        const gastosRows = toRows(allGastos, gastosCols);
+
+        // Procesar gastos de vehículo para la hoja Servicios
+        const serviciosRows: (string | number | null)[][] = [serviciosCols];
+
+        gastosVehiculo.forEach(gasto => {
+            const fechaStr = gasto.fecha instanceof Date ? gasto.fecha.toISOString() : gasto.fecha;
+            // const taller = gasto.taller || '';
+            const servicioPrincipal = gasto.concepto || ''; // Usar concepto como servicio principal
+
+            // Si tiene items de servicios, crear una fila por cada uno
+            if (gasto.servicios && Array.isArray(gasto.servicios) && gasto.servicios.length > 0) {
+                gasto.servicios.forEach((item: any) => {
+                    serviciosRows.push([
+                        gasto.id,
+                        fechaStr,
+                        servicioPrincipal,
+                        item.referencia || '',
+                        item.importe || 0,
+                        item.cantidad || 1,
+                        item.descuentoPorcentaje || 0,
+                        item.descripcion || ''
+                    ]);
+                });
+            } else {
+                // Si no tiene items, crear una fila con el importe total
+                serviciosRows.push([
+                    gasto.id,
+                    fechaStr,
+                    servicioPrincipal,
+                    '', // Referencia
+                    gasto.importe || 0,
+                    1, // Cantidad
+                    gasto.descuento || 0,
+                    gasto.notas || '' // Usar notas como descripción si no hay items
+                ]);
+            }
+        });
+
         const turnosRows = toRows((data.turnos as any[]) || [], turnosCols);
         const proveedoresRows = toRows((data.proveedores as any[]) || [], proveedoresCols);
         const conceptosRows = toRows((data.conceptos as any[]) || [], conceptosCols);
         const talleresRows = toRows((data.talleres as any[]) || [], talleresCols);
         const excepcionesRows = toRows((data.excepciones as any[]) || [], excepcionesCols);
-        
+
         // Para objetos únicos (ajustes y breakConfiguration)
         const ajustesRows = objectToRows(data.ajustes, 'ajustes');
         const breakConfigRows = objectToRows(data.breakConfiguration, 'breakConfiguration');
@@ -411,12 +457,12 @@ export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; u
         if (carrerasRows.length > 0) {
             await writeSheetValues(spreadsheetId, 'Carreras', carrerasRows);
         }
-        
+
         console.log(`Escribiendo ${gastosRows.length} filas en Gastos`);
         if (gastosRows.length > 0) {
             await writeSheetValues(spreadsheetId, 'Gastos', gastosRows);
         }
-        
+
         console.log(`Escribiendo ${turnosRows.length} filas en Turnos`);
         if (turnosRows.length > 0) {
             await writeSheetValues(spreadsheetId, 'Turnos', turnosRows);
@@ -450,6 +496,11 @@ export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; u
         console.log(`Escribiendo ${excepcionesRows.length} filas en Excepciones`);
         if (excepcionesRows.length > 0) {
             await writeSheetValues(spreadsheetId, 'Excepciones', excepcionesRows);
+        }
+
+        console.log(`Escribiendo ${serviciosRows.length} filas en Servicios`);
+        if (serviciosRows.length > 0) {
+            await writeSheetValues(spreadsheetId, 'Servicios', serviciosRows);
         }
 
         const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
@@ -528,11 +579,11 @@ const parseDate = (val: any): Date | null => {
         // Intentar parsear diferentes formatos
         const trimmed = val.trim();
         if (!trimmed || trimmed === '') return null;
-        
+
         // Intentar parsear ISO string
         let date = new Date(trimmed);
         if (!isNaN(date.getTime())) return date;
-        
+
         // Intentar parsear formato español DD/MM/YYYY
         const spanishFormat = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(trimmed);
         if (spanishFormat) {
@@ -540,7 +591,7 @@ const parseDate = (val: any): Date | null => {
             date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
             if (!isNaN(date.getTime())) return date;
         }
-        
+
         // Si no se puede parsear, retornar null
         return null;
     }
@@ -560,11 +611,11 @@ export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?
 
         // Leer todas las hojas
         const [
-            carrerasRows, 
-            gastosRows, 
-            turnosRows, 
-            proveedoresRows, 
-            conceptosRows, 
+            carrerasRows,
+            gastosRows,
+            turnosRows,
+            proveedoresRows,
+            conceptosRows,
             talleresRows,
             ajustesRows,
             breakConfigRows,
@@ -730,7 +781,7 @@ export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?
             const fechaDesde = parseDate(e.fechaDesde);
             const fechaHasta = parseDate(e.fechaHasta);
             const createdAt = parseDate(e.createdAt);
-            
+
             // Si alguna fecha es inválida, usar valores por defecto
             return {
                 ...e,

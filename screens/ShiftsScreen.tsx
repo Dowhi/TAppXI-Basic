@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Card from '../components/NeumorphicCard';
 import ScreenTopBar from '../components/ScreenTopBar';
 import { Seccion, Turno } from '../types';
-import { getActiveTurno, addTurno, subscribeToActiveTurno, getRecentTurnos } from '../services/api';
+import { getActiveTurno, addTurno, subscribeToActiveTurno, getRecentTurnos, deleteTurno } from '../services/api';
 
 // Icons
 const TaxiIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z" /></svg>;
@@ -149,6 +149,19 @@ const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
         }
     }
 
+    const handleDeleteTurno = async (id: string) => {
+        if (window.confirm('¿Estás seguro de que quieres eliminar este turno? Esta acción no se puede deshacer.')) {
+            try {
+                await deleteTurno(id);
+                // Recargar la lista después de eliminar
+                loadTurnosRecientes();
+            } catch (err) {
+                console.error("Error deleting turno:", err);
+                alert("Error al eliminar el turno. Por favor, inténtalo de nuevo.");
+            }
+        }
+    };
+
     const topBar = (
         <ScreenTopBar
             title="Gestión de Turnos"
@@ -218,7 +231,7 @@ const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
                 ) : turnosRecientes.length === 0 ? (
                     <div className="text-center p-4 text-zinc-500 text-sm">No hay turnos cerrados aún</div>
                 ) : (
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
                         {turnosRecientes.map(turno => {
                             // Asegurar que las fechas son objetos Date válidos
                             const fechaInicio = turno.fechaInicio instanceof Date ? turno.fechaInicio : new Date(turno.fechaInicio);
@@ -242,6 +255,15 @@ const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
                                                 <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
+                                            </svg>
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeleteTurno(turno.id)}
+                                            className="ml-2 p-2 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded transition-colors"
+                                            title="Eliminar turno"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                                                <path fillRule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 013.878.512.75.75 0 11-.256 1.478l-.209-.035-1.005 13.07a3 3 0 01-2.991 2.77H8.084a3 3 0 01-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 01-.256-1.478A48.567 48.567 0 017.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 013.369 0c1.603.051 2.815 1.387 2.815 2.951zm-6.136-1.452a51.196 51.196 0 013.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 00-6 0v-.113c0-.794.609-1.428 1.364-1.452zm-.355 5.945a.75.75 0 10-1.5.058l.347 9a.75.75 0 101.499-.058l-.346-9zm5.48.058a.75.75 0 10-1.498-.058l-.347 9a.75.75 0 001.5.058l.345-9z" clipRule="evenodd" />
                                             </svg>
                                         </button>
                                     </div>

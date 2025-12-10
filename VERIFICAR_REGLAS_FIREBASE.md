@@ -115,3 +115,6 @@ firebase deploy --only firestore:rules
 
 Pero la forma más fácil es usar la consola web como se describe arriba.
 
+
+
+

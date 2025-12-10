@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect, useMemo } from 'react';
 import ScreenTopBar from '../components/ScreenTopBar';
 import { Seccion } from '../types';
-import { getGastosByMonth } from '../services/api';
+import { getGastosByMonth, subscribeToGastosByMonth } from '../services/api';
 
 // Icons
 const ArrowLeftIcon = () => (
@@ -18,6 +18,7 @@ const ArrowRightIcon = () => (
 
 interface ResumenGastosMensualScreenProps {
     navigateTo: (page: Seccion) => void;
+    navigateToEditGasto?: (gastoId: string) => void;
 }
 
 const meses = [
@@ -25,25 +26,45 @@ const meses = [
     'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'
 ];
 
-const ResumenGastosMensualScreen: React.FC<ResumenGastosMensualScreenProps> = ({ navigateTo }) => {
+const ResumenGastosMensualScreen: React.FC<ResumenGastosMensualScreenProps> = ({ navigateTo, navigateToEditGasto }) => {
     const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
     const [gastos, setGastos] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
+    // Usar listener en tiempo real para actualizaciones automáticas
     useEffect(() => {
-        const loadData = async () => {
-            try {
-                setLoading(true);
-                const gastosData = await getGastosByMonth(selectedMonth, selectedYear);
+        console.log('🔔 Suscribiéndose a gastos del mes:', selectedMonth + 1, selectedYear);
+        setLoading(true);
+
+        const unsubscribe = subscribeToGastosByMonth(
+            selectedMonth,
+            selectedYear,
+            (gastosData) => {
+                console.log('✅ Gastos actualizados en tiempo real:', gastosData.length, 'gastos');
+                if (gastosData.length > 0) {
+                    console.log('📋 Primer gasto:', {
+                        id: gastosData[0].id,
+                        importe: gastosData[0].importe,
+                        concepto: gastosData[0].concepto,
+                        proveedor: gastosData[0].proveedor,
+                        taller: gastosData[0].taller,
+                        fecha: gastosData[0].fecha
+                    });
+                }
                 setGastos(gastosData);
-            } catch (error) {
-                console.error("Error loading monthly expenses:", error);
-            } finally {
+                setLoading(false);
+            },
+            (error) => {
+                console.error("❌ Error en suscripción de gastos:", error);
                 setLoading(false);
             }
+        );
+
+        return () => {
+            console.log('🔕 Desuscribiéndose de gastos del mes');
+            unsubscribe();
         };
-        loadData();
     }, [selectedMonth, selectedYear]);
 
     // Calcular total del mes
@@ -131,14 +152,19 @@ const ResumenGastosMensualScreen: React.FC<ResumenGastosMensualScreenProps> = ({
                         {gastosOrdenados.map((gasto, index) => (
                             <div 
                                 key={gasto.id}
-                                className={`grid grid-cols-12 py-1.5 px-4 text-sm border-b border-zinc-800 ${
+                                onClick={() => {
+                                    if (navigateToEditGasto) {
+                                        navigateToEditGasto(gasto.id);
+                                    }
+                                }}
+                                className={`grid grid-cols-12 py-1.5 px-4 text-sm border-b border-zinc-800 cursor-pointer hover:bg-zinc-800 transition-colors ${
                                     index % 2 === 0 ? 'bg-zinc-900' : 'bg-zinc-950'
                                 }`}
                             >
                                 <div className="col-span-2 text-zinc-100 text-center">{formatDate(gasto.fecha)}</div>
                                 <div className="col-span-2 text-red-400 font-medium text-center">{formatCurrency(gasto.importe || 0)}</div>
-                                <div className="col-span-4 text-zinc-100 text-center">{gasto.concepto || '-'}</div>
-                                <div className="col-span-4 text-zinc-100 text-center">{gasto.proveedor || '-'}</div>
+                                <div className="col-span-4 text-zinc-100 text-center">{gasto.concepto || gasto.taller || '-'}</div>
+                                <div className="col-span-4 text-zinc-100 text-center">{gasto.proveedor || gasto.taller || '-'}</div>
                             </div>
                         ))}
                     </>

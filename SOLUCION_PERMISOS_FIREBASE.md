@@ -91,3 +91,6 @@ Si después de seguir estos pasos los errores persisten, verifica:
 - Que Firestore Database esté habilitado
 - Que no hayas excedido los límites del plan gratuito
 
+
+
+

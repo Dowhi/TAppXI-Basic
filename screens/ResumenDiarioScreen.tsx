@@ -32,8 +32,6 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
     const [carreras, setCarreras] = useState<CarreraVista[]>([]);
     const [gastosTotal, setGastosTotal] = useState(0);
     const [loading, setLoading] = useState(true);
-    const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-    const datePickerRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         const loadData = async () => {
@@ -56,20 +54,6 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
         loadData();
     }, [selectedDate]);
 
-    useEffect(() => {
-        if (!isDatePickerOpen) return;
-
-        const handleOutsideClick = (event: MouseEvent) => {
-            if (datePickerRef.current && !datePickerRef.current.contains(event.target as Node)) {
-                setIsDatePickerOpen(false);
-            }
-        };
-
-        document.addEventListener('mousedown', handleOutsideClick);
-        return () => {
-            document.removeEventListener('mousedown', handleOutsideClick);
-        };
-    }, [isDatePickerOpen]);
 
     // Calcular estadísticas por turno
     const turnosConEstadisticas = useMemo(() => {
@@ -170,6 +154,21 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
         });
     };
 
+    const dateInputRef = useRef<HTMLInputElement>(null);
+
+    const handleCalendarClick = () => {
+        if (dateInputRef.current) {
+            // @ts-ignore - showPicker is a valid method in modern browsers
+            if (typeof dateInputRef.current.showPicker === 'function') {
+                dateInputRef.current.showPicker();
+            } else {
+                // Fallback for older browsers: focus and click
+                dateInputRef.current.focus();
+                dateInputRef.current.click();
+            }
+        }
+    };
+
     return (
         <div className="bg-zinc-950 min-h-screen text-zinc-100 font-sans px-3 py-4 space-y-3">
             <div className="relative">
@@ -179,34 +178,29 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
                     backTarget={Seccion.Resumen}
                     className="mb-3"
                     rightSlot={
-                        <button
-                            type="button"
-                            onClick={() => setIsDatePickerOpen((prev) => !prev)}
-                            className="p-1.5 text-zinc-900 hover:text-zinc-700 transition-colors rounded"
-                            aria-label="Seleccionar fecha"
-                        >
-                            <CalendarIcon />
-                        </button>
+                        <div className="relative">
+                            <button
+                                type="button"
+                                onClick={handleCalendarClick}
+                                className="p-1.5 text-zinc-900 hover:text-zinc-700 transition-colors rounded"
+                                aria-label="Seleccionar fecha"
+                            >
+                                <CalendarIcon />
+                            </button>
+                            <input
+                                ref={dateInputRef}
+                                type="date"
+                                value={selectedDateISO}
+                                onChange={(e) => {
+                                    if (!e.target.value) return;
+                                    setSelectedDate(new Date(`${e.target.value}T00:00:00`));
+                                }}
+                                className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer -z-10"
+                                style={{ visibility: 'hidden', position: 'absolute' }}
+                            />
+                        </div>
                     }
                 />
-                {isDatePickerOpen && (
-                    <div
-                        ref={datePickerRef}
-                        className="absolute right-3 top-full mt-2 w-56 bg-zinc-900 border border-zinc-700 rounded-lg p-3 shadow-lg space-y-2 z-20"
-                    >
-                        <span className="block text-xs text-zinc-400 uppercase tracking-wide">Selecciona un día</span>
-                        <input
-                            type="date"
-                            value={selectedDateISO}
-                            onChange={(e) => {
-                                if (!e.target.value) return;
-                                setSelectedDate(new Date(`${e.target.value}T00:00:00`));
-                                setIsDatePickerOpen(false);
-                            }}
-                            className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                        />
-                    </div>
-                )}
             </div>
 
             <div className="bg-zinc-900 border border-zinc-800 rounded-xl py-1.5 px-3 flex items-center justify-between">

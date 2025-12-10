@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Seccion, Proveedor, Concepto, Taller } from '../types';
 import ScreenTopBar from '../components/ScreenTopBar';
-import { addGasto, getProveedores, getConceptos, getTalleres, addProveedor, addConcepto, addTaller } from '../services/api';
-import { 
-    getTemplates, 
-    saveTemplate, 
-    deleteTemplate, 
-    markTemplateAsUsed, 
+import { addGasto, updateGasto, deleteGasto, getGastoById, getProveedores, getConceptos, getTalleres, addProveedor, addConcepto, addTaller } from '../services/api';
+import {
+    getTemplates,
+    saveTemplate,
+    deleteTemplate,
+    markTemplateAsUsed,
     getMostUsedTemplates,
-    ExpenseTemplate 
+    ExpenseTemplate
 } from '../services/expenseTemplates';
 
 // Icons
@@ -60,9 +60,11 @@ const PrimaryButton: React.FC<{ children: React.ReactNode; onClick?: () => void;
 
 interface ExpensesScreenProps {
     navigateTo: (page: Seccion) => void;
+    gastoId?: string | null;
 }
 
-const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
+const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo, gastoId }) => {
+    const isEditing = gastoId !== null && gastoId !== undefined;
     const [activeTab, setActiveTab] = useState<'actividad' | 'vehiculo'>('actividad');
 
     // Estados para encabezado
@@ -148,6 +150,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
     // Estados para guardado
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(isEditing);
 
     // Estados para plantillas
     const [showTemplatesModal, setShowTemplatesModal] = useState(false);
@@ -179,6 +182,71 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
         loadLists();
     }, []);
 
+    // Cargar gasto si está en modo edición
+    useEffect(() => {
+        const loadGasto = async () => {
+            if (!isEditing || !gastoId) return;
+
+            setIsLoading(true);
+            try {
+                const gasto = await getGastoById(gastoId);
+                if (gasto) {
+                    // Formatear fecha para input type="date"
+                    const fechaDate = gasto.fecha instanceof Date ? gasto.fecha : new Date(gasto.fecha);
+                    const fechaStr = fechaDate.toISOString().split('T')[0];
+                    setFecha(fechaStr);
+
+                    setNumeroFactura(gasto.numeroFactura || '');
+                    setImporteTotal(gasto.importe?.toString() || '');
+                    setFormaPago(gasto.formaPago || 'Efectivo');
+
+                    // Establecer tipo (actividad o vehiculo)
+                    if (gasto.tipo) {
+                        setActiveTab(gasto.tipo as 'actividad' | 'vehiculo');
+                    }
+
+                    // Campos de actividad
+                    setProveedorName(gasto.proveedor || '');
+                    setConceptoName(gasto.concepto || '');
+                    setKilometros(gasto.kilometros?.toString() || '');
+                    setKmParciales(gasto.kmParciales?.toString() || '');
+                    setLitros(gasto.litros?.toString() || '');
+                    setPrecioPorLitro(gasto.precioPorLitro?.toString() || '');
+
+                    // Campos de vehículo
+                    setTallerName(gasto.taller || '');
+                    setConceptoName(gasto.concepto || ''); // Cargar concepto también para vehículo
+                    setKilometrosVehiculo(gasto.kilometrosVehiculo?.toString() || '');
+
+                    // IVA y base
+                    setIvaPorcentaje(gasto.ivaPorcentaje?.toString() || '21');
+                    setBaseImponible(gasto.baseImponible?.toString() || '');
+                    setIvaImporte(gasto.ivaImporte?.toString() || '');
+
+                    // Establecer soportaIVA basado en si tiene IVA
+                    setSoportaIVA(gasto.ivaPorcentaje !== undefined && gasto.ivaPorcentaje !== null && gasto.ivaPorcentaje > 0);
+
+                    // Servicios
+                    if (gasto.servicios && Array.isArray(gasto.servicios) && gasto.servicios.length > 0) {
+                        setServices(gasto.servicios);
+                    } else {
+                        setServices([{}]);
+                    }
+
+                    // Descuento y notas
+                    setResumenDescuento(gasto.descuento?.toString() || '');
+                    setNotas(gasto.notas || '');
+                }
+            } catch (err) {
+                console.error('Error loading gasto:', err);
+                setError('Error al cargar el gasto');
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        loadGasto();
+    }, [isEditing, gastoId]);
+
     // Filtrar proveedores
     useEffect(() => {
         if (proveedorName.trim() === '') {
@@ -190,7 +258,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
             );
             setFilteredProveedores(filtered);
             // Solo mostrar dropdown si hay coincidencias Y el nombre no coincide exactamente con algún proveedor
-            const exactMatch = proveedoresList.some(p => 
+            const exactMatch = proveedoresList.some(p =>
                 p.nombre.toLowerCase() === proveedorName.toLowerCase()
             );
             setShowProveedorDropdown(filtered.length > 0 && !exactMatch);
@@ -208,7 +276,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
             );
             setFilteredConceptos(filtered);
             // Solo mostrar dropdown si hay coincidencias Y el nombre no coincide exactamente con algún concepto
-            const exactMatch = conceptosList.some(c => 
+            const exactMatch = conceptosList.some(c =>
                 c.nombre.toLowerCase() === conceptoName.toLowerCase()
             );
             setShowConceptoDropdown(filtered.length > 0 && !exactMatch);
@@ -226,7 +294,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
             );
             setFilteredTalleres(filtered);
             // Solo mostrar dropdown si hay coincidencias Y el nombre no coincide exactamente con algún taller
-            const exactMatch = talleresList.some(t => 
+            const exactMatch = talleresList.some(t =>
                 t.nombre.toLowerCase() === tallerName.toLowerCase()
             );
             setShowTallerDropdown(filtered.length > 0 && !exactMatch);
@@ -379,6 +447,28 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
         }
     };
 
+    const handleDeleteExpense = async () => {
+        if (!isEditing || !gastoId) return;
+
+        if (!confirm('¿Estás seguro de que quieres eliminar este gasto?')) {
+            return;
+        }
+
+        setIsSaving(true);
+        setError(null);
+
+        try {
+            await deleteGasto(gastoId);
+            alert('Gasto eliminado correctamente');
+            navigateTo(Seccion.ResumenGastosMensual);
+        } catch (err) {
+            console.error('Error deleting expense:', err);
+            setError('Error al eliminar el gasto. Por favor, inténtalo de nuevo.');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     const handleSaveExpense = async () => {
         const importeValue = parseFloat(importeTotal) || 0;
 
@@ -413,48 +503,135 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                 tipo: activeTab // SIEMPRE guardar el tipo
             };
 
-            // Campos comunes (aplican a ambos tipos)
-            if (numeroFactura && numeroFactura.trim()) {
-                gastoData.numeroFactura = numeroFactura.trim();
+            // En modo edición, inicializar todos los campos para asegurar que se actualicen
+            if (isEditing) {
+                gastoData.proveedor = null;
+                gastoData.concepto = null;
+                gastoData.taller = null;
+                gastoData.numeroFactura = null;
+                gastoData.baseImponible = null;
+                gastoData.ivaImporte = null;
+                gastoData.ivaPorcentaje = null;
+                gastoData.kilometros = null;
+                gastoData.kilometrosVehiculo = null;
+                gastoData.kmParciales = null;
+                gastoData.litros = null;
+                gastoData.precioPorLitro = null;
+                gastoData.descuento = null;
+                gastoData.servicios = null;
+                gastoData.notas = null;
             }
-            
+
+            // Campos comunes (aplican a ambos tipos)
+            // En modo edición, incluir todos los campos incluso si están vacíos
+            if (isEditing) {
+                gastoData.numeroFactura = numeroFactura && numeroFactura.trim() ? numeroFactura.trim() : null;
+            } else {
+                if (numeroFactura && numeroFactura.trim()) {
+                    gastoData.numeroFactura = numeroFactura.trim();
+                }
+            }
+
             // Base imponible, IVA - campos comunes
             const baseImponibleValue = baseImponible ? parseFloat(baseImponible) : NaN;
-            if (!isNaN(baseImponibleValue) && baseImponibleValue > 0) {
+            if (!isNaN(baseImponibleValue)) {
                 gastoData.baseImponible = baseImponibleValue;
-            } else if (!isNaN(baseImponibleValue) && baseImponibleValue === 0) {
-                // Permitir 0 explícitamente
-                gastoData.baseImponible = 0;
+            } else if (isEditing) {
+                gastoData.baseImponible = null;
             }
-            
+
             const ivaImporteValue = ivaImporte ? parseFloat(ivaImporte) : NaN;
-            if (!isNaN(ivaImporteValue) && ivaImporteValue >= 0) {
+            if (!isNaN(ivaImporteValue)) {
                 gastoData.ivaImporte = ivaImporteValue;
+            } else if (isEditing) {
+                gastoData.ivaImporte = null;
             }
-            
+
             const ivaPorcentajeValue = ivaPorcentaje ? parseFloat(ivaPorcentaje) : NaN;
-            if (!isNaN(ivaPorcentajeValue) && ivaPorcentajeValue >= 0) {
+            if (!isNaN(ivaPorcentajeValue)) {
                 gastoData.ivaPorcentaje = ivaPorcentajeValue;
+            } else if (isEditing) {
+                gastoData.ivaPorcentaje = null;
             }
 
             // Campos específicos de Actividad
             if (activeTab === 'actividad') {
-                if (proveedorName && proveedorName.trim()) gastoData.proveedor = proveedorName.trim();
-                if (conceptoName && conceptoName.trim()) gastoData.concepto = conceptoName.trim();
-                
-                const kilometrosValue = kilometros ? parseFloat(kilometros) : NaN;
-                if (!isNaN(kilometrosValue) && kilometrosValue > 0) {
-                    gastoData.kilometros = kilometrosValue;
+                if (isEditing) {
+                    gastoData.proveedor = proveedorName && proveedorName.trim() ? proveedorName.trim() : null;
+                    gastoData.concepto = conceptoName && conceptoName.trim() ? conceptoName.trim() : null;
+                    gastoData.taller = null; // Limpiar taller si cambió a actividad
+                } else {
+                    if (proveedorName && proveedorName.trim()) gastoData.proveedor = proveedorName.trim();
+                    if (conceptoName && conceptoName.trim()) gastoData.concepto = conceptoName.trim();
+                }
+
+                // Kilometros se maneja unificado ahora, ver abajo
+
+                // Guardar kmParciales, litros y precioPorLitro
+                const kmParcialesValue = kmParciales ? parseFloat(kmParciales) : NaN;
+                if (!isNaN(kmParcialesValue)) {
+                    gastoData.kmParciales = kmParcialesValue;
+                } else if (isEditing) {
+                    gastoData.kmParciales = null;
+                }
+
+                const litrosValue = litros ? parseFloat(litros) : NaN;
+                if (!isNaN(litrosValue)) {
+                    gastoData.litros = litrosValue;
+                } else if (isEditing) {
+                    gastoData.litros = null;
+                }
+
+                const precioPorLitroValue = precioPorLitro ? parseFloat(precioPorLitro) : NaN;
+                if (!isNaN(precioPorLitroValue)) {
+                    gastoData.precioPorLitro = precioPorLitroValue;
+                } else if (isEditing) {
+                    gastoData.precioPorLitro = null;
+                }
+
+                // Limpiar campos de vehículo
+                if (isEditing) {
+                    gastoData.kilometrosVehiculo = null;
+                    gastoData.servicios = null;
                 }
             }
 
             // Campos específicos de Vehículo
             if (activeTab === 'vehiculo') {
-                if (tallerName && tallerName.trim()) gastoData.taller = tallerName.trim();
-                
-                const kilometrosVehiculoValue = kilometrosVehiculo ? parseFloat(kilometrosVehiculo) : NaN;
-                if (!isNaN(kilometrosVehiculoValue) && kilometrosVehiculoValue > 0) {
-                    gastoData.kilometrosVehiculo = kilometrosVehiculoValue;
+                if (isEditing) {
+                    gastoData.taller = tallerName && tallerName.trim() ? tallerName.trim() : null;
+                    gastoData.proveedor = null; // Limpiar proveedor si cambió a vehículo
+                    // gastoData.concepto = null; // YA NO Limpiar concepto si cambió a vehículo (se usa en ambos)
+                    if (isEditing) {
+                        gastoData.concepto = conceptoName && conceptoName.trim() ? conceptoName.trim() : null;
+                    } else {
+                        if (conceptoName && conceptoName.trim()) gastoData.concepto = conceptoName.trim();
+                    }
+                    gastoData.kilometros = null; // Limpiar kilometros de actividad
+                } else {
+                    if (tallerName && tallerName.trim()) gastoData.taller = tallerName.trim();
+                    if (conceptoName && conceptoName.trim()) gastoData.concepto = conceptoName.trim();
+                }
+
+                // Guardar kilometros (unificado en UI, separado en BD)
+                const kilometrosValue = kilometros ? parseFloat(kilometros) : NaN;
+
+                // 1. SIEMPRE guardar en 'kilometros' (campo general) sea Actividad o Vehículo
+                if (!isNaN(kilometrosValue)) {
+                    gastoData.kilometros = kilometrosValue;
+                } else if (isEditing) {
+                    gastoData.kilometros = null;
+                }
+
+                // 2. Guardar en 'kilometrosVehiculo' SOLO si el concepto es 'Carburante'
+                // Normalizar nombre del concepto para comparación
+                const conceptoNormalizado = conceptoName ? conceptoName.trim().toLowerCase() : '';
+
+                if (conceptoNormalizado === 'carburante' && !isNaN(kilometrosValue)) {
+                    gastoData.kilometrosVehiculo = kilometrosValue;
+                } else if (isEditing) {
+                    // Si editamos y ya no es carburante, limpiamos este campo específico
+                    gastoData.kilometrosVehiculo = null;
                 }
 
                 // Servicios - limpiar valores undefined
@@ -471,17 +648,23 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                     })
                     .filter(s => Object.keys(s).length > 0); // Solo incluir si tiene al menos un campo
 
-                if (serviciosValidados.length > 0) {
-                    gastoData.servicios = serviciosValidados;
+                if (isEditing) {
+                    gastoData.servicios = serviciosValidados.length > 0 ? serviciosValidados : null;
+                } else {
+                    if (serviciosValidados.length > 0) {
+                        gastoData.servicios = serviciosValidados;
+                    }
                 }
             }
 
             // Campos comunes adicionales
             const descuentoValue = resumenDescuento ? parseFloat(resumenDescuento) : NaN;
-            if (!isNaN(descuentoValue) && descuentoValue >= 0) {
+            if (!isNaN(descuentoValue)) {
                 gastoData.descuento = descuentoValue;
+            } else if (isEditing) {
+                gastoData.descuento = null;
             }
-            
+
             // Para gastos de vehículo, también guardar base e IVA del resumen si están presentes
             if (activeTab === 'vehiculo') {
                 const resumenBaseValue = resumenBase ? parseFloat(resumenBase) : NaN;
@@ -491,7 +674,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                         gastoData.baseImponible = resumenBaseValue;
                     }
                 }
-                
+
                 const resumenIvaImporteValue = resumenIvaImporte ? parseFloat(resumenIvaImporte) : NaN;
                 if (!isNaN(resumenIvaImporteValue) && resumenIvaImporteValue >= 0) {
                     // Si no hay ivaImporte, usar el del resumen
@@ -499,7 +682,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                         gastoData.ivaImporte = resumenIvaImporteValue;
                     }
                 }
-                
+
                 const resumenIvaPorcentajeValue = resumenIvaPorcentaje ? parseFloat(resumenIvaPorcentaje) : NaN;
                 if (!isNaN(resumenIvaPorcentajeValue) && resumenIvaPorcentajeValue >= 0) {
                     // Si no hay ivaPorcentaje, usar el del resumen
@@ -508,25 +691,42 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                     }
                 }
             }
-            
-            if (notas && notas.trim()) gastoData.notas = notas.trim();
+
+            if (isEditing) {
+                gastoData.notas = notas && notas.trim() ? notas.trim() : null;
+            } else {
+                if (notas && notas.trim()) gastoData.notas = notas.trim();
+            }
 
             // Debug: mostrar qué se está guardando
             console.log('Guardando gasto:', gastoData);
+            console.log('Modo edición:', isEditing, 'ID:', gastoId);
 
-            await addGasto(gastoData);
-
-            // Limpiar formulario
-            setFecha('');
-            setNumeroFactura('');
-            setImporteTotal('');
-            setProveedorName('');
-            setConceptoName('');
-            setTallerName('');
-            setServices([{}]);
-            setNotas('');
-
-            alert('Gasto guardado correctamente');
+            if (isEditing && gastoId) {
+                try {
+                    await updateGasto(gastoId, gastoData);
+                    console.log('Gasto actualizado, esperando un momento antes de navegar...');
+                    // Esperar un momento para que Firebase procese la actualización
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    alert('Gasto actualizado correctamente');
+                    navigateTo(Seccion.ResumenGastosMensual);
+                } catch (error) {
+                    console.error('Error al actualizar gasto:', error);
+                    setError('Error al actualizar el gasto. Por favor, inténtalo de nuevo.');
+                }
+            } else {
+                await addGasto(gastoData);
+                // Limpiar formulario solo si no está editando
+                setFecha('');
+                setNumeroFactura('');
+                setImporteTotal('');
+                setProveedorName('');
+                setConceptoName('');
+                setTallerName('');
+                setServices([{}]);
+                setNotas('');
+                alert('Gasto guardado correctamente');
+            }
         } catch (err) {
             console.error('Error saving expense:', err);
             setError('Error al guardar el gasto. Por favor, inténtalo de nuevo.');
@@ -552,7 +752,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
         if (template.servicios) setServices(template.servicios);
         if (template.notas) setNotas(template.notas);
         if (template.tipo) setActiveTab(template.tipo);
-        
+
         markTemplateAsUsed(template.id);
         setShowTemplatesModal(false);
     };
@@ -592,7 +792,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
 
     return (
         <div className="bg-zinc-950 min-h-screen text-zinc-100 font-sans px-3 pt-3 pb-6">
-            <ScreenTopBar title="Gastos" navigateTo={navigateTo} backTarget={Seccion.Home} className="mb-4" />
+            <ScreenTopBar title={isEditing ? "Editar Gasto" : "Gastos"} navigateTo={navigateTo} backTarget={isEditing ? Seccion.ResumenGastosMensual : Seccion.Home} className="mb-4" />
 
             <div className="space-y-3 max-w-sm mx-auto">
                 <FormCard title="Encabezado de Factura">
@@ -614,13 +814,26 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                             />
                         </FormField>
                         <FormField label="Importe Total">
+                            <div className="relative">
+                                <TextInput
+                                    type="number"
+                                    placeholder="0.00"
+                                    value={importeTotal}
+                                    onChange={(e) => setImporteTotal(e.target.value)}
+                                    className="pl-8"
+                                />
+                                <span className="absolute left-3 top-2 text-zinc-500">€</span>
+                            </div>
+                        </FormField>
+                        <FormField label="Kilómetros">
                             <TextInput
                                 type="number"
-                                value={importeTotal}
-                                onChange={(e) => setImporteTotal(e.target.value)}
-                                placeholder="0.00"
+                                value={kilometros}
+                                onChange={(e) => setKilometros(e.target.value)}
+                                placeholder="Kms"
                             />
                         </FormField>
+
                         <FormField label="Forma de Pago">
                             <SelectInput value={formaPago} onChange={(e) => setFormaPago(e.target.value)}>
                                 <option>Efectivo</option>
@@ -647,327 +860,375 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                     </button>
                 </div>
 
-                {activeTab === 'actividad' && (
-                    <FormCard title="Actividad">
-                        <div className="space-y-4">
-                            <FormField label="Nombre del Proveedor:">
-                                <div className="relative">
-                                    <div className="flex gap-2">
-                                        <TextInput
-                                            type="text"
-                                            placeholder="Buscar Proveedor"
-                                            className="flex-grow"
-                                            value={proveedorName}
-                                            onChange={(e) => {
-                                                setProveedorName(e.target.value);
-                                                // El useEffect manejará cuándo mostrar el dropdown
-                                            }}
-                                            onFocus={() => {
-                                                // Solo mostrar si hay coincidencias y no hay coincidencia exacta
-                                                const exactMatch = proveedoresList.some(p => 
-                                                    p.nombre.toLowerCase() === proveedorName.toLowerCase()
-                                                );
-                                                if (filteredProveedores.length > 0 && !exactMatch) {
-                                                    setShowProveedorDropdown(true);
-                                                }
-                                            }}
-                                            onBlur={() => {
-                                                // Ocultar con delay para permitir el click
-                                                setTimeout(() => {
-                                                    setShowProveedorDropdown(false);
-                                                }, 200);
-                                            }}
-                                        />
-                                        <PrimaryButton onClick={() => setShowProveedorModal(true)}>
-                                            <AddIcon /> Nuevo
-                                        </PrimaryButton>
-                                    </div>
-                                    {showProveedorDropdown && filteredProveedores.length > 0 && (
-                                        <div 
-                                            className="absolute z-10 w-full mt-1 bg-zinc-800 border border-zinc-700 rounded-md shadow-lg max-h-48 overflow-y-auto"
-                                            onMouseDown={(e) => e.preventDefault()}
-                                        >
-                                            {filteredProveedores.map(proveedor => (
-                                                <button
-                                                    key={proveedor.id}
-                                                    onClick={() => {
-                                                        setProveedorName(proveedor.nombre);
-                                                        setShowProveedorDropdown(false);
-                                                    }}
-                                                    className="w-full text-left px-3 py-2 text-sm text-zinc-100 hover:bg-zinc-700 transition-colors"
-                                                >
-                                                    {proveedor.nombre}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </FormField>
-
-                            <FormField label="Concepto:">
-                                <div className="relative">
-                                    <div className="flex gap-2">
-                                        <TextInput
-                                            type="text"
-                                            placeholder="Buscar Concepto"
-                                            className="flex-grow"
-                                            value={conceptoName}
-                                            onChange={(e) => {
-                                                setConceptoName(e.target.value);
-                                                setShowConceptoDropdown(true);
-                                            }}
-                                            onFocus={() => {
-                                                // Solo mostrar dropdown si hay coincidencias y no hay coincidencia exacta
-                                                const exactMatch = conceptosList.some(c => 
-                                                    c.nombre.toLowerCase() === conceptoName.toLowerCase()
-                                                );
-                                                if (filteredConceptos.length > 0 && !exactMatch) {
-                                                    setShowConceptoDropdown(true);
-                                                }
-                                            }}
-                                            onBlur={() => {
-                                                // Ocultar dropdown cuando se pierde el foco (con un pequeño delay para permitir el click)
-                                                setTimeout(() => {
-                                                    setShowConceptoDropdown(false);
-                                                }, 200);
-                                            }}
-                                        />
-                                        <PrimaryButton onClick={() => setShowConceptoModal(true)}>
-                                            <AddIcon /> Nuevo
-                                        </PrimaryButton>
-                                    </div>
-                                    {showConceptoDropdown && filteredConceptos.length > 0 && (
-                                        <div 
-                                            className="absolute z-10 w-full mt-1 bg-zinc-800 border border-zinc-700 rounded-md shadow-lg max-h-48 overflow-y-auto"
-                                            onMouseDown={(e) => e.preventDefault()}
-                                        >
-                                            {filteredConceptos.map(concepto => (
-                                                <button
-                                                    key={concepto.id}
-                                                    onClick={() => {
-                                                        setConceptoName(concepto.nombre);
-                                                        setShowConceptoDropdown(false);
-                                                    }}
-                                                    className="w-full text-left px-3 py-2 text-sm text-zinc-100 hover:bg-zinc-700 transition-colors"
-                                                >
-                                                    {concepto.nombre}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </FormField>
-
-                            <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                                <FormField label="¿Soporta IVA?">
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="checkbox"
-                                            checked={soportaIVA}
-                                            onChange={(e) => setSoportaIVA(e.target.checked)}
-                                            className="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-blue-500 focus:ring-blue-500"
-                                        />
-                                        <span className="text-sm text-zinc-300">{soportaIVA ? 'Sí' : 'No'}</span>
-                                    </div>
-                                </FormField>
-                                <FormField label="Iva (%)">
-                                    <TextInput
-                                        type="number"
-                                        value={ivaPorcentaje}
-                                        onChange={(e) => setIvaPorcentaje(e.target.value)}
-                                    />
-                                </FormField>
-                                <FormField label="Base (€)">
-                                    <TextInput
-                                        type="number"
-                                        value={baseImponible}
-                                        readOnly
-                                    />
-                                </FormField>
-                                <FormField label="Iva(€)">
-                                    <TextInput
-                                        type="number"
-                                        value={ivaImporte || '0.00'}
-                                        readOnly
-                                    />
-                                </FormField>
-                                <FormField label="Kilómetros">
-                                    <TextInput
-                                        type="number"
-                                        value={kilometros}
-                                        onChange={(e) => setKilometros(e.target.value)}
-                                    />
-                                </FormField>
-                                <div />
-                                <FormField label="Km.Parc">
-                                    <TextInput
-                                        type="number"
-                                        value={kmParciales}
-                                        onChange={(e) => setKmParciales(e.target.value)}
-                                    />
-                                </FormField>
-                                <FormField label="Litros">
-                                    <TextInput
-                                        type="number"
-                                        value={litros}
-                                        onChange={(e) => setLitros(e.target.value)}
-                                    />
-                                </FormField>
-                                <FormField label="€/L">
-                                    <TextInput
-                                        type="number"
-                                        value={precioPorLitro}
-                                        readOnly
-                                    />
-                                </FormField>
-                            </div>
-                        </div>
-                    </FormCard>
-                )}
-
-                {activeTab === 'vehiculo' && (
-                    <FormCard title="Vehículo">
-                        <div className="space-y-4">
-                            <FormField label="Nombre del Taller:">
-                                <div className="relative">
-                                    <div className="flex gap-2">
-                                        <TextInput
-                                            type="text"
-                                            placeholder="Buscar Taller"
-                                            className="flex-grow"
-                                            value={tallerName}
-                                            onChange={(e) => {
-                                                setTallerName(e.target.value);
-                                                // El useEffect manejará cuándo mostrar el dropdown
-                                            }}
-                                            onFocus={() => {
-                                                // Solo mostrar si hay coincidencias y no hay coincidencia exacta
-                                                const exactMatch = talleresList.some(t => 
-                                                    t.nombre.toLowerCase() === tallerName.toLowerCase()
-                                                );
-                                                if (filteredTalleres.length > 0 && !exactMatch) {
-                                                    setShowTallerDropdown(true);
-                                                }
-                                            }}
-                                            onBlur={() => {
-                                                // Ocultar con delay para permitir el click
-                                                setTimeout(() => {
-                                                    setShowTallerDropdown(false);
-                                                }, 200);
-                                            }}
-                                        />
-                                        <PrimaryButton onClick={() => setShowTallerModal(true)}>
-                                            <AddIcon /> Nuevo
-                                        </PrimaryButton>
-                                    </div>
-                                    {showTallerDropdown && filteredTalleres.length > 0 && (
-                                        <div 
-                                            className="absolute z-10 w-full mt-1 bg-zinc-800 border border-zinc-700 rounded-md shadow-lg max-h-48 overflow-y-auto"
-                                            onMouseDown={(e) => e.preventDefault()}
-                                        >
-                                            {filteredTalleres.map(taller => (
-                                                <button
-                                                    key={taller.id}
-                                                    onClick={() => {
-                                                        setTallerName(taller.nombre);
-                                                        setShowTallerDropdown(false);
-                                                    }}
-                                                    className="w-full text-left px-3 py-2 text-sm text-zinc-100 hover:bg-zinc-700 transition-colors"
-                                                >
-                                                    {taller.nombre}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </FormField>
-
-                            <FormField label="Kms">
-                                <TextInput
-                                    type="number"
-                                    value={kilometrosVehiculo}
-                                    onChange={(e) => setKilometrosVehiculo(e.target.value)}
-                                    placeholder="Kilómetros"
-                                />
-                            </FormField>
-
-                            <div>
-                                <h3 className="text-md font-bold text-zinc-300 mb-2">Servicios / Reparaciones</h3>
-                                <div className="bg-zinc-950/70 p-3 rounded-md space-y-2 border border-zinc-800">
-                                    {services.map((service, index) => (
-                                        <div key={index} className="space-y-2">
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <TextInput
-                                                    placeholder="Referencia"
-                                                    value={service.referencia || ''}
-                                                    onChange={(e) => {
-                                                        const newServices = [...services];
-                                                        newServices[index] = { ...newServices[index], referencia: e.target.value };
-                                                        setServices(newServices);
-                                                    }}
-                                                />
-                                                <TextInput
-                                                    placeholder="Importe"
-                                                    type="number"
-                                                    value={service.importe || ''}
-                                                    onChange={(e) => {
-                                                        const newServices = [...services];
-                                                        newServices[index] = { ...newServices[index], importe: parseFloat(e.target.value) || 0 };
-                                                        setServices(newServices);
-                                                    }}
-                                                />
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <TextInput
-                                                    placeholder="Cantidad"
-                                                    type="number"
-                                                    value={service.cantidad || ''}
-                                                    onChange={(e) => {
-                                                        const newServices = [...services];
-                                                        newServices[index] = { ...newServices[index], cantidad: parseFloat(e.target.value) || 0 };
-                                                        setServices(newServices);
-                                                    }}
-                                                />
-                                                <TextInput
-                                                    placeholder="Desc. %"
-                                                    type="number"
-                                                    value={service.descuentoPorcentaje || ''}
-                                                    onChange={(e) => {
-                                                        const newServices = [...services];
-                                                        newServices[index] = { ...newServices[index], descuentoPorcentaje: parseFloat(e.target.value) || 0 };
-                                                        setServices(newServices);
-                                                    }}
-                                                />
-                                            </div>
+                {
+                    activeTab === 'actividad' && (
+                        <FormCard title="Actividad">
+                            <div className="space-y-4">
+                                <FormField label="Nombre del Proveedor:">
+                                    <div className="relative">
+                                        <div className="flex gap-2">
                                             <TextInput
-                                                placeholder="Servicio"
-                                                value={service.descripcion || ''}
+                                                type="text"
+                                                placeholder="Buscar Proveedor"
+                                                className="flex-grow"
+                                                value={proveedorName}
                                                 onChange={(e) => {
-                                                    const newServices = [...services];
-                                                    newServices[index] = { ...newServices[index], descripcion: e.target.value };
-                                                    setServices(newServices);
+                                                    setProveedorName(e.target.value);
+                                                    // El useEffect manejará cuándo mostrar el dropdown
+                                                }}
+                                                onFocus={() => {
+                                                    // Solo mostrar si hay coincidencias y no hay coincidencia exacta
+                                                    const exactMatch = proveedoresList.some(p =>
+                                                        p.nombre.toLowerCase() === proveedorName.toLowerCase()
+                                                    );
+                                                    if (filteredProveedores.length > 0 && !exactMatch) {
+                                                        setShowProveedorDropdown(true);
+                                                    }
+                                                }}
+                                                onBlur={() => {
+                                                    // Ocultar con delay para permitir el click
+                                                    setTimeout(() => {
+                                                        setShowProveedorDropdown(false);
+                                                    }, 200);
                                                 }}
                                             />
+                                            <PrimaryButton onClick={() => setShowProveedorModal(true)}>
+                                                <AddIcon /> Nuevo
+                                            </PrimaryButton>
                                         </div>
-                                    ))}
-                                    <div className="flex justify-start pt-1">
-                                        <button onClick={handleAddService} className="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center shadow hover:bg-blue-700 transition-colors">
-                                            <AddIcon />
-                                        </button>
+                                        {showProveedorDropdown && filteredProveedores.length > 0 && (
+                                            <div
+                                                className="absolute z-10 w-full mt-1 bg-zinc-800 border border-zinc-700 rounded-md shadow-lg max-h-48 overflow-y-auto"
+                                                onMouseDown={(e) => e.preventDefault()}
+                                            >
+                                                {filteredProveedores.map(proveedor => (
+                                                    <button
+                                                        key={proveedor.id}
+                                                        onClick={() => {
+                                                            setProveedorName(proveedor.nombre);
+                                                            setShowProveedorDropdown(false);
+                                                        }}
+                                                        className="w-full text-left px-3 py-2 text-sm text-zinc-100 hover:bg-zinc-700 transition-colors"
+                                                    >
+                                                        {proveedor.nombre}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
+                                </FormField>
+
+                                <FormField label="Concepto:">
+                                    <div className="relative">
+                                        <div className="flex gap-2">
+                                            <TextInput
+                                                type="text"
+                                                placeholder="Buscar Concepto"
+                                                className="flex-grow"
+                                                value={conceptoName}
+                                                onChange={(e) => {
+                                                    setConceptoName(e.target.value);
+                                                    setShowConceptoDropdown(true);
+                                                }}
+                                                onFocus={() => {
+                                                    // Solo mostrar dropdown si hay coincidencias y no hay coincidencia exacta
+                                                    const exactMatch = conceptosList.some(c =>
+                                                        c.nombre.toLowerCase() === conceptoName.toLowerCase()
+                                                    );
+                                                    if (filteredConceptos.length > 0 && !exactMatch) {
+                                                        setShowConceptoDropdown(true);
+                                                    }
+                                                }}
+                                                onBlur={() => {
+                                                    // Ocultar dropdown cuando se pierde el foco (con un pequeño delay para permitir el click)
+                                                    setTimeout(() => {
+                                                        setShowConceptoDropdown(false);
+                                                    }, 200);
+                                                }}
+                                            />
+                                            <PrimaryButton onClick={() => setShowConceptoModal(true)}>
+                                                <AddIcon /> Nuevo
+                                            </PrimaryButton>
+                                        </div>
+                                        {showConceptoDropdown && filteredConceptos.length > 0 && (
+                                            <div
+                                                className="absolute z-10 w-full mt-1 bg-zinc-800 border border-zinc-700 rounded-md shadow-lg max-h-48 overflow-y-auto"
+                                                onMouseDown={(e) => e.preventDefault()}
+                                            >
+                                                {filteredConceptos.map(concepto => (
+                                                    <button
+                                                        key={concepto.id}
+                                                        onClick={() => {
+                                                            setConceptoName(concepto.nombre);
+                                                            setShowConceptoDropdown(false);
+                                                        }}
+                                                        className="w-full text-left px-3 py-2 text-sm text-zinc-100 hover:bg-zinc-700 transition-colors"
+                                                    >
+                                                        {concepto.nombre}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </FormField>
+
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                                    <FormField label="¿Soporta IVA?">
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                checked={soportaIVA}
+                                                onChange={(e) => setSoportaIVA(e.target.checked)}
+                                                className="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-blue-500 focus:ring-blue-500"
+                                            />
+                                            <span className="text-sm text-zinc-300">{soportaIVA ? 'Sí' : 'No'}</span>
+                                        </div>
+                                    </FormField>
+                                    <FormField label="Iva (%)">
+                                        <TextInput
+                                            type="number"
+                                            value={ivaPorcentaje}
+                                            onChange={(e) => setIvaPorcentaje(e.target.value)}
+                                        />
+                                    </FormField>
+                                    <FormField label="Base (€)">
+                                        <TextInput
+                                            type="number"
+                                            value={baseImponible}
+                                            readOnly
+                                        />
+                                    </FormField>
+                                    <FormField label="Iva(€)">
+                                        <TextInput
+                                            type="number"
+                                            value={ivaImporte || '0.00'}
+                                            readOnly
+                                        />
+                                    </FormField>
+                                    {/* Kilometros movido al encabezado */}
+                                    <div />
+                                    {/* Mostrar campos de combustible solo si el concepto es "Combustible" */}
+                                    {conceptoName.toLowerCase().trim() === 'combustible' && (
+                                        <>
+                                            <FormField label="Km.Parc">
+                                                <TextInput
+                                                    type="number"
+                                                    value={kmParciales}
+                                                    onChange={(e) => setKmParciales(e.target.value)}
+                                                />
+                                            </FormField>
+                                            <FormField label="Litros">
+                                                <TextInput
+                                                    type="number"
+                                                    value={litros}
+                                                    onChange={(e) => setLitros(e.target.value)}
+                                                />
+                                            </FormField>
+                                            <FormField label="€/L">
+                                                <TextInput
+                                                    type="number"
+                                                    value={precioPorLitro}
+                                                    readOnly
+                                                />
+                                            </FormField>
+                                        </>
+                                    )}
+                                    {/* Si no es Combustible, mostrar div vacío para mantener el layout */}
+                                    {conceptoName.toLowerCase().trim() !== 'combustible' && <div />}
                                 </div>
                             </div>
+                        </FormCard>
+                    )
+                }
 
-                            <FormField label="Descripción de trabajos realizados">
-                                <TextAreaInput
-                                    rows={4}
-                                    value={descripcionTrabajos}
-                                    onChange={(e) => setDescripcionTrabajos(e.target.value)}
-                                />
-                            </FormField>
-                        </div>
-                    </FormCard>
-                )}
+                {
+                    activeTab === 'vehiculo' && (
+                        <FormCard title="Vehículo">
+                            <div className="space-y-4">
+                                <FormField label="Nombre del Taller:">
+                                    <div className="relative">
+                                        <div className="flex gap-2">
+                                            <TextInput
+                                                type="text"
+                                                placeholder="Buscar Taller"
+                                                className="flex-grow"
+                                                value={tallerName}
+                                                onChange={(e) => {
+                                                    setTallerName(e.target.value);
+                                                    // El useEffect manejará cuándo mostrar el dropdown
+                                                }}
+                                                onFocus={() => {
+                                                    // Solo mostrar si hay coincidencias y no hay coincidencia exacta
+                                                    const exactMatch = talleresList.some(t =>
+                                                        t.nombre.toLowerCase() === tallerName.toLowerCase()
+                                                    );
+                                                    if (filteredTalleres.length > 0 && !exactMatch) {
+                                                        setShowTallerDropdown(true);
+                                                    }
+                                                }}
+                                                onBlur={() => {
+                                                    // Ocultar con delay para permitir el click
+                                                    setTimeout(() => {
+                                                        setShowTallerDropdown(false);
+                                                    }, 200);
+                                                }}
+                                            />
+                                            <PrimaryButton onClick={() => setShowTallerModal(true)}>
+                                                <AddIcon /> Nuevo
+                                            </PrimaryButton>
+                                        </div>
+                                        {showTallerDropdown && filteredTalleres.length > 0 && (
+                                            <div
+                                                className="absolute z-10 w-full mt-1 bg-zinc-800 border border-zinc-700 rounded-md shadow-lg max-h-48 overflow-y-auto"
+                                                onMouseDown={(e) => e.preventDefault()}
+                                            >
+                                                {filteredTalleres.map(taller => (
+                                                    <button
+                                                        key={taller.id}
+                                                        onClick={() => {
+                                                            setTallerName(taller.nombre);
+                                                            setShowTallerDropdown(false);
+                                                        }}
+                                                        className="w-full text-left px-3 py-2 text-sm text-zinc-100 hover:bg-zinc-700 transition-colors"
+                                                    >
+                                                        {taller.nombre}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </FormField>
+
+                                <FormField label="Concepto / Servicio">
+                                    <div className="relative">
+                                        <div className="flex gap-2">
+                                            <TextInput
+                                                type="text"
+                                                placeholder="Buscar o añadir concepto"
+                                                className="flex-grow"
+                                                value={conceptoName}
+                                                onChange={(e) => setConceptoName(e.target.value)}
+                                                onFocus={() => {
+                                                    if (conceptoName.trim() !== '') {
+                                                        const filtered = conceptosList.filter(c =>
+                                                            c.nombre.toLowerCase().includes(conceptoName.toLowerCase())
+                                                        );
+                                                        setFilteredConceptos(filtered);
+                                                        setShowConceptoDropdown(filtered.length > 0);
+                                                    }
+                                                }}
+                                                onBlur={() => {
+                                                    setTimeout(() => {
+                                                        setShowConceptoDropdown(false);
+                                                    }, 200);
+                                                }}
+                                            />
+                                            <PrimaryButton onClick={() => {
+                                                setModalConceptoName(conceptoName);
+                                                setShowConceptoModal(true);
+                                            }}>
+                                                <AddIcon /> Nuevo
+                                            </PrimaryButton>
+                                        </div>
+                                        {showConceptoDropdown && filteredConceptos.length > 0 && (
+                                            <div className="absolute z-10 w-full mt-1 bg-zinc-800 border border-zinc-700 rounded-md shadow-lg max-h-60 overflow-auto">
+                                                {filteredConceptos.map((concepto) => (
+                                                    <div
+                                                        key={concepto.id}
+                                                        className="px-4 py-2 hover:bg-zinc-700 cursor-pointer text-sm"
+                                                        onClick={() => {
+                                                            setConceptoName(concepto.nombre);
+                                                            setShowConceptoDropdown(false);
+                                                        }}
+                                                    >
+                                                        {concepto.nombre}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </FormField>
+
+                                {/* Kilometros movido al encabezado */}
+
+                                <div>
+                                    <h3 className="text-md font-bold text-zinc-300 mb-2">Servicios / Reparaciones</h3>
+                                    <div className="bg-zinc-950/70 p-3 rounded-md space-y-2 border border-zinc-800">
+                                        {services.map((service, index) => (
+                                            <div key={index} className="space-y-2">
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <TextInput
+                                                        placeholder="Referencia"
+                                                        value={service.referencia || ''}
+                                                        onChange={(e) => {
+                                                            const newServices = [...services];
+                                                            newServices[index] = { ...newServices[index], referencia: e.target.value };
+                                                            setServices(newServices);
+                                                        }}
+                                                    />
+                                                    <TextInput
+                                                        placeholder="Importe"
+                                                        type="number"
+                                                        value={service.importe || ''}
+                                                        onChange={(e) => {
+                                                            const newServices = [...services];
+                                                            newServices[index] = { ...newServices[index], importe: parseFloat(e.target.value) || 0 };
+                                                            setServices(newServices);
+                                                        }}
+                                                    />
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <TextInput
+                                                        placeholder="Cantidad"
+                                                        type="number"
+                                                        value={service.cantidad || ''}
+                                                        onChange={(e) => {
+                                                            const newServices = [...services];
+                                                            newServices[index] = { ...newServices[index], cantidad: parseFloat(e.target.value) || 0 };
+                                                            setServices(newServices);
+                                                        }}
+                                                    />
+                                                    <TextInput
+                                                        placeholder="Desc. %"
+                                                        type="number"
+                                                        value={service.descuentoPorcentaje || ''}
+                                                        onChange={(e) => {
+                                                            const newServices = [...services];
+                                                            newServices[index] = { ...newServices[index], descuentoPorcentaje: parseFloat(e.target.value) || 0 };
+                                                            setServices(newServices);
+                                                        }}
+                                                    />
+                                                </div>
+                                                <TextInput
+                                                    placeholder="Servicio"
+                                                    value={service.descripcion || ''}
+                                                    onChange={(e) => {
+                                                        const newServices = [...services];
+                                                        newServices[index] = { ...newServices[index], descripcion: e.target.value };
+                                                        setServices(newServices);
+                                                    }}
+                                                />
+                                            </div>
+                                        ))}
+                                        <div className="flex justify-start pt-1">
+                                            <button onClick={handleAddService} className="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center shadow hover:bg-blue-700 transition-colors">
+                                                <AddIcon />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <FormField label="Descripción de trabajos realizados">
+                                    <TextAreaInput
+                                        rows={4}
+                                        value={descripcionTrabajos}
+                                        onChange={(e) => setDescripcionTrabajos(e.target.value)}
+                                    />
+                                </FormField>
+                            </div>
+                        </FormCard>
+                    )
+                }
 
                 <FormCard title="Resumen de Totales">
                     <div className="grid grid-cols-5 gap-1 text-center text-xs items-end">
@@ -1026,285 +1287,321 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo }) => {
                     />
                 </FormCard>
 
-                <div className="flex gap-2">
-                    <PrimaryButton 
-                        onClick={() => setShowTemplatesModal(true)} 
-                        className="flex-1 bg-green-600 hover:bg-green-700"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-                        </svg>
-                        Gasto Rápido
-                    </PrimaryButton>
-                    <PrimaryButton onClick={handleSaveExpense} disabled={isSaving} className="flex-1">
-                        {isSaving ? 'Guardando...' : 'Guardar Gasto'}
-                    </PrimaryButton>
-                </div>
+                {
+                    isLoading ? (
+                        <div className="text-center py-8 text-zinc-400">Cargando gasto...</div>
+                    ) : (
+                        <>
+                            <div className="flex gap-2">
+                                {!isEditing && (
+                                    <PrimaryButton
+                                        onClick={() => setShowTemplatesModal(true)}
+                                        className="flex-1 bg-green-600 hover:bg-green-700"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                                        </svg>
+                                        Gasto Rápido
+                                    </PrimaryButton>
+                                )}
+                                <PrimaryButton onClick={handleSaveExpense} disabled={isSaving} className="flex-1">
+                                    {isSaving ? (isEditing ? 'Actualizando...' : 'Guardando...') : (isEditing ? 'Actualizar Gasto' : 'Guardar Gasto')}
+                                </PrimaryButton>
+                                {isEditing && (
+                                    <PrimaryButton
+                                        onClick={handleDeleteExpense}
+                                        disabled={isSaving}
+                                        className="flex-1 bg-red-600 hover:bg-red-700"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                        </svg>
+                                        Eliminar
+                                    </PrimaryButton>
+                                )}
+                            </div>
 
-                <PrimaryButton 
-                    onClick={() => setShowSaveTemplateModal(true)} 
-                    className="w-full bg-zinc-700 hover:bg-zinc-600"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                        <polyline points="17 21 17 13 7 13 7 21" />
-                        <polyline points="7 3 7 8 15 8" />
-                    </svg>
-                    Guardar como Plantilla
-                </PrimaryButton>
+                            {!isEditing && (
+                                <PrimaryButton
+                                    onClick={() => setShowSaveTemplateModal(true)}
+                                    className="w-full bg-zinc-700 hover:bg-zinc-600"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                                        <polyline points="17 21 17 13 7 13 7 21" />
+                                        <polyline points="7 3 7 8 15 8" />
+                                    </svg>
+                                    Guardar como Plantilla
+                                </PrimaryButton>
+                            )}
+                        </>
+                    )
+                }
 
-                {error && (
-                    <div className="p-3 bg-red-900/50 border border-red-700 rounded-lg text-red-200 text-sm">
-                        {error}
-                    </div>
-                )}
-            </div>
+                {
+                    error && (
+                        <div className="p-3 bg-red-900/50 border border-red-700 rounded-lg text-red-200 text-sm">
+                            {error}
+                        </div>
+                    )
+                }
+            </div >
 
             {/* Modal Proveedor */}
-            {showProveedorModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 max-w-md w-full">
-                        <h3 className="text-lg font-bold text-zinc-100 mb-4">Nuevo Proveedor</h3>
-                        <div className="space-y-4">
-                            <FormField label="Nombre *">
-                                <TextInput
-                                    value={modalProveedorName}
-                                    onChange={(e) => setModalProveedorName(e.target.value)}
-                                />
-                            </FormField>
-                            <FormField label="Dirección">
-                                <TextInput
-                                    value={modalProveedorDireccion}
-                                    onChange={(e) => setModalProveedorDireccion(e.target.value)}
-                                />
-                            </FormField>
-                            <FormField label="Teléfono">
-                                <TextInput
-                                    value={modalProveedorTelefono}
-                                    onChange={(e) => setModalProveedorTelefono(e.target.value)}
-                                />
-                            </FormField>
-                            <FormField label="NIF">
-                                <TextInput
-                                    value={modalProveedorNIF}
-                                    onChange={(e) => setModalProveedorNIF(e.target.value)}
-                                />
-                            </FormField>
-                            <div className="flex gap-2">
-                                <PrimaryButton onClick={handleSaveProveedor} disabled={modalProveedorSaving} className="flex-1">
-                                    {modalProveedorSaving ? 'Guardando...' : 'Guardar'}
-                                </PrimaryButton>
-                                <button
-                                    onClick={() => {
-                                        setShowProveedorModal(false);
-                                        setModalProveedorName('');
-                                        setModalProveedorDireccion('');
-                                        setModalProveedorTelefono('');
-                                        setModalProveedorNIF('');
-                                    }}
-                                    className="px-4 py-2 bg-zinc-800 text-zinc-300 rounded-lg hover:bg-zinc-700 transition-colors"
-                                >
-                                    Cancelar
-                                </button>
+            {
+                showProveedorModal && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 max-w-md w-full">
+                            <h3 className="text-lg font-bold text-zinc-100 mb-4">Nuevo Proveedor</h3>
+                            <div className="space-y-4">
+                                <FormField label="Nombre *">
+                                    <TextInput
+                                        value={modalProveedorName}
+                                        onChange={(e) => setModalProveedorName(e.target.value)}
+                                    />
+                                </FormField>
+                                <FormField label="Dirección">
+                                    <TextInput
+                                        value={modalProveedorDireccion}
+                                        onChange={(e) => setModalProveedorDireccion(e.target.value)}
+                                    />
+                                </FormField>
+                                <FormField label="Teléfono">
+                                    <TextInput
+                                        value={modalProveedorTelefono}
+                                        onChange={(e) => setModalProveedorTelefono(e.target.value)}
+                                    />
+                                </FormField>
+                                <FormField label="NIF">
+                                    <TextInput
+                                        value={modalProveedorNIF}
+                                        onChange={(e) => setModalProveedorNIF(e.target.value)}
+                                    />
+                                </FormField>
+                                <div className="flex gap-2">
+                                    <PrimaryButton onClick={handleSaveProveedor} disabled={modalProveedorSaving} className="flex-1">
+                                        {modalProveedorSaving ? 'Guardando...' : 'Guardar'}
+                                    </PrimaryButton>
+                                    <button
+                                        onClick={() => {
+                                            setShowProveedorModal(false);
+                                            setModalProveedorName('');
+                                            setModalProveedorDireccion('');
+                                            setModalProveedorTelefono('');
+                                            setModalProveedorNIF('');
+                                        }}
+                                        className="px-4 py-2 bg-zinc-800 text-zinc-300 rounded-lg hover:bg-zinc-700 transition-colors"
+                                    >
+                                        Cancelar
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Modal Concepto */}
-            {showConceptoModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 max-w-md w-full">
-                        <h3 className="text-lg font-bold text-zinc-100 mb-4">Nuevo Concepto</h3>
-                        <div className="space-y-4">
-                            <FormField label="Nombre *">
-                                <TextInput
-                                    value={modalConceptoName}
-                                    onChange={(e) => setModalConceptoName(e.target.value)}
-                                />
-                            </FormField>
-                            <FormField label="Descripción">
-                                <TextAreaInput
-                                    rows={3}
-                                    value={modalConceptoDescripcion}
-                                    onChange={(e) => setModalConceptoDescripcion(e.target.value)}
-                                />
-                            </FormField>
-                            <FormField label="Categoría">
-                                <TextInput
-                                    value={modalConceptoCategoria}
-                                    onChange={(e) => setModalConceptoCategoria(e.target.value)}
-                                />
-                            </FormField>
-                            <div className="flex gap-2">
-                                <PrimaryButton onClick={handleSaveConcepto} disabled={modalConceptoSaving} className="flex-1">
-                                    {modalConceptoSaving ? 'Guardando...' : 'Guardar'}
-                                </PrimaryButton>
-                                <button
-                                    onClick={() => {
-                                        setShowConceptoModal(false);
-                                        setModalConceptoName('');
-                                        setModalConceptoDescripcion('');
-                                        setModalConceptoCategoria('');
-                                    }}
-                                    className="px-4 py-2 bg-zinc-800 text-zinc-300 rounded-lg hover:bg-zinc-700 transition-colors"
-                                >
-                                    Cancelar
-                                </button>
+            {
+                showConceptoModal && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 max-w-md w-full">
+                            <h3 className="text-lg font-bold text-zinc-100 mb-4">Nuevo Concepto</h3>
+                            <div className="space-y-4">
+                                <FormField label="Nombre *">
+                                    <TextInput
+                                        value={modalConceptoName}
+                                        onChange={(e) => setModalConceptoName(e.target.value)}
+                                    />
+                                </FormField>
+                                <FormField label="Descripción">
+                                    <TextAreaInput
+                                        rows={3}
+                                        value={modalConceptoDescripcion}
+                                        onChange={(e) => setModalConceptoDescripcion(e.target.value)}
+                                    />
+                                </FormField>
+                                <FormField label="Categoría">
+                                    <TextInput
+                                        value={modalConceptoCategoria}
+                                        onChange={(e) => setModalConceptoCategoria(e.target.value)}
+                                    />
+                                </FormField>
+                                <div className="flex gap-2">
+                                    <PrimaryButton onClick={handleSaveConcepto} disabled={modalConceptoSaving} className="flex-1">
+                                        {modalConceptoSaving ? 'Guardando...' : 'Guardar'}
+                                    </PrimaryButton>
+                                    <button
+                                        onClick={() => {
+                                            setShowConceptoModal(false);
+                                            setModalConceptoName('');
+                                            setModalConceptoDescripcion('');
+                                            setModalConceptoCategoria('');
+                                        }}
+                                        className="px-4 py-2 bg-zinc-800 text-zinc-300 rounded-lg hover:bg-zinc-700 transition-colors"
+                                    >
+                                        Cancelar
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Modal de Plantillas */}
-            {showTemplatesModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 max-w-md w-full max-h-[80vh] flex flex-col">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-bold text-zinc-100">Gastos Rápidos</h3>
-                            <button
-                                onClick={() => setShowTemplatesModal(false)}
-                                className="text-zinc-400 hover:text-zinc-100"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto">
-                            {templates.length === 0 ? (
-                                <div className="text-center py-8 text-zinc-400">
-                                    <p>No hay plantillas guardadas</p>
-                                    <p className="text-sm mt-2">Guarda un gasto como plantilla para usarlo después</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-2">
-                                    {templates.map((template) => (
-                                        <div
-                                            key={template.id}
-                                            className="w-full p-3 bg-zinc-800 hover:bg-zinc-700 rounded-lg border border-zinc-700 transition-colors"
-                                        >
-                                            <div className="flex justify-between items-start">
-                                                <button
-                                                    onClick={() => applyTemplate(template)}
-                                                    className="flex-1 text-left"
-                                                >
-                                                    <h4 className="font-semibold text-zinc-100">{template.nombre}</h4>
-                                                    <div className="mt-1 text-xs text-zinc-400 space-y-0.5">
-                                                        {template.importe && <p>Importe: {template.importe.toFixed(2)} €</p>}
-                                                        {template.proveedor && <p>Proveedor: {template.proveedor}</p>}
-                                                        {template.concepto && <p>Concepto: {template.concepto}</p>}
-                                                        {template.taller && <p>Taller: {template.taller}</p>}
-                                                    </div>
-                                                </button>
-                                                <div className="flex flex-col items-end gap-1 ml-2">
-                                                    <span className="text-xs text-zinc-500">
-                                                        {template.useCount || 0} usos
-                                                    </span>
+            {
+                showTemplatesModal && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 max-w-md w-full max-h-[80vh] flex flex-col">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-lg font-bold text-zinc-100">Gastos Rápidos</h3>
+                                <button
+                                    onClick={() => setShowTemplatesModal(false)}
+                                    className="text-zinc-400 hover:text-zinc-100"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <div className="flex-1 overflow-y-auto">
+                                {templates.length === 0 ? (
+                                    <div className="text-center py-8 text-zinc-400">
+                                        <p>No hay plantillas guardadas</p>
+                                        <p className="text-sm mt-2">Guarda un gasto como plantilla para usarlo después</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {templates.map((template) => (
+                                            <div
+                                                key={template.id}
+                                                className="w-full p-3 bg-zinc-800 hover:bg-zinc-700 rounded-lg border border-zinc-700 transition-colors"
+                                            >
+                                                <div className="flex justify-between items-start">
                                                     <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            if (confirm('¿Eliminar esta plantilla?')) {
-                                                                deleteTemplate(template.id);
-                                                                setTemplates(getTemplates());
-                                                            }
-                                                        }}
-                                                        className="text-red-400 hover:text-red-300 text-xs px-2 py-1 rounded hover:bg-red-400/10 transition-colors"
+                                                        onClick={() => applyTemplate(template)}
+                                                        className="flex-1 text-left"
                                                     >
-                                                        Eliminar
+                                                        <h4 className="font-semibold text-zinc-100">{template.nombre}</h4>
+                                                        <div className="mt-1 text-xs text-zinc-400 space-y-0.5">
+                                                            {template.importe && <p>Importe: {template.importe.toFixed(2)} €</p>}
+                                                            {template.proveedor && <p>Proveedor: {template.proveedor}</p>}
+                                                            {template.concepto && <p>Concepto: {template.concepto}</p>}
+                                                            {template.taller && <p>Taller: {template.taller}</p>}
+                                                        </div>
                                                     </button>
+                                                    <div className="flex flex-col items-end gap-1 ml-2">
+                                                        <span className="text-xs text-zinc-500">
+                                                            {template.useCount || 0} usos
+                                                        </span>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (confirm('¿Eliminar esta plantilla?')) {
+                                                                    deleteTemplate(template.id);
+                                                                    setTemplates(getTemplates());
+                                                                }
+                                                            }}
+                                                            className="text-red-400 hover:text-red-300 text-xs px-2 py-1 rounded hover:bg-red-400/10 transition-colors"
+                                                        >
+                                                            Eliminar
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Modal Guardar Plantilla */}
-            {showSaveTemplateModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 max-w-md w-full">
-                        <h3 className="text-lg font-bold text-zinc-100 mb-4">Guardar como Plantilla</h3>
-                        <div className="space-y-4">
-                            <FormField label="Nombre de la plantilla *">
-                                <TextInput
-                                    type="text"
-                                    value={templateName}
-                                    onChange={(e) => setTemplateName(e.target.value)}
-                                    placeholder="Ej: Combustible, Mantenimiento..."
-                                    autoFocus
-                                />
-                            </FormField>
-                            <div className="flex gap-2">
-                                <PrimaryButton onClick={handleSaveAsTemplate} className="flex-1">
-                                    Guardar
-                                </PrimaryButton>
-                                <button
-                                    onClick={() => {
-                                        setShowSaveTemplateModal(false);
-                                        setTemplateName('');
-                                    }}
-                                    className="px-4 py-2 bg-zinc-800 text-zinc-300 rounded-lg hover:bg-zinc-700 transition-colors"
-                                >
-                                    Cancelar
-                                </button>
+            {
+                showSaveTemplateModal && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 max-w-md w-full">
+                            <h3 className="text-lg font-bold text-zinc-100 mb-4">Guardar como Plantilla</h3>
+                            <div className="space-y-4">
+                                <FormField label="Nombre de la plantilla *">
+                                    <TextInput
+                                        type="text"
+                                        value={templateName}
+                                        onChange={(e) => setTemplateName(e.target.value)}
+                                        placeholder="Ej: Combustible, Mantenimiento..."
+                                        autoFocus
+                                    />
+                                </FormField>
+                                <div className="flex gap-2">
+                                    <PrimaryButton onClick={handleSaveAsTemplate} className="flex-1">
+                                        Guardar
+                                    </PrimaryButton>
+                                    <button
+                                        onClick={() => {
+                                            setShowSaveTemplateModal(false);
+                                            setTemplateName('');
+                                        }}
+                                        className="px-4 py-2 bg-zinc-800 text-zinc-300 rounded-lg hover:bg-zinc-700 transition-colors"
+                                    >
+                                        Cancelar
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Modal Taller */}
-            {showTallerModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 max-w-md w-full">
-                        <h3 className="text-lg font-bold text-zinc-100 mb-4">Nuevo Taller</h3>
-                        <div className="space-y-4">
-                            <FormField label="Nombre *">
-                                <TextInput
-                                    value={modalTallerName}
-                                    onChange={(e) => setModalTallerName(e.target.value)}
-                                />
-                            </FormField>
-                            <FormField label="Dirección">
-                                <TextInput
-                                    value={modalTallerDireccion}
-                                    onChange={(e) => setModalTallerDireccion(e.target.value)}
-                                />
-                            </FormField>
-                            <FormField label="Teléfono">
-                                <TextInput
-                                    value={modalTallerTelefono}
-                                    onChange={(e) => setModalTallerTelefono(e.target.value)}
-                                />
-                            </FormField>
-                            <div className="flex gap-2">
-                                <PrimaryButton onClick={handleSaveTaller} disabled={modalTallerSaving} className="flex-1">
-                                    {modalTallerSaving ? 'Guardando...' : 'Guardar'}
-                                </PrimaryButton>
-                                <button
-                                    onClick={() => {
-                                        setShowTallerModal(false);
-                                        setModalTallerName('');
-                                        setModalTallerDireccion('');
-                                        setModalTallerTelefono('');
-                                    }}
-                                    className="px-4 py-2 bg-zinc-800 text-zinc-300 rounded-lg hover:bg-zinc-700 transition-colors"
-                                >
-                                    Cancelar
-                                </button>
+            {
+                showTallerModal && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 max-w-md w-full">
+                            <h3 className="text-lg font-bold text-zinc-100 mb-4">Nuevo Taller</h3>
+                            <div className="space-y-4">
+                                <FormField label="Nombre *">
+                                    <TextInput
+                                        value={modalTallerName}
+                                        onChange={(e) => setModalTallerName(e.target.value)}
+                                    />
+                                </FormField>
+                                <FormField label="Dirección">
+                                    <TextInput
+                                        value={modalTallerDireccion}
+                                        onChange={(e) => setModalTallerDireccion(e.target.value)}
+                                    />
+                                </FormField>
+                                <FormField label="Teléfono">
+                                    <TextInput
+                                        value={modalTallerTelefono}
+                                        onChange={(e) => setModalTallerTelefono(e.target.value)}
+                                    />
+                                </FormField>
+                                <div className="flex gap-2">
+                                    <PrimaryButton onClick={handleSaveTaller} disabled={modalTallerSaving} className="flex-1">
+                                        {modalTallerSaving ? 'Guardando...' : 'Guardar'}
+                                    </PrimaryButton>
+                                    <button
+                                        onClick={() => {
+                                            setShowTallerModal(false);
+                                            setModalTallerName('');
+                                            setModalTallerDireccion('');
+                                            setModalTallerTelefono('');
+                                        }}
+                                        className="px-4 py-2 bg-zinc-800 text-zinc-300 rounded-lg hover:bg-zinc-700 transition-colors"
+                                    >
+                                        Cancelar
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 

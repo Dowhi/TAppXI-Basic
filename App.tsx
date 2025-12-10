@@ -33,6 +33,8 @@ const App: React.FC = () => {
     const [currentPage, setCurrentPage] = useState<Seccion>(Seccion.Home);
     const [editingRaceId, setEditingRaceId] = useState<string | null>(null);
     const [editingTurnoId, setEditingTurnoId] = useState<string | null>(null);
+    const [editingGastoId, setEditingGastoId] = useState<string | null>(null);
+    const [refreshGastosKey, setRefreshGastosKey] = useState(0);
     const { isDark } = useTheme();
 
     // Iniciar verificación de recordatorios con sonido
@@ -56,12 +58,21 @@ const App: React.FC = () => {
         if (page === Seccion.EditarTurno && id) {
             setEditingTurnoId(id);
         }
+        // Si se navega de vuelta a ResumenGastosMensual, forzar recarga
+        if (page === Seccion.ResumenGastosMensual) {
+            setRefreshGastosKey(prev => prev + 1);
+        }
         setCurrentPage(page);
     }, []);
 
     const navigateToEditRace = useCallback((id: string) => {
         setEditingRaceId(id);
         setCurrentPage(Seccion.EditarCarrera);
+    }, []);
+
+    const navigateToEditGasto = useCallback((id: string) => {
+        setEditingGastoId(id);
+        setCurrentPage(Seccion.EditarGasto);
     }, []);
 
     const renderPage = () => {
@@ -76,6 +87,8 @@ const App: React.FC = () => {
                 return <AddEditRaceScreen navigateTo={navigateTo} raceId={editingRaceId} />;
             case Seccion.Gastos:
                 return <ExpensesScreen navigateTo={navigateTo} />;
+            case Seccion.EditarGasto:
+                return <ExpensesScreen navigateTo={navigateTo} gastoId={editingGastoId} />;
             case Seccion.Turnos:
                 return <ShiftsScreen navigateTo={navigateTo} />;
             case Seccion.EditarTurno:
@@ -93,7 +106,7 @@ const App: React.FC = () => {
             case Seccion.ResumenMensualDetallado:
                 return <ResumenMensualDetalladoScreen navigateTo={navigateTo} />;
             case Seccion.ResumenGastosMensual:
-                return <ResumenGastosMensualScreen navigateTo={navigateTo} />;
+                return <ResumenGastosMensualScreen key={`gastos-${refreshGastosKey}`} navigateTo={navigateTo} navigateToEditGasto={navigateToEditGasto} />;
             case Seccion.ResumenMensualIngresos:
                 return <ResumenMensualIngresosScreen navigateTo={navigateTo} />;
             case Seccion.AjustesGenerales:
