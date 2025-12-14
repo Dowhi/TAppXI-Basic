@@ -323,12 +323,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction }) =>
     { label: 'Ingresos', icon: <TrendingUpIcon />, action: () => navigateTo(turnoActivo ? Seccion.VistaCarreras : Seccion.Turnos) },
     { label: 'Gastos', icon: <TrendingDownIcon />, action: () => navigateTo(Seccion.Gastos) },
     { label: 'Histórico', icon: <HistoryIcon />, action: () => navigateTo(Seccion.Historico) },
-    { label: 'Estadíst...', icon: <StatisticsIcon />, action: () => navigateTo(Seccion.Estadisticas) },
+    { label: 'Estadísticas', icon: <StatisticsIcon />, action: () => navigateTo(Seccion.Estadisticas) },
     { label: 'Análisis', icon: <AnalysisIcon />, action: () => navigateTo(Seccion.AnalisisAvanzado) },
-    { label: 'Calenda...', icon: <CalendarIcon />, action: () => navigateTo(Seccion.Calendario) },
+    { label: 'Calendario', icon: <CalendarIcon />, action: () => navigateTo(Seccion.Calendario) },
     { label: 'Resumen', icon: <SummaryIcon />, action: () => navigateTo(Seccion.Resumen) },
     { label: 'Informes', icon: <AssignmentIcon />, action: () => navigateTo(Seccion.Informes) },
-    { label: 'Recordat...', icon: <BellIcon />, action: () => navigateTo(Seccion.Recordatorios) },
+    { label: 'Recordatorios', icon: <BellIcon />, action: () => navigateTo(Seccion.Recordatorios) },
     { label: 'Estación', icon: <TrainIcon />, action: () => navigateTo(Seccion.EstacionTren) },
     { label: 'Aeropuerto', icon: <PlaneIcon />, action: () => navigateTo(Seccion.Aeropuerto) },
     { label: 'Ajustes', icon: <SettingsIcon />, action: () => navigateTo(Seccion.AjustesGenerales) },
@@ -361,7 +361,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction }) =>
     >
       <div className={`mb-1 transition-colors ${isDark ? 'text-cyan-400 group-hover:text-cyan-300' : 'text-blue-600 group-hover:text-blue-700'
         }`}>{icon}</div>
-      <span className={`text-xs font-semibold text-center leading-tight truncate w-full px-1 ${isDark ? 'text-zinc-100' : 'text-zinc-900'
+      <span className={`text-xs font-semibold text-center leading-tight w-full px-1 ${isDark ? 'text-zinc-100' : 'text-zinc-900'
         }`}>
         {label}
       </span>
