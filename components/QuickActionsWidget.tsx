@@ -22,32 +22,30 @@ interface QuickActionsWidgetProps {
 
 const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({ onQuickAction }) => {
     return (
-        <div className="grid grid-cols-2 gap-3 mb-6">
+        <div className="grid grid-cols-2 gap-3 mb-3">
             <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={() => onQuickAction('minima')}
-                className="glass-card p-4 rounded-xl flex items-center space-x-3 hover:bg-white/5 transition-colors group"
+                className="glass-card p-3 rounded-xl flex items-center space-x-3 hover:bg-white/5 transition-colors group"
             >
                 <div className="bg-yellow-500/20 p-2 rounded-lg text-yellow-400 group-hover:text-yellow-300">
                     <BoltIcon />
                 </div>
                 <div className="text-left">
                     <p className="text-sm font-medium text-zinc-200">Carrera Mínima</p>
-                    <p className="text-xs text-zinc-500">Registrar ahora</p>
                 </div>
             </motion.button>
 
             <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={() => onQuickAction('aeropuerto')}
-                className="glass-card p-4 rounded-xl flex items-center space-x-3 hover:bg-white/5 transition-colors group"
+                className="glass-card p-3 rounded-xl flex items-center space-x-3 hover:bg-white/5 transition-colors group"
             >
                 <div className="bg-blue-500/20 p-2 rounded-lg text-blue-400 group-hover:text-blue-300">
                     <PlaneIcon />
                 </div>
                 <div className="text-left">
                     <p className="text-sm font-medium text-zinc-200">Aeropuerto</p>
-                    <p className="text-xs text-zinc-500">Tarifa Fija 4</p>
                 </div>
             </motion.button>
         </div>

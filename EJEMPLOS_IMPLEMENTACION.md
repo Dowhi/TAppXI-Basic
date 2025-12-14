@@ -674,3 +674,4 @@ export const GlobalSearch: React.FC<{ navigateTo: (page: Seccion, id?: string) =
 **Nota:** Estos son ejemplos básicos. Ajusta según las necesidades específicas del proyecto.
 
 
+

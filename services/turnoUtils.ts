@@ -29,3 +29,4 @@ export const calcularNumeroTurno = async (turno: Turno): Promise<number> => {
     return indice >= 0 ? indice + 1 : 1;
 };
 
+
