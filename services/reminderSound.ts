@@ -1,9 +1,12 @@
 // Servicio para gestionar avisos sonoros de recordatorios
 
-import { getRemindersToSound, markReminderAsNotified, Reminder } from './reminders';
+import { filterRemindersToSound, markReminderAsNotified, Reminder } from './reminders';
+import { subscribeToReminders } from './api';
 
 let soundCheckInterval: NodeJS.Timeout | null = null;
 let lastCheckedTime = '';
+let currentReminders: Reminder[] = [];
+let unsubscribeReminders: (() => void) | null = null;
 
 /**
  * Reproducir sonido de notificación
@@ -21,7 +24,7 @@ const playNotificationSound = (): void => {
         // Configurar el sonido (beep agradable)
         oscillator.frequency.value = 800; // Frecuencia en Hz
         oscillator.type = 'sine';
-        
+
         gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
         gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
 
@@ -56,25 +59,26 @@ const playNotificationSound = (): void => {
 const checkAndPlaySounds = (): void => {
     const now = new Date();
     const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    
+
     // Solo verificar una vez por minuto
     if (currentTime === lastCheckedTime) {
         return;
     }
-    
+
     lastCheckedTime = currentTime;
-    
-    const remindersToSound = getRemindersToSound();
-    
+
+    // Usar la lista en memoria (actualizada por la suscripción)
+    const remindersToSound = filterRemindersToSound(currentReminders);
+
     if (remindersToSound.length > 0) {
         // Reproducir sonido
         playNotificationSound();
-        
+
         // Marcar como notificados para evitar spam
         remindersToSound.forEach(reminder => {
             markReminderAsNotified(reminder.id);
         });
-        
+
         // Mostrar notificación visual si el navegador lo permite
         if ('Notification' in window && Notification.permission === 'granted') {
             remindersToSound.forEach(reminder => {
@@ -96,10 +100,20 @@ export const startReminderSoundCheck = (): void => {
     if (soundCheckInterval) {
         clearInterval(soundCheckInterval);
     }
-    
-    // Verificar inmediatamente
-    checkAndPlaySounds();
-    
+
+    // Suscribirse a los recordatorios si no existe suscripción activa
+    if (!unsubscribeReminders) {
+        unsubscribeReminders = subscribeToReminders((data: any[]) => {
+            currentReminders = data;
+            // Opcional: verificar al recibir nuevos datos (aunque mejor respetar el intervalo de minuto)
+        });
+    }
+
+    // Verificar inmediatamente (esperar un poco a que cargue la suscripción si es la primera vez)
+    setTimeout(() => {
+        checkAndPlaySounds();
+    }, 2000);
+
     // Luego verificar cada minuto
     soundCheckInterval = setInterval(() => {
         checkAndPlaySounds();
@@ -114,6 +128,11 @@ export const stopReminderSoundCheck = (): void => {
         clearInterval(soundCheckInterval);
         soundCheckInterval = null;
     }
+
+    if (unsubscribeReminders) {
+        unsubscribeReminders();
+        unsubscribeReminders = null;
+    }
 };
 
 /**
@@ -123,16 +142,16 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
     if (!('Notification' in window)) {
         return false;
     }
-    
+
     if (Notification.permission === 'granted') {
         return true;
     }
-    
+
     if (Notification.permission !== 'denied') {
         const permission = await Notification.requestPermission();
         return permission === 'granted';
     }
-    
+
     return false;
 };
 
