@@ -29,13 +29,20 @@ const RemindersScreen: React.FC<{ navigateTo: (page: Seccion) => void }> = ({ na
     const [sonidoActivo, setSonidoActivo] = useState(false);
     const [kilometrosLimite, setKilometrosLimite] = useState('');
     const [kilometrosActuales, setKilometrosActuales] = useState('');
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        loadReminders();
+        // @ts-ignore
+        const { subscribeToReminders } = require('../services/api');
+        const unsubscribe = subscribeToReminders((data: any[]) => {
+            setReminders(data);
+            setLoading(false);
+        });
+        return () => unsubscribe();
     }, []);
 
     const loadReminders = () => {
-        setReminders(getReminders());
+        // Deprecated, using subscription
     };
 
     const resetForm = () => {
@@ -51,7 +58,7 @@ const RemindersScreen: React.FC<{ navigateTo: (page: Seccion) => void }> = ({ na
         setEditingReminder(null);
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!titulo.trim()) {
             showToast('Por favor, ingresa un título para el recordatorio', 'warning');
             return;
@@ -68,39 +75,40 @@ const RemindersScreen: React.FC<{ navigateTo: (page: Seccion) => void }> = ({ na
         }
 
         try {
-        if (editingReminder) {
-            updateReminder(editingReminder.id, {
-                titulo: titulo.trim(),
-                descripcion: descripcion.trim() || undefined,
-                tipo,
-                fechaLimite: tipo === 'mantenimiento' ? new Date().toISOString() : fechaLimite,
-                horaRecordatorio: horaRecordatorio || undefined,
-                fechaRecordatorio: fechaRecordatorio || undefined,
-                sonidoActivo,
-                kilometrosLimite: kilometrosLimite ? parseFloat(kilometrosLimite) : undefined,
-                kilometrosActuales: kilometrosActuales ? parseFloat(kilometrosActuales) : undefined,
-            });
+            if (editingReminder) {
+                await updateReminder(editingReminder.id, {
+                    titulo: titulo.trim(),
+                    descripcion: descripcion.trim() || undefined,
+                    tipo,
+                    fechaLimite: tipo === 'mantenimiento' ? new Date().toISOString() : fechaLimite,
+                    horaRecordatorio: horaRecordatorio || undefined,
+                    fechaRecordatorio: fechaRecordatorio || undefined,
+                    sonidoActivo,
+                    kilometrosLimite: kilometrosLimite ? parseFloat(kilometrosLimite) : undefined,
+                    kilometrosActuales: kilometrosActuales ? parseFloat(kilometrosActuales) : undefined,
+                });
                 showToast('Recordatorio actualizado correctamente', 'success');
-        } else {
-            saveReminder({
-                titulo: titulo.trim(),
-                descripcion: descripcion.trim() || undefined,
-                tipo,
-                fechaLimite: tipo === 'mantenimiento' ? new Date().toISOString() : fechaLimite,
-                horaRecordatorio: horaRecordatorio || undefined,
-                fechaRecordatorio: fechaRecordatorio || undefined,
-                sonidoActivo,
-                kilometrosLimite: kilometrosLimite ? parseFloat(kilometrosLimite) : undefined,
-                kilometrosActuales: kilometrosActuales ? parseFloat(kilometrosActuales) : undefined,
-            });
+            } else {
+                await saveReminder({
+                    titulo: titulo.trim(),
+                    descripcion: descripcion.trim() || undefined,
+                    tipo,
+                    fechaLimite: tipo === 'mantenimiento' ? new Date().toISOString() : fechaLimite,
+                    horaRecordatorio: horaRecordatorio || undefined,
+                    fechaRecordatorio: fechaRecordatorio || undefined,
+                    sonidoActivo,
+                    kilometrosLimite: kilometrosLimite ? parseFloat(kilometrosLimite) : undefined,
+                    kilometrosActuales: kilometrosActuales ? parseFloat(kilometrosActuales) : undefined,
+                });
                 showToast('Recordatorio guardado correctamente', 'success');
-        }
+            }
 
-        loadReminders();
-        resetForm();
-        setShowAddModal(false);
+            resetForm();
+            setShowAddModal(false);
         } catch (error) {
-            ErrorHandler.handle(error, 'RemindersScreen - handleSave');
+            console.error('Error saving reminder:', error);
+            showToast('Error al guardar recordatorio', 'error');
+
         }
     };
 
@@ -118,15 +126,13 @@ const RemindersScreen: React.FC<{ navigateTo: (page: Seccion) => void }> = ({ na
         setShowAddModal(true);
     };
 
-    const handleComplete = (id: string) => {
-        completeReminder(id);
-        loadReminders();
+    const handleComplete = async (id: string) => {
+        await completeReminder(id);
     };
 
-    const handleDelete = (id: string) => {
+    const handleDelete = async (id: string) => {
         if (confirm('¿Eliminar este recordatorio?')) {
-            deleteReminder(id);
-            loadReminders();
+            await deleteReminder(id);
         }
     };
 
@@ -158,11 +164,10 @@ const RemindersScreen: React.FC<{ navigateTo: (page: Seccion) => void }> = ({ na
                         resetForm();
                         setShowAddModal(true);
                     }}
-                    className={`w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 ${
-                        isDark
-                            ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                            : 'bg-blue-500 hover:bg-blue-600 text-white'
-                    }`}
+                    className={`w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 ${isDark
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                        : 'bg-blue-500 hover:bg-blue-600 text-white'
+                        }`}
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -179,11 +184,10 @@ const RemindersScreen: React.FC<{ navigateTo: (page: Seccion) => void }> = ({ na
                             {pendingReminders.map((reminder) => (
                                 <div
                                     key={reminder.id}
-                                    className={`p-4 rounded-xl border ${
-                                        isDark
-                                            ? 'bg-zinc-800 border-zinc-700'
-                                            : 'bg-white border-zinc-300'
-                                    }`}
+                                    className={`p-4 rounded-xl border ${isDark
+                                        ? 'bg-zinc-800 border-zinc-700'
+                                        : 'bg-white border-zinc-300'
+                                        }`}
                                 >
                                     <div className="flex justify-between items-start">
                                         <div className="flex-1">
@@ -256,11 +260,10 @@ const RemindersScreen: React.FC<{ navigateTo: (page: Seccion) => void }> = ({ na
                             {completedReminders.map((reminder) => (
                                 <div
                                     key={reminder.id}
-                                    className={`p-4 rounded-xl border opacity-60 ${
-                                        isDark
-                                            ? 'bg-zinc-800 border-zinc-700'
-                                            : 'bg-white border-zinc-300'
-                                    }`}
+                                    className={`p-4 rounded-xl border opacity-60 ${isDark
+                                        ? 'bg-zinc-800 border-zinc-700'
+                                        : 'bg-white border-zinc-300'
+                                        }`}
                                 >
                                     <div className="flex justify-between items-start">
                                         <div className="flex-1">
@@ -293,9 +296,8 @@ const RemindersScreen: React.FC<{ navigateTo: (page: Seccion) => void }> = ({ na
             {/* Modal Agregar/Editar Recordatorio */}
             {showAddModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className={`rounded-xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto ${
-                        isDark ? 'bg-zinc-900 border border-zinc-800' : 'bg-white border border-zinc-300'
-                    }`}>
+                    <div className={`rounded-xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto ${isDark ? 'bg-zinc-900 border border-zinc-800' : 'bg-white border border-zinc-300'
+                        }`}>
                         <h3 className={`text-lg font-bold mb-4 ${isDark ? 'text-zinc-100' : 'text-zinc-900'}`}>
                             {editingReminder ? 'Editar Recordatorio' : 'Nuevo Recordatorio'}
                         </h3>
@@ -308,11 +310,10 @@ const RemindersScreen: React.FC<{ navigateTo: (page: Seccion) => void }> = ({ na
                                     type="text"
                                     value={titulo}
                                     onChange={(e) => setTitulo(e.target.value)}
-                                    className={`w-full p-2 rounded-md ${
-                                        isDark
-                                            ? 'bg-zinc-800 border-zinc-700 text-zinc-100'
-                                            : 'bg-zinc-100 border-zinc-300 text-zinc-900'
-                                    } border`}
+                                    className={`w-full p-2 rounded-md ${isDark
+                                        ? 'bg-zinc-800 border-zinc-700 text-zinc-100'
+                                        : 'bg-zinc-100 border-zinc-300 text-zinc-900'
+                                        } border`}
                                     placeholder="Ej: Cambio de aceite"
                                 />
                             </div>
@@ -324,11 +325,10 @@ const RemindersScreen: React.FC<{ navigateTo: (page: Seccion) => void }> = ({ na
                                 <select
                                     value={tipo}
                                     onChange={(e) => setTipo(e.target.value as any)}
-                                    className={`w-full p-2 rounded-md ${
-                                        isDark
-                                            ? 'bg-zinc-800 border-zinc-700 text-zinc-100'
-                                            : 'bg-zinc-100 border-zinc-300 text-zinc-900'
-                                    } border`}
+                                    className={`w-full p-2 rounded-md ${isDark
+                                        ? 'bg-zinc-800 border-zinc-700 text-zinc-100'
+                                        : 'bg-zinc-100 border-zinc-300 text-zinc-900'
+                                        } border`}
                                 >
                                     <option value="personalizado">📌 Personalizado</option>
                                     <option value="mantenimiento">🔧 Mantenimiento</option>
@@ -347,11 +347,10 @@ const RemindersScreen: React.FC<{ navigateTo: (page: Seccion) => void }> = ({ na
                                             type="number"
                                             value={kilometrosLimite}
                                             onChange={(e) => setKilometrosLimite(e.target.value)}
-                                            className={`w-full p-2 rounded-md ${
-                                                isDark
-                                                    ? 'bg-zinc-800 border-zinc-700 text-zinc-100'
-                                                    : 'bg-zinc-100 border-zinc-300 text-zinc-900'
-                                            } border`}
+                                            className={`w-full p-2 rounded-md ${isDark
+                                                ? 'bg-zinc-800 border-zinc-700 text-zinc-100'
+                                                : 'bg-zinc-100 border-zinc-300 text-zinc-900'
+                                                } border`}
                                             placeholder="Ej: 150000"
                                         />
                                     </div>
@@ -363,11 +362,10 @@ const RemindersScreen: React.FC<{ navigateTo: (page: Seccion) => void }> = ({ na
                                             type="number"
                                             value={kilometrosActuales}
                                             onChange={(e) => setKilometrosActuales(e.target.value)}
-                                            className={`w-full p-2 rounded-md ${
-                                                isDark
-                                                    ? 'bg-zinc-800 border-zinc-700 text-zinc-100'
-                                                    : 'bg-zinc-100 border-zinc-300 text-zinc-900'
-                                            } border`}
+                                            className={`w-full p-2 rounded-md ${isDark
+                                                ? 'bg-zinc-800 border-zinc-700 text-zinc-100'
+                                                : 'bg-zinc-100 border-zinc-300 text-zinc-900'
+                                                } border`}
                                             placeholder="Ej: 145000"
                                         />
                                     </div>
@@ -382,11 +380,10 @@ const RemindersScreen: React.FC<{ navigateTo: (page: Seccion) => void }> = ({ na
                                             type="date"
                                             value={fechaLimite}
                                             onChange={(e) => setFechaLimite(e.target.value)}
-                                            className={`w-full p-2 rounded-md ${
-                                                isDark
-                                                    ? 'bg-zinc-800 border-zinc-700 text-zinc-100'
-                                                    : 'bg-zinc-100 border-zinc-300 text-zinc-900'
-                                            } border`}
+                                            className={`w-full p-2 rounded-md ${isDark
+                                                ? 'bg-zinc-800 border-zinc-700 text-zinc-100'
+                                                : 'bg-zinc-100 border-zinc-300 text-zinc-900'
+                                                } border`}
                                         />
                                     </div>
                                     <div>
@@ -397,11 +394,10 @@ const RemindersScreen: React.FC<{ navigateTo: (page: Seccion) => void }> = ({ na
                                             type="time"
                                             value={horaRecordatorio}
                                             onChange={(e) => setHoraRecordatorio(e.target.value)}
-                                            className={`w-full p-2 rounded-md ${
-                                                isDark
-                                                    ? 'bg-zinc-800 border-zinc-700 text-zinc-100'
-                                                    : 'bg-zinc-100 border-zinc-300 text-zinc-900'
-                                            } border`}
+                                            className={`w-full p-2 rounded-md ${isDark
+                                                ? 'bg-zinc-800 border-zinc-700 text-zinc-100'
+                                                : 'bg-zinc-100 border-zinc-300 text-zinc-900'
+                                                } border`}
                                         />
                                         <p className={`text-xs mt-1 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>
                                             Se reproducirá un sonido a esta hora
@@ -415,11 +411,10 @@ const RemindersScreen: React.FC<{ navigateTo: (page: Seccion) => void }> = ({ na
                                             type="date"
                                             value={fechaRecordatorio}
                                             onChange={(e) => setFechaRecordatorio(e.target.value)}
-                                            className={`w-full p-2 rounded-md ${
-                                                isDark
-                                                    ? 'bg-zinc-800 border-zinc-700 text-zinc-100'
-                                                    : 'bg-zinc-100 border-zinc-300 text-zinc-900'
-                                            } border`}
+                                            className={`w-full p-2 rounded-md ${isDark
+                                                ? 'bg-zinc-800 border-zinc-700 text-zinc-100'
+                                                : 'bg-zinc-100 border-zinc-300 text-zinc-900'
+                                                } border`}
                                         />
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -428,11 +423,10 @@ const RemindersScreen: React.FC<{ navigateTo: (page: Seccion) => void }> = ({ na
                                             id="sonidoActivo"
                                             checked={sonidoActivo}
                                             onChange={(e) => setSonidoActivo(e.target.checked)}
-                                            className={`h-4 w-4 rounded ${
-                                                isDark
-                                                    ? 'border-zinc-600 bg-zinc-800 text-blue-500'
-                                                    : 'border-zinc-300 bg-zinc-100 text-blue-500'
-                                            }`}
+                                            className={`h-4 w-4 rounded ${isDark
+                                                ? 'border-zinc-600 bg-zinc-800 text-blue-500'
+                                                : 'border-zinc-300 bg-zinc-100 text-blue-500'
+                                                }`}
                                         />
                                         <label htmlFor="sonidoActivo" className={`text-sm ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`}>
                                             🔊 Activar aviso sonoro
@@ -449,11 +443,10 @@ const RemindersScreen: React.FC<{ navigateTo: (page: Seccion) => void }> = ({ na
                                     value={descripcion}
                                     onChange={(e) => setDescripcion(e.target.value)}
                                     rows={3}
-                                    className={`w-full p-2 rounded-md ${
-                                        isDark
-                                            ? 'bg-zinc-800 border-zinc-700 text-zinc-100'
-                                            : 'bg-zinc-100 border-zinc-300 text-zinc-900'
-                                    } border`}
+                                    className={`w-full p-2 rounded-md ${isDark
+                                        ? 'bg-zinc-800 border-zinc-700 text-zinc-100'
+                                        : 'bg-zinc-100 border-zinc-300 text-zinc-900'
+                                        } border`}
                                     placeholder="Notas adicionales..."
                                 />
                             </div>
@@ -461,11 +454,10 @@ const RemindersScreen: React.FC<{ navigateTo: (page: Seccion) => void }> = ({ na
                             <div className="flex gap-2">
                                 <button
                                     onClick={handleSave}
-                                    className={`flex-1 py-2 rounded-lg font-semibold ${
-                                        isDark
-                                            ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                                            : 'bg-blue-500 hover:bg-blue-600 text-white'
-                                    }`}
+                                    className={`flex-1 py-2 rounded-lg font-semibold ${isDark
+                                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                        : 'bg-blue-500 hover:bg-blue-600 text-white'
+                                        }`}
                                 >
                                     Guardar
                                 </button>
@@ -474,11 +466,10 @@ const RemindersScreen: React.FC<{ navigateTo: (page: Seccion) => void }> = ({ na
                                         setShowAddModal(false);
                                         resetForm();
                                     }}
-                                    className={`px-4 py-2 rounded-lg ${
-                                        isDark
-                                            ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-                                            : 'bg-zinc-200 text-zinc-700 hover:bg-zinc-300'
-                                    }`}
+                                    className={`px-4 py-2 rounded-lg ${isDark
+                                        ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                                        : 'bg-zinc-200 text-zinc-700 hover:bg-zinc-300'
+                                        }`}
                                 >
                                     Cancelar
                                 </button>

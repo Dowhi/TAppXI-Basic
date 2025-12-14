@@ -11,7 +11,7 @@ import {
   getCarrerasByDate,
   getWorkingDays,
 } from '../services/api';
-import { getRemindersForToday, checkMaintenanceReminders } from '../services/reminders';
+import { filterRemindersForToday, checkMaintenanceReminders } from '../services/reminders';
 import PredictionWidget from '../components/PredictionWidget';
 
 // --- ICONOS MODERNOS, ESTILO COHERENTE (20px, stroke-based) ---
@@ -264,13 +264,26 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction }) =>
   }, []);
 
   // Cargar recordatorios cuando cambie el turno activo
+  // Subscription to Reminders
+  const [allReminders, setAllReminders] = useState<any[]>([]);
+
   useEffect(() => {
-    // Cargar recordatorios del día
-    const reminders = getRemindersForToday();
+    // @ts-ignore
+    const { subscribeToReminders } = require('../services/api');
+    const unsubscribe = subscribeToReminders((data: any[]) => {
+      setAllReminders(data);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Cargar recordatorios cuando cambie el turno activo o la lista de reminders
+  useEffect(() => {
+    // Filtrar recordatorios del día usando la lista en tiempo real
+    const reminders = filterRemindersForToday(allReminders);
 
     // Verificar recordatorios de mantenimiento por kilómetros
     if (turnoActivo && turnoActivo.kilometrosInicio) {
-      const maintenanceReminders = checkMaintenanceReminders(turnoActivo.kilometrosInicio);
+      const maintenanceReminders = checkMaintenanceReminders(turnoActivo.kilometrosInicio, allReminders);
       // Evitar duplicados
       const existingIds = new Set(reminders.map(r => r.id));
       maintenanceReminders.forEach(r => {
@@ -281,7 +294,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction }) =>
     }
 
     setRemindersToday(reminders);
-  }, [turnoActivo]);
+  }, [turnoActivo, allReminders]);
 
   const carrerasDelTurno = useMemo(() => {
     if (!turnoActivo) return [];

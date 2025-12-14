@@ -1837,3 +1837,33 @@ export const deleteAllData = async (
         throw error;
     }
 };
+
+// --- RECORDATORIOS ---
+
+const recordatoriosCollection = db.collection('recordatorios');
+
+export const subscribeToReminders = (callback: (reminders: any[]) => void): (() => void) => {
+    return recordatoriosCollection.onSnapshot((snapshot) => {
+        const reminders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        callback(reminders);
+    }, (error) => {
+        console.error("Error subscribing to reminders:", error);
+    });
+};
+
+export const addReminderFirebase = async (reminder: any): Promise<string> => {
+    const { id, ...data } = reminder;
+    const docRef = id ? recordatoriosCollection.doc(id) : recordatoriosCollection.doc();
+    const cleanData = JSON.parse(JSON.stringify(data));
+    await docRef.set({ ...cleanData, createdAt: data.createdAt || new Date().toISOString() }, { merge: true });
+    return docRef.id;
+};
+
+export const updateReminderFirebase = async (id: string, updates: any): Promise<void> => {
+    const cleanUpdates = JSON.parse(JSON.stringify(updates));
+    await recordatoriosCollection.doc(id).update(cleanUpdates);
+};
+
+export const deleteReminderFirebase = async (id: string): Promise<void> => {
+    await recordatoriosCollection.doc(id).delete();
+};

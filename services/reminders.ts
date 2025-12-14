@@ -1,5 +1,7 @@
 // Servicio para gestionar recordatorios
-// Almacena recordatorios en localStorage
+// MIGRADO: Ahora utiliza Firebase a través de api.ts
+
+import { addReminderFirebase, updateReminderFirebase, deleteReminderFirebase } from './api';
 
 export interface Reminder {
     id: string;
@@ -20,38 +22,29 @@ export interface Reminder {
     lastNotified?: string; // Última vez que se mostró la notificación
 }
 
-const STORAGE_KEY = 'reminders';
-
 /**
- * Obtener todos los recordatorios
+ * @deprecated Use subscribeToReminders from api.ts instead
  */
 export const getReminders = (): Reminder[] => {
-    try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (!stored) return [];
-        return JSON.parse(stored);
-    } catch (error) {
-        console.error('Error leyendo recordatorios:', error);
-        return [];
-    }
+    return []; // Deprecated, component should use subscription
 };
 
 /**
- * Obtener recordatorios pendientes (no completados)
+ * Helper para filtrar recordatorios pendientes (de una lista dada)
  */
-export const getPendingReminders = (): Reminder[] => {
-    return getReminders().filter(r => !r.completado);
+export const filterPendingReminders = (reminders: Reminder[]): Reminder[] => {
+    return reminders.filter(r => !r.completado);
 };
 
 /**
- * Obtener recordatorios que deben mostrarse hoy
+ * Obtener recordatorios que deben mostrarse hoy (filtro local)
  */
-export const getRemindersForToday = (): Reminder[] => {
+export const filterRemindersForToday = (reminders: Reminder[]): Reminder[] => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayISO = today.toISOString().split('T')[0];
 
-    return getPendingReminders().filter(reminder => {
+    return filterPendingReminders(reminders).filter(reminder => {
         const fechaLimite = new Date(reminder.fechaLimite);
         fechaLimite.setHours(0, 0, 0, 0);
         const fechaLimiteISO = fechaLimite.toISOString().split('T')[0];
@@ -76,19 +69,27 @@ export const getRemindersForToday = (): Reminder[] => {
 };
 
 /**
- * Obtener recordatorios que deben sonar ahora (hora actual)
+ * DEPRECATED: Usa filterRemindersForToday pasando la lista de suscripción.
+ * Mantenido por compatibilidad temporal si es necesario, pero devolverá vacío.
  */
-export const getRemindersToSound = (): Reminder[] => {
+export const getRemindersForToday = (): Reminder[] => {
+    return [];
+};
+
+
+/**
+ * Obtener recordatorios que deben sonar ahora (hora actual) - Filtro Local
+ */
+export const filterRemindersToSound = (reminders: Reminder[]): Reminder[] => {
     const now = new Date();
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
-    const currentTime = `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`;
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayISO = today.toISOString().split('T')[0];
 
-    return getPendingReminders().filter(reminder => {
+    return filterPendingReminders(reminders).filter(reminder => {
         // Solo recordatorios con sonido activo
         if (!reminder.sonidoActivo || !reminder.horaRecordatorio) {
             return false;
@@ -122,62 +123,46 @@ export const getRemindersToSound = (): Reminder[] => {
 };
 
 /**
- * Guardar un recordatorio
+ * Guardar un recordatorio (Firebase)
  */
-export const saveReminder = (reminder: Omit<Reminder, 'id' | 'createdAt' | 'completado' | 'sonidoActivo'> & { sonidoActivo?: boolean }): string => {
-    const reminders = getReminders();
-    const newReminder: Reminder = {
+export const saveReminder = async (reminder: Omit<Reminder, 'id' | 'createdAt' | 'completado' | 'sonidoActivo'> & { sonidoActivo?: boolean }): Promise<string> => {
+    const newReminder: any = {
         ...reminder,
         sonidoActivo: reminder.sonidoActivo ?? false,
-        id: Date.now().toString(),
-        createdAt: new Date().toISOString(),
         completado: false,
     };
-    reminders.push(newReminder);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(reminders));
-    return newReminder.id;
+    return await addReminderFirebase(newReminder);
 };
 
 /**
- * Actualizar un recordatorio
+ * Actualizar un recordatorio (Firebase)
  */
-export const updateReminder = (id: string, updates: Partial<Reminder>): boolean => {
-    const reminders = getReminders();
-    const index = reminders.findIndex(r => r.id === id);
-    if (index === -1) return false;
-    
-    reminders[index] = { ...reminders[index], ...updates };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(reminders));
-    return true;
+export const updateReminder = async (id: string, updates: Partial<Reminder>): Promise<void> => {
+    await updateReminderFirebase(id, updates);
 };
 
 /**
- * Marcar recordatorio como completado
+ * Marcar recordatorio como completado (Firebase)
  */
-export const completeReminder = (id: string): boolean => {
-    return updateReminder(id, {
+export const completeReminder = async (id: string): Promise<void> => {
+    await updateReminderFirebase(id, {
         completado: true,
         fechaCompletado: new Date().toISOString(),
     });
 };
 
 /**
- * Eliminar un recordatorio
+ * Eliminar un recordatorio (Firebase)
  */
-export const deleteReminder = (id: string): boolean => {
-    const reminders = getReminders();
-    const filtered = reminders.filter(r => r.id !== id);
-    if (filtered.length === reminders.length) return false;
-    
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-    return true;
+export const deleteReminder = async (id: string): Promise<void> => {
+    await deleteReminderFirebase(id);
 };
 
 /**
- * Verificar recordatorios de mantenimiento por kilómetros
+ * Verificar recordatorios de mantenimiento por kilómetros (Filtro Local)
  */
-export const checkMaintenanceReminders = (kilometrosActuales: number): Reminder[] => {
-    return getPendingReminders().filter(reminder => {
+export const checkMaintenanceReminders = (kilometrosActuales: number, reminders: Reminder[]): Reminder[] => {
+    return filterPendingReminders(reminders).filter(reminder => {
         if (reminder.tipo === 'mantenimiento' && reminder.kilometrosLimite) {
             const kilometrosRestantes = reminder.kilometrosLimite - kilometrosActuales;
             // Alertar cuando falten 1000 km o menos
@@ -188,14 +173,10 @@ export const checkMaintenanceReminders = (kilometrosActuales: number): Reminder[
 };
 
 /**
- * Marcar recordatorio como notificado (para evitar spam de sonidos)
+ * Marcar recordatorio como notificado (Firebase)
  */
-export const markReminderAsNotified = (id: string): void => {
-    const reminders = getReminders();
-    const reminder = reminders.find(r => r.id === id);
-    if (reminder) {
-        reminder.lastNotified = new Date().toISOString();
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(reminders));
-    }
+export const markReminderAsNotified = async (id: string): Promise<void> => {
+    await updateReminderFirebase(id, { lastNotified: new Date().toISOString() });
 };
+
 
