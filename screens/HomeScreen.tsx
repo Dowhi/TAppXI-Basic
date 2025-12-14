@@ -268,12 +268,24 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction }) =>
   const [allReminders, setAllReminders] = useState<any[]>([]);
 
   useEffect(() => {
-    // @ts-ignore
-    const { subscribeToReminders } = require('../services/api');
-    const unsubscribe = subscribeToReminders((data: any[]) => {
-      setAllReminders(data);
-    });
-    return () => unsubscribe();
+    let unsubscribe: (() => void) | undefined;
+
+    const setupSubscription = async () => {
+      try {
+        const api = await import('../services/api');
+        unsubscribe = api.subscribeToReminders((data: any[]) => {
+          setAllReminders(data);
+        });
+      } catch (error) {
+        console.error("Error importing api for reminders:", error);
+      }
+    };
+
+    setupSubscription();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   // Cargar recordatorios cuando cambie el turno activo o la lista de reminders

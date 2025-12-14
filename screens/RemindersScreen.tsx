@@ -32,13 +32,25 @@ const RemindersScreen: React.FC<{ navigateTo: (page: Seccion) => void }> = ({ na
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // @ts-ignore
-        const { subscribeToReminders } = require('../services/api');
-        const unsubscribe = subscribeToReminders((data: any[]) => {
-            setReminders(data);
-            setLoading(false);
-        });
-        return () => unsubscribe();
+        let unsubscribe: (() => void) | undefined;
+
+        const setupSubscription = async () => {
+            try {
+                const api = await import('../services/api');
+                unsubscribe = api.subscribeToReminders((data: any[]) => {
+                    setReminders(data);
+                    setLoading(false);
+                });
+            } catch (error) {
+                console.error("Error importing api for reminders:", error);
+            }
+        };
+
+        setupSubscription();
+
+        return () => {
+            if (unsubscribe) unsubscribe();
+        };
     }, []);
 
     const loadReminders = () => {
