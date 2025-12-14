@@ -976,26 +976,16 @@ export interface Ajustes {
     };
 }
 
-export const saveAjustes = async (ajustes: Ajustes): Promise<void> => {
+// Ajustes
+import { Ajustes } from '../types'; // Importar la interfaz
+
+export const saveAjustes = async (ajustes: Partial<Ajustes>): Promise<void> => {
     try {
-        // Limpiar y asegurar valores por defecto (eliminar undefined)
-        const cleanAjustes: any = {
-            temaOscuro: ajustes.temaOscuro ?? false,
-            tamanoFuente: ajustes.tamanoFuente ?? 14,
-            "tam\u00f1oFuente": ajustes.tamanoFuente ?? 14,
-            letraDescanso: ajustes.letraDescanso ?? '',
-            objetivoDiario: ajustes.objetivoDiario ?? 100,
-        };
-
-        // Eliminar cualquier campo undefined
-        Object.keys(cleanAjustes).forEach(key => {
-            if (cleanAjustes[key] === undefined) {
-                delete cleanAjustes[key];
-            }
-        });
-
         const ajustesSnapshot = await ajustesCollection.limit(1).get();
-        const dataToSave = cleanAjustes;
+
+        // No filtramos nada, guardamos todo lo que viene en el objeto ajustes
+        // Firebase fusionará los campos si usamos merge: true
+        const dataToSave = { ...ajustes };
 
         if (!ajustesSnapshot.empty) {
             const docId = ajustesSnapshot.docs[0].id;
@@ -1022,14 +1012,27 @@ export const getAjustes = async (): Promise<Ajustes | null> => {
             tamanoFuente: raw.tamanoFuente ?? raw['tam\u00f1oFuente'] ?? 14,
             letraDescanso: raw.letraDescanso ?? '',
             objetivoDiario: raw.objetivoDiario ?? 100,
+            // Recuperar nuevos campos
+            temaColor: raw.temaColor ?? 'azul',
+            altoContraste: raw.altoContraste ?? false,
+            tarifa1: raw.tarifa1,
+            tarifa2: raw.tarifa2,
+            tarifa3: raw.tarifa3,
+            tarifaAeropuertoDia: raw.tarifaAeropuertoDia,
+            tarifaAeropuertoNoche: raw.tarifaAeropuertoNoche,
+            logo: raw.logo || '',
+            datosFiscales: raw.datosFiscales || {
+                nombre: '',
+                nif: '',
+                direccion: '',
+                telefono: '',
+                email: ''
+            }
         };
     } catch (error: any) {
         console.error('Error obteniendo ajustes:', error);
         if (error?.code === 'permission-denied') {
             console.error('FirebaseError: Missing or insufficient permissions.');
-            console.error('SOLUCIÓN: Configura las reglas de Firestore para permitir acceso.');
-            console.error('Ve a Firebase Console > Firestore Database > Reglas');
-            console.error('Y aplica las reglas del archivo firestore.rules');
         }
         return null;
     }

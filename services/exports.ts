@@ -231,26 +231,92 @@ export const exportToCSV = (
     URL.revokeObjectURL(url);
 };
 
+const getBase64ImageFromURL = (url: string): Promise<string | null> => {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.src = url;
+        img.onload = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+                ctx.drawImage(img, 0, 0);
+                try {
+                    const dataURL = canvas.toDataURL("image/jpeg");
+                    resolve(dataURL);
+                } catch (e) {
+                    // CORS taint error most likely
+                    console.warn("Could not get base64 data due to CORS:", e);
+                    resolve(null);
+                }
+            } else {
+                resolve(null);
+            }
+        };
+        img.onerror = (error) => {
+            console.warn("Failed to load image:", url, error);
+            resolve(null);
+        };
+    });
+};
+
+const processLogo = async (logoInput: string | null): Promise<string | null> => {
+    if (!logoInput) return null;
+
+    // Si ya es base64, devolverlo
+    if (logoInput.startsWith('data:image')) return logoInput;
+
+    // Manejo de Google Drive
+    // Formatos comunes:
+    // https://drive.google.com/file/d/ID/view
+    // https://drive.google.com/open?id=ID
+    let directUrl = logoInput;
+    const driveRegex = /drive\.google\.com\/(?:file\/d\/|open\?id=)([^/?&]+)/;
+    const match = logoInput.match(driveRegex);
+
+    if (match && match[1]) {
+        // Convertir a link directo de visualización
+        // Opción 1: UC (User Content) - a veces tiene limites
+        // directUrl = `https://drive.google.com/uc?export=view&id=${match[1]}`;
+        // Opción 2: Thumbnail API (más permisiva con CORS a veces y más rápida)
+        directUrl = `https://lh3.googleusercontent.com/d/${match[1]}=s200`;
+        // Nota: =s200 pide ancho 200px.
+    }
+
+    try {
+        const base64 = await getBase64ImageFromURL(directUrl);
+        return base64;
+    } catch (e) {
+        console.error("Error processing logo:", e);
+        return null;
+    }
+};
+
 /**
  * Exporta datos a PDF con formato profesional mejorado
  */
-export const exportToPDFAdvanced = (
+export const exportToPDFAdvanced = async (
     data: ExportData,
     filters: ExportFilter,
     filename?: string
-): void => {
+): Promise<void> => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     let yPos = 20;
 
     // Branding
-    const logoBase64 = localStorage.getItem('branding_logo');
+    const logoInput = localStorage.getItem('branding_logo');
     const fiscalDataStr = localStorage.getItem('branding_datosFiscales');
     const fiscalData = fiscalDataStr ? JSON.parse(fiscalDataStr) : null;
     let headerHeight = 40;
 
-    // Logo
+    // Procesar Logo (Async)
+    const logoBase64 = await processLogo(logoInput);
+
+    // Renderizar Logo
     if (logoBase64) {
         try {
             // Add image (x, y, w, h)
@@ -329,6 +395,7 @@ export const exportToPDFAdvanced = (
     doc.text('RESUMEN EJECUTIVO', 14, yPos);
     yPos += 10;
 
+    // Calcular totales si no están pre-calculados
     const totalIngresos = data.carreras?.reduce((sum, c) => sum + (c.cobrado || 0), 0) || 0;
     const totalGastos = data.gastos?.reduce((sum, g) => sum + (g.importe || 0), 0) || 0;
     const totalIVAGastos = data.gastos?.reduce((sum, g) => sum + (g.ivaImporte || 0), 0) || 0;

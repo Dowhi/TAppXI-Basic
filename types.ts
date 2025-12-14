@@ -29,6 +29,31 @@ export enum Seccion {
     Aeropuerto = "Aeropuerto",
 }
 
+export interface Ajustes {
+    temaOscuro: boolean;
+    tamanoFuente: number;
+    letraDescanso?: string;
+    objetivoDiario: number;
+    // Personalización
+    temaColor?: string;
+    altoContraste?: boolean;
+    // Tarifas
+    tarifa1?: number;
+    tarifa2?: number;
+    tarifa3?: number;
+    tarifaAeropuertoDia?: number;
+    tarifaAeropuertoNoche?: number;
+    // Branding
+    logo?: string;
+    datosFiscales?: {
+        nombre: string;
+        nif: string;
+        direccion: string;
+        telefono: string;
+        email: string;
+    };
+}
+
 
 export interface CarrerasResumen {
     pendiente: string;

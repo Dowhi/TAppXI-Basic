@@ -194,14 +194,13 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
     // Restaurar Ajustes
     reportProgress("Restaurando ajustes...");
     if (jsonData.ajustes) {
-        // Limpiar ajustes antes de guardar (convertir undefined a valores por defecto)
-        const cleanAjustes = {
-            temaOscuro: jsonData.ajustes.temaOscuro ?? false,
-            tamanoFuente: jsonData.ajustes.tamanoFuente ?? jsonData.ajustes['tam\u00f1oFuente'] ?? 14,
-            letraDescanso: jsonData.ajustes.letraDescanso ?? '',
-            objetivoDiario: jsonData.ajustes.objetivoDiario ?? 100,
-        };
-        await saveAjustes(cleanAjustes);
+        // Enviar el objeto completo, saveAjustes ya no filtra
+        await saveAjustes(jsonData.ajustes);
+
+        // Mantener compatibilidad con backups antiguos que usaban "tam\u00f1oFuente"
+        if (jsonData.ajustes['tam\u00f1oFuente'] && !jsonData.ajustes.tamanoFuente) {
+            await saveAjustes({ tamanoFuente: jsonData.ajustes['tam\u00f1oFuente'] });
+        }
     }
     currentStep++;
 
@@ -728,12 +727,17 @@ export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?
             }
             // Limpiar el objeto ajustes para eliminar undefined y asegurar valores por defecto
             ajustes = cleanObject(ajustes);
-            // Asegurar valores por defecto para campos requeridos
+            // Asegurar valores por defecto para campos críticos, pero permitir otros campos
             if (ajustes) {
                 ajustes.temaOscuro = ajustes.temaOscuro ?? false;
                 ajustes.tamanoFuente = ajustes.tamanoFuente ?? ajustes['tam\u00f1oFuente'] ?? 14;
                 ajustes.letraDescanso = ajustes.letraDescanso ?? '';
                 ajustes.objetivoDiario = ajustes.objetivoDiario ?? 100;
+
+                // Nuevos campos opcionales defaults
+                ajustes.temaColor = ajustes.temaColor ?? 'azul';
+                ajustes.altoContraste = ajustes.altoContraste ?? false;
+
                 // Eliminar la clave con tilde si existe
                 if (ajustes['tam\u00f1oFuente'] !== undefined) {
                     delete ajustes['tam\u00f1oFuente'];

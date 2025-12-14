@@ -148,23 +148,28 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
             try {
                 const ajustes = await getAjustes();
                 if (ajustes) {
-                    const fetchedTamano = (ajustes as any).tamanoFuente ?? (ajustes as any)["tam\\u00f1oFuente"] ?? 14;
+                    const fetchedTamano = ajustes.tamanoFuente ?? (ajustes as any)["tam\\u00f1oFuente"] ?? 14;
                     setTemaOscuro(ajustes.temaOscuro ?? false);
                     setTheme(ajustes.temaOscuro ?? false);
                     setTamanoFuente(fetchedTamano);
                     setFontSize(fetchedTamano);
                     setObjetivoDiario(ajustes.objetivoDiario ?? 100);
-                    const storedThemeName = (ajustes as any).temaColor || localStorage.getItem("temaColor") || "azul";
-                    const storedHighContrast = (ajustes as any).altoContraste ?? (localStorage.getItem("altoContraste") === "true");
+
+                    // Recuperar configuración de personalización
+                    const storedThemeName = ajustes.temaColor || localStorage.getItem("temaColor") || "azul";
+                    const storedHighContrast = ajustes.altoContraste ?? (localStorage.getItem("altoContraste") === "true");
+
                     setTemaColor(storedThemeName);
                     setThemeName(storedThemeName);
-                    setAltoContraste(!!storedHighContrast);
+                    setAltoContraste(storedHighContrast);
+
                     if (storedHighContrast !== undefined) {
                         if (!!storedHighContrast !== highContrast) {
                             toggleHighContrast();
                         }
                     }
 
+                    // Sincronizar localStorage con lo que viene de la nube
                     localStorage.setItem("temaOscuro", (ajustes.temaOscuro ?? false).toString());
                     localStorage.setItem("tamanoFuente", fetchedTamano.toString());
                     localStorage.removeItem("tam\\u00f1oFuente");
@@ -204,7 +209,7 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                         localStorage.setItem('branding_datosFiscales', JSON.stringify(ajustes.datosFiscales));
                     }
                 } else {
-                    // Check localStorage directly if API returns nothing for these
+                    // Fallback a localStorage si no hay nada en la nube todavía
                     const storedLogo = localStorage.getItem('branding_logo');
                     if (storedLogo) setLogo(storedLogo);
                     const storedFiscal = localStorage.getItem('branding_datosFiscales');
@@ -645,7 +650,7 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
             } else if (exportTipo === 'csv') {
                 exportToCSV(data, filtros);
             } else {
-                exportToPDFAdvanced(data, filtros);
+                await exportToPDFAdvanced(data, filtros);
             }
 
             showAlert(`Exportación a ${exportTipo.toUpperCase()} completada exitosamente.`);
@@ -1047,6 +1052,86 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                         step="0.01"
                     />
                     <span className="text-zinc-400 font-medium">EUR</span>
+                </div>
+            </div>
+
+            <div className="bg-zinc-800 rounded-lg p-2.5 border border-zinc-700">
+                <div className="mb-2">
+                    <h3 className="text-zinc-100 font-bold text-base mb-0.5">Datos Fiscales y Marca</h3>
+                    <p className="text-zinc-400 text-sm">Configura tus datos para los informes y facturas.</p>
+                </div>
+                <div className="space-y-3">
+                    <FormField label="URL del Logo">
+                        <input
+                            type="text"
+                            value={logo}
+                            onChange={(e) => {
+                                setHasUserChanged(true);
+                                setLogo(e.target.value);
+                            }}
+                            placeholder="https://ejemplo.com/logo.png"
+                            className="w-full bg-zinc-700 text-zinc-100 border border-zinc-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                    </FormField>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <FormField label="Nombre / Razón Social">
+                            <input
+                                type="text"
+                                value={fiscalData.nombre}
+                                onChange={(e) => {
+                                    setHasUserChanged(true);
+                                    setFiscalData({ ...fiscalData, nombre: e.target.value });
+                                }}
+                                className="w-full bg-zinc-700 text-zinc-100 border border-zinc-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </FormField>
+                        <FormField label="NIF / CIF">
+                            <input
+                                type="text"
+                                value={fiscalData.nif}
+                                onChange={(e) => {
+                                    setHasUserChanged(true);
+                                    setFiscalData({ ...fiscalData, nif: e.target.value });
+                                }}
+                                className="w-full bg-zinc-700 text-zinc-100 border border-zinc-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </FormField>
+                    </div>
+                    <FormField label="Dirección Fiscal">
+                        <input
+                            type="text"
+                            value={fiscalData.direccion}
+                            onChange={(e) => {
+                                setHasUserChanged(true);
+                                setFiscalData({ ...fiscalData, direccion: e.target.value });
+                            }}
+                            className="w-full bg-zinc-700 text-zinc-100 border border-zinc-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                    </FormField>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <FormField label="Teléfono">
+                            <input
+                                type="tel"
+                                value={fiscalData.telefono}
+                                onChange={(e) => {
+                                    setHasUserChanged(true);
+                                    setFiscalData({ ...fiscalData, telefono: e.target.value });
+                                }}
+                                className="w-full bg-zinc-700 text-zinc-100 border border-zinc-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </FormField>
+                        <FormField label="Email">
+                            <input
+                                type="email"
+                                value={fiscalData.email}
+                                onChange={(e) => {
+                                    setHasUserChanged(true);
+                                    setFiscalData({ ...fiscalData, email: e.target.value });
+                                }}
+                                className="w-full bg-zinc-700 text-zinc-100 border border-zinc-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </FormField>
+                    </div>
                 </div>
             </div>
 

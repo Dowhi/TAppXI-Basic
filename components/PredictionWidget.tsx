@@ -10,7 +10,14 @@ const PredictionWidget: React.FC = () => {
     useEffect(() => {
         const loadPrediction = async () => {
             try {
-                const result = await analyzeShiftPatterns();
+                const now = new Date();
+                const currentHour = now.getHours();
+                const currentDay = now.getDay();
+
+                // Si son las 15:00 o más, sugerir para el día siguiente
+                const targetDay = currentHour >= 15 ? (currentDay + 1) % 7 : currentDay;
+
+                const result = await analyzeShiftPatterns(targetDay);
                 setPrediction(result);
             } finally {
                 setLoading(false);
@@ -48,8 +55,8 @@ const PredictionWidget: React.FC = () => {
 
                 <div className="hidden sm:block">
                     <button className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${isDark
-                            ? 'bg-indigo-600 hover:bg-indigo-500 text-white'
-                            : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                        ? 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                        : 'bg-indigo-600 hover:bg-indigo-700 text-white'
                         }`}>
                         Ver Estadísticas
                     </button>
