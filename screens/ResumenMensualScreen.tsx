@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import ScreenTopBar from '../components/ScreenTopBar';
 import { Seccion } from '../types';
+import { useToast } from '../components/Toast';
+import { ErrorHandler } from '../services/errorHandler';
 import { getIngresosByYear, getGastosByYear } from '../services/api';
 import jsPDF from 'jspdf';
 
@@ -43,6 +45,7 @@ const meses = [
 ];
 
 const ResumenMensualScreen: React.FC<ResumenMensualScreenProps> = ({ navigateTo }) => {
+    const { showToast } = useToast();
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
     const [datosMensuales, setDatosMensuales] = useState<Array<{
         mes: string;
@@ -51,6 +54,12 @@ const ResumenMensualScreen: React.FC<ResumenMensualScreenProps> = ({ navigateTo 
         total: number;
     }>>([]);
     const [loading, setLoading] = useState(true);
+
+    // Función helper para formatear valores: si es 0, retorna cadena vacía
+    const formatValue = (value: number): string => {
+        if (value === 0) return '';
+        return `${value.toFixed(2).replace('.', ',')} €`;
+    };
 
     useEffect(() => {
         const loadData = async () => {
@@ -211,9 +220,9 @@ const ResumenMensualScreen: React.FC<ResumenMensualScreenProps> = ({ navigateTo 
 
             // Guardar el PDF
             doc.save(`Resumen_Financiero_${selectedYear}.pdf`);
+            showToast('PDF generado correctamente', 'success');
         } catch (error) {
-            console.error("Error generando PDF:", error);
-            alert("Error al generar el PDF. Por favor, inténtalo de nuevo.");
+            ErrorHandler.handle(error, 'ResumenMensualScreen - generarPDF');
         }
     };
 
@@ -267,11 +276,11 @@ const ResumenMensualScreen: React.FC<ResumenMensualScreenProps> = ({ navigateTo 
                                         }`}
                                 >
                                     <div className="text-zinc-100 font-medium flex items-center">{dato.mes}</div>
-                                    <div className="text-cyan-400 text-right font-semibold flex items-center justify-end whitespace-nowrap">{dato.ingresos.toFixed(2)} €</div>
-                                    <div className="text-red-400 text-right font-semibold flex items-center justify-end whitespace-nowrap">{dato.gastos.toFixed(2)} €</div>
+                                    <div className="text-cyan-400 text-right font-semibold flex items-center justify-end whitespace-nowrap">{formatValue(dato.ingresos)}</div>
+                                    <div className="text-red-400 text-right font-semibold flex items-center justify-end whitespace-nowrap">{formatValue(dato.gastos)}</div>
                                     <div className={`text-right font-semibold flex items-center justify-end whitespace-nowrap ${dato.total >= 0 ? 'text-emerald-400' : 'text-red-400'
                                         }`}>
-                                        {dato.total.toFixed(2)} €
+                                        {formatValue(dato.total)}
                                     </div>
                                 </div>
                             ))}

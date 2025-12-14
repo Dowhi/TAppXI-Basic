@@ -34,10 +34,10 @@ export const exportToExcel = (
     // Hoja de Carreras
     if (data.carreras && data.carreras.length > 0) {
         const carrerasData = data.carreras.map(c => ({
-            'Fecha': c.fechaHora instanceof Date 
-                ? c.fechaHora.toLocaleDateString('es-ES') 
+            'Fecha': c.fechaHora instanceof Date
+                ? c.fechaHora.toLocaleDateString('es-ES')
                 : new Date(c.fechaHora).toLocaleDateString('es-ES'),
-            'Hora': c.fechaHora instanceof Date 
+            'Hora': c.fechaHora instanceof Date
                 ? c.fechaHora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
                 : new Date(c.fechaHora).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
             'Taxímetro (€)': c.taximetro || 0,
@@ -51,7 +51,7 @@ export const exportToExcel = (
         }));
 
         const wsCarreras = XLSX.utils.json_to_sheet(carrerasData);
-        
+
         // Ajustar anchos de columna
         wsCarreras['!cols'] = [
             { wch: 12 }, { wch: 8 }, { wch: 12 }, { wch: 12 },
@@ -65,7 +65,7 @@ export const exportToExcel = (
     // Hoja de Gastos
     if (data.gastos && data.gastos.length > 0) {
         const gastosData = data.gastos.map(g => ({
-            'Fecha': g.fecha instanceof Date 
+            'Fecha': g.fecha instanceof Date
                 ? g.fecha.toLocaleDateString('es-ES')
                 : new Date(g.fecha).toLocaleDateString('es-ES'),
             'Concepto': g.concepto || '',
@@ -82,7 +82,7 @@ export const exportToExcel = (
         }));
 
         const wsGastos = XLSX.utils.json_to_sheet(gastosData);
-        
+
         // Ajustar anchos de columna
         wsGastos['!cols'] = [
             { wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 20 },
@@ -103,8 +103,8 @@ export const exportToExcel = (
                 ? t.fechaInicio.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
                 : new Date(t.fechaInicio).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
             'Km Inicio': t.kilometrosInicio || 0,
-            'Fecha Fin': t.fechaFin 
-                ? (t.fechaFin instanceof Date 
+            'Fecha Fin': t.fechaFin
+                ? (t.fechaFin instanceof Date
                     ? t.fechaFin.toLocaleDateString('es-ES')
                     : new Date(t.fechaFin).toLocaleDateString('es-ES'))
                 : '',
@@ -114,13 +114,13 @@ export const exportToExcel = (
                     : new Date(t.fechaFin).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }))
                 : '',
             'Km Fin': t.kilometrosFin || '',
-            'Km Recorridos': t.kilometrosFin && t.kilometrosInicio 
+            'Km Recorridos': t.kilometrosFin && t.kilometrosInicio
                 ? (t.kilometrosFin - t.kilometrosInicio)
                 : '',
         }));
 
         const wsTurnos = XLSX.utils.json_to_sheet(turnosData);
-        
+
         // Ajustar anchos de columna
         wsTurnos['!cols'] = [
             { wch: 12 }, { wch: 8 }, { wch: 10 }, { wch: 12 },
@@ -134,8 +134,8 @@ export const exportToExcel = (
     const resumenData = [{
         'Total Ingresos (€)': data.carreras?.reduce((sum, c) => sum + (c.cobrado || 0), 0) || 0,
         'Total Gastos (€)': data.gastos?.reduce((sum, g) => sum + (g.importe || 0), 0) || 0,
-        'Balance Neto (€)': (data.carreras?.reduce((sum, c) => sum + (c.cobrado || 0), 0) || 0) - 
-                            (data.gastos?.reduce((sum, g) => sum + (g.importe || 0), 0) || 0),
+        'Balance Neto (€)': (data.carreras?.reduce((sum, c) => sum + (c.cobrado || 0), 0) || 0) -
+            (data.gastos?.reduce((sum, g) => sum + (g.importe || 0), 0) || 0),
         'Total IVA Gastos (€)': data.gastos?.reduce((sum, g) => sum + (g.ivaImporte || 0), 0) || 0,
         'Período Desde': filters.fechaDesde?.toLocaleDateString('es-ES') || '',
         'Período Hasta': filters.fechaHasta?.toLocaleDateString('es-ES') || '',
@@ -244,32 +244,83 @@ export const exportToPDFAdvanced = (
     const pageHeight = doc.internal.pageSize.getHeight();
     let yPos = 20;
 
-    // Encabezado mejorado
-    doc.setFontSize(20);
+    // Branding
+    const logoBase64 = localStorage.getItem('branding_logo');
+    const fiscalDataStr = localStorage.getItem('branding_datosFiscales');
+    const fiscalData = fiscalDataStr ? JSON.parse(fiscalDataStr) : null;
+    let headerHeight = 40;
+
+    // Logo
+    if (logoBase64) {
+        try {
+            // Add image (x, y, w, h)
+            doc.addImage(logoBase64, 'JPEG', 14, 10, 25, 25);
+        } catch (e) {
+            console.error('Error adding logo to PDF:', e);
+        }
+    }
+
+    // Header Text (Right aligned if logo exists, or Center if not, but standardizing to Right for pro look)
+    doc.setFontSize(22);
     doc.setTextColor(0, 0, 0);
     doc.setFont(undefined, 'bold');
-    doc.text('TAppXI - Informe Profesional', pageWidth / 2, yPos, { align: 'center' });
-    yPos += 10;
 
-    doc.setFontSize(11);
+    // Title
+    const titleX = pageWidth - 14;
+    doc.text('TAppXI', titleX, 20, { align: 'right' });
+    doc.setFontSize(10);
     doc.setFont(undefined, 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text('Informe Profesional', titleX, 25, { align: 'right' });
+
+    // Fiscal Data
+    if (fiscalData) {
+        let fiscalY = 35;
+        doc.setFontSize(9);
+        doc.setTextColor(80, 80, 80);
+        if (fiscalData.nombre) {
+            doc.setFont(undefined, 'bold');
+            doc.text(fiscalData.nombre, titleX, fiscalY, { align: 'right' });
+            doc.setFont(undefined, 'normal');
+            fiscalY += 4;
+        }
+        if (fiscalData.nif) {
+            doc.text(`NIF: ${fiscalData.nif}`, titleX, fiscalY, { align: 'right' });
+            fiscalY += 4;
+        }
+        if (fiscalData.direccion) {
+            doc.text(fiscalData.direccion, titleX, fiscalY, { align: 'right' });
+            fiscalY += 4;
+        }
+        if (fiscalData.telefono || fiscalData.email) {
+            doc.text(`${fiscalData.telefono || ''} ${fiscalData.email ? '· ' + fiscalData.email : ''}`, titleX, fiscalY, { align: 'right' });
+            headerHeight = Math.max(headerHeight, fiscalY + 10);
+        }
+    }
+
+    yPos = headerHeight + 5;
+
+    // Period Info
+    doc.setFontSize(11);
     doc.setTextColor(100, 100, 100);
     if (filters.fechaDesde && filters.fechaHasta) {
         doc.text(
             `Período: ${filters.fechaDesde.toLocaleDateString('es-ES')} - ${filters.fechaHasta.toLocaleDateString('es-ES')}`,
-            pageWidth / 2,
-            yPos,
-            { align: 'center' }
+            14,
+            headerHeight,
+            { align: 'left' }
         );
     }
-    yPos += 6;
+
+    // Date Generated
+    doc.setFontSize(8);
     doc.text(
-        `Generado el: ${new Date().toLocaleDateString('es-ES')} ${new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`,
-        pageWidth / 2,
-        yPos,
-        { align: 'center' }
+        `Generado: ${new Date().toLocaleDateString('es-ES')}`,
+        14,
+        headerHeight + 4,
+        { align: 'left' }
     );
-    yPos += 15;
+    yPos += 10;
 
     // Resumen Ejecutivo
     doc.setFontSize(16);
@@ -412,9 +463,9 @@ export const exportToHacienda = (
     const year = filters.fechaDesde?.getFullYear() || new Date().getFullYear();
 
     // ========== HOJA 1: RESUMEN FISCAL ==========
-    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
-                   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-    
+    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
     // Calcular ingresos y gastos por mes
     const resumenMensual: Array<{
         Mes: string;
@@ -481,7 +532,7 @@ export const exportToHacienda = (
 
     const wsResumen = XLSX.utils.json_to_sheet(resumenMensual);
     wsResumen['!cols'] = [
-        { wch: 15 }, { wch: 18 }, { wch: 20 }, { wch: 22 }, 
+        { wch: 15 }, { wch: 18 }, { wch: 20 }, { wch: 22 },
         { wch: 18 }, { wch: 18 }, { wch: 12 }, { wch: 12 }
     ];
     XLSX.utils.book_append_sheet(workbook, wsResumen, 'Resumen Fiscal');

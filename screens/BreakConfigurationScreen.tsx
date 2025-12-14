@@ -1,6 +1,8 @@
 ﻿import React, { useState, useEffect } from 'react';
 import ScreenTopBar from '../components/ScreenTopBar';
 import { Seccion } from '../types';
+import { useToast } from '../components/Toast';
+import { ErrorHandler } from '../services/errorHandler';
 import { addExcepcion, getExcepciones, deleteExcepcion, updateExcepcion, getBreakConfiguration, saveBreakConfiguration, Excepcion } from '../services/api';
 
 interface BreakConfigurationScreenProps {
@@ -8,6 +10,7 @@ interface BreakConfigurationScreenProps {
 }
 
 const BreakConfigurationScreen: React.FC<BreakConfigurationScreenProps> = ({ navigateTo }) => {
+    const { showToast } = useToast();
     const [startDate, setStartDate] = useState('');
     const [startDayLetter, setStartDayLetter] = useState('A'); // Letra del primer día configurado
     const [weekendPattern, setWeekendPattern] = useState('Sabado: AC / Domingo: BD');
@@ -110,7 +113,7 @@ const BreakConfigurationScreen: React.FC<BreakConfigurationScreenProps> = ({ nav
 
     const handleSave = async () => {
         if (!startDate) {
-            alert('Por favor, selecciona una fecha de inicio del ciclo');
+            showToast('Por favor, selecciona una fecha de inicio del ciclo', 'warning');
             return;
         }
 
@@ -134,11 +137,10 @@ const BreakConfigurationScreen: React.FC<BreakConfigurationScreenProps> = ({ nav
             });
 
             window.dispatchEvent(new Event('breakConfigUpdated'));
-            alert('Configuracion guardada correctamente');
+            showToast('Configuración guardada correctamente', 'success');
             navigateTo(Seccion.Calendario);
         } catch (error) {
-            console.error('Error al guardar configuracion de descansos:', error);
-            alert('Error al guardar la configuracion en la base de datos');
+            ErrorHandler.handle(error, 'BreakConfigurationScreen - handleSave');
         } finally {
             setSavingConfig(false);
         }
@@ -595,9 +597,9 @@ const BreakConfigurationScreen: React.FC<BreakConfigurationScreenProps> = ({ nav
                                                             try {
                                                                 await deleteExcepcion(excepcion.id);
                                                                 await loadExcepciones();
+                                                                showToast('Excepción eliminada correctamente', 'success');
                                                             } catch (error) {
-                                                                console.error('Error eliminando excepción:', error);
-                                                                alert('Error al eliminar la excepción');
+                                                                ErrorHandler.handle(error, 'BreakConfigurationScreen - deleteExcepcion');
                                                             }
                                                         }
                                                     }}
@@ -741,7 +743,7 @@ const BreakConfigurationScreen: React.FC<BreakConfigurationScreenProps> = ({ nav
                         <button
                             onClick={async () => {
                                 if (!exceptionDateFrom || !exceptionDateTo) {
-                                    alert('Por favor, selecciona las fechas de inicio y fin');
+                                    showToast('Por favor, selecciona las fechas de inicio y fin', 'warning');
                                     return;
                                 }
                                 
@@ -764,7 +766,7 @@ const BreakConfigurationScreen: React.FC<BreakConfigurationScreenProps> = ({ nav
                                             descripcion: exceptionDescription,
                                             nuevaLetra: exceptionType === 'Cambio de Letra' ? exceptionNewLetter : undefined
                                         });
-                                        alert('Excepción actualizada correctamente');
+                                        showToast('Excepción actualizada correctamente', 'success');
                                     } else {
                                         // Crear nueva excepción
                                         await addExcepcion({
@@ -776,7 +778,7 @@ const BreakConfigurationScreen: React.FC<BreakConfigurationScreenProps> = ({ nav
                                             descripcion: exceptionDescription,
                                             nuevaLetra: exceptionType === 'Cambio de Letra' ? exceptionNewLetter : undefined
                                         });
-                                        alert('Excepción guardada correctamente');
+                                        showToast('Excepción guardada correctamente', 'success');
                                     }
                                     
                                     // Resetear formulario
@@ -786,8 +788,7 @@ const BreakConfigurationScreen: React.FC<BreakConfigurationScreenProps> = ({ nav
                                     // Recargar excepciones
                                     await loadExcepciones();
                                 } catch (error) {
-                                    console.error('Error guardando excepción:', error);
-                                    alert('Error al guardar la excepción');
+                                    ErrorHandler.handle(error, 'BreakConfigurationScreen - saveExcepcion');
                                 }
                             }}
                             className="w-full bg-gradient-to-r from-green-500 to-cyan-500 rounded-xl py-4 px-6 flex items-center justify-center gap-3 text-white font-bold text-base hover:from-green-400 hover:to-cyan-400 transition-all active:scale-95"

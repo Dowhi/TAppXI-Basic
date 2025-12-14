@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Seccion } from '../types';
 import ScreenTopBar from '../components/ScreenTopBar';
+import { useToast } from '../components/Toast';
+import { ErrorHandler } from '../services/errorHandler';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import { getCarreras, getGastos, getAllTurnos } from '../services/api';
 import jsPDF from 'jspdf';
 
@@ -20,6 +23,7 @@ interface ReportFilter {
 }
 
 const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigateTo }) => {
+    const { showToast } = useToast();
     const [fechaDesde, setFechaDesde] = useState<string>('');
     const [fechaHasta, setFechaHasta] = useState<string>('');
     const [filtros, setFiltros] = useState<ReportFilter>({
@@ -43,7 +47,7 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigateTo }) => {
 
     const generarInforme = async () => {
         if (!fechaDesde || !fechaHasta) {
-            alert('Por favor, selecciona ambas fechas');
+            showToast('Por favor, selecciona ambas fechas', 'warning');
             return;
         }
 
@@ -144,9 +148,9 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigateTo }) => {
 
             // Generar PDF
             generarPDF(carrerasFiltradas, gastosFinales, turnosFiltrados, fechaDesdeObj, fechaHastaObj, filtros);
+            showToast('Informe generado correctamente', 'success');
         } catch (error) {
-            console.error('Error al generar informe:', error);
-            alert('Error al generar el informe. Por favor, intenta de nuevo.');
+            ErrorHandler.handle(error, 'ReportsScreen - generarInforme');
         } finally {
             setLoading(false);
         }
@@ -926,13 +930,10 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigateTo }) => {
                     className="w-full bg-gradient-to-r from-green-500 to-cyan-500 rounded-xl py-4 px-6 flex items-center justify-center gap-3 text-white font-bold text-base hover:from-green-400 hover:to-cyan-400 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {loading ? (
-                        <>
-                            <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            Generando...
-                        </>
+                        <div className="flex items-center justify-center gap-2">
+                            <LoadingSpinner size="sm" />
+                            <span>Generando informe...</span>
+                        </div>
                     ) : (
                         <>
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">

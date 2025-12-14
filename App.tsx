@@ -1,11 +1,16 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { AnimatePresence } from 'framer-motion';
+import PageTransition from './components/PageTransition';
 import { useTheme } from './contexts/ThemeContext';
-import { Seccion } from './types';
+import { Seccion, CarreraVista } from './types';
 import { startReminderSoundCheck, stopReminderSoundCheck, requestNotificationPermission } from './services/reminderSound';
+import { ErrorHandlerSetup } from './components/ErrorHandlerSetup';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import HomeScreen from './screens/HomeScreen';
 import IncomeScreen from './screens/IncomeScreen';
 import AddEditRaceScreen from './screens/AddEditRaceScreen';
 import ExpensesScreen from './screens/ExpensesScreen';
+import { getCurrentMinimaRate, getCurrentAeropuertoRate } from './services/tariffs';
 import ShiftsScreen from './screens/ShiftsScreen';
 import CloseTurnScreen from './screens/CloseTurnScreen';
 import EditTurnScreen from './screens/EditTurnScreen';
@@ -32,6 +37,7 @@ const App: React.FC = () => {
     // Siempre iniciar en HomeScreen
     const [currentPage, setCurrentPage] = useState<Seccion>(Seccion.Home);
     const [editingRaceId, setEditingRaceId] = useState<string | null>(null);
+    const [initialRaceData, setInitialRaceData] = useState<Partial<CarreraVista> | undefined>(undefined);
     const [editingTurnoId, setEditingTurnoId] = useState<string | null>(null);
     const [editingGastoId, setEditingGastoId] = useState<string | null>(null);
     const [refreshGastosKey, setRefreshGastosKey] = useState(0);
@@ -41,10 +47,10 @@ const App: React.FC = () => {
     useEffect(() => {
         // Solicitar permiso para notificaciones al iniciar
         requestNotificationPermission();
-        
+
         // Iniciar verificación de sonidos
         startReminderSoundCheck();
-        
+
         // Limpiar al desmontar
         return () => {
             stopReminderSoundCheck();
@@ -54,6 +60,12 @@ const App: React.FC = () => {
     const navigateTo = useCallback((page: Seccion, id?: string) => {
         if (page === Seccion.IntroducirCarrera) {
             setEditingRaceId(null);
+            // Don't reset initialRaceData here immediately if we just set it? 
+            // Actually, usually navigation clears transient state. 
+            // I'll make a specific handleQuickAction function.
+        }
+        if (page !== Seccion.IntroducirCarrera) {
+            setInitialRaceData(undefined);
         }
         if (page === Seccion.EditarTurno && id) {
             setEditingTurnoId(id);
@@ -75,14 +87,83 @@ const App: React.FC = () => {
         setCurrentPage(Seccion.EditarGasto);
     }, []);
 
+    const handleQuickAction = useCallback((action: string) => {
+        if (action === 'minima') {
+            const { amount, tariffName } = getCurrentMinimaRate();
+            setInitialRaceData({
+                taximetro: amount,
+                cobrado: amount,
+                formaPago: 'Efectivo',
+                tipoCarrera: 'Urbana',
+                suplementos: tariffName // Optional: store which tariff was applied? 
+            });
+            // showToast(`Aplicada ${tariffName}: ${amount}€`, 'info'); // Requires using toast here if possible, but handleQuickAction is top level.
+            navigateTo(Seccion.IntroducirCarrera);
+        } else if (action === 'aeropuerto') {
+            const { amount, tariffName, isNight } = getCurrentAeropuertoRate();
+            setInitialRaceData({
+                taximetro: amount,
+                cobrado: amount,
+                formaPago: 'Tarjeta',
+                aeropuerto: true,
+                tipoCarrera: 'Interurbana',
+            });
+            navigateTo(Seccion.IntroducirCarrera);
+        }
+    }, [navigateTo]);
+
+    // Atajos de teclado globales
+    useKeyboardShortcuts([
+        {
+            key: 'n',
+            ctrlKey: true,
+            action: () => {
+                if (currentPage === Seccion.Home || currentPage === Seccion.VistaCarreras) {
+                    navigateTo(Seccion.IntroducirCarrera);
+                }
+            },
+            description: 'Nueva carrera',
+        },
+        {
+            key: 'e',
+            ctrlKey: true,
+            action: () => {
+                if (currentPage === Seccion.Home) {
+                    navigateTo(Seccion.Gastos);
+                }
+            },
+            description: 'Nuevo gasto',
+        },
+        {
+            key: 'h',
+            ctrlKey: true,
+            action: () => {
+                if (currentPage !== Seccion.Home) {
+                    navigateTo(Seccion.Home);
+                }
+            },
+            description: 'Ir a inicio',
+        },
+        {
+            key: 'Escape',
+            action: () => {
+                // Cerrar modales o volver atrás
+                if (currentPage !== Seccion.Home) {
+                    navigateTo(Seccion.Home);
+                }
+            },
+            description: 'Volver atrás',
+        },
+    ]);
+
     const renderPage = () => {
         switch (currentPage) {
             case Seccion.Home:
-                return <HomeScreen navigateTo={navigateTo} />;
+                return <HomeScreen navigateTo={navigateTo} onQuickAction={handleQuickAction} />;
             case Seccion.VistaCarreras:
                 return <IncomeScreen navigateTo={navigateTo} navigateToEditRace={navigateToEditRace} />;
             case Seccion.IntroducirCarrera:
-                return <AddEditRaceScreen navigateTo={navigateTo} raceId={null} />;
+                return <AddEditRaceScreen navigateTo={navigateTo} raceId={null} initialData={initialRaceData} />;
             case Seccion.EditarCarrera:
                 return <AddEditRaceScreen navigateTo={navigateTo} raceId={editingRaceId} />;
             case Seccion.Gastos:
@@ -135,15 +216,21 @@ const App: React.FC = () => {
     const appBgClass = isDark ? 'bg-zinc-950 text-zinc-50' : 'bg-zinc-50 text-zinc-900';
 
     return (
-        <div className={`${appBgClass} min-h-screen font-sans`}>
-            <main className="w-full pb-24 animate-fade-in-up">
-                {renderPage()}
-            </main>
+        <ErrorHandlerSetup>
+            <div className={`${appBgClass} min-h-screen font-sans overflow-hidden`}>
+                <main className="w-full pb-24 h-full relative">
+                    <AnimatePresence mode="wait">
+                        <PageTransition key={currentPage}>
+                            {renderPage()}
+                        </PageTransition>
+                    </AnimatePresence>
+                </main>
 
-            {currentPage !== Seccion.Home && (
-                <BottomNavBar navigateTo={navigateTo} />
-            )}
-        </div>
+                {currentPage !== Seccion.Home && (
+                    <BottomNavBar navigateTo={navigateTo} />
+                )}
+            </div>
+        </ErrorHandlerSetup>
     );
 };
 

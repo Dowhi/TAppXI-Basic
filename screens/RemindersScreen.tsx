@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Seccion } from '../types';
 import ScreenTopBar from '../components/ScreenTopBar';
 import { useTheme } from '../contexts/ThemeContext';
+import { useToast } from '../components/Toast';
 import {
     getReminders,
     saveReminder,
@@ -13,6 +14,7 @@ import {
 
 const RemindersScreen: React.FC<{ navigateTo: (page: Seccion) => void }> = ({ navigateTo }) => {
     const { isDark } = useTheme();
+    const { showToast } = useToast();
     const [reminders, setReminders] = useState<Reminder[]>([]);
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
@@ -51,20 +53,21 @@ const RemindersScreen: React.FC<{ navigateTo: (page: Seccion) => void }> = ({ na
 
     const handleSave = () => {
         if (!titulo.trim()) {
-            alert('Por favor, ingresa un título para el recordatorio');
+            showToast('Por favor, ingresa un título para el recordatorio', 'warning');
             return;
         }
 
         if (tipo === 'mantenimiento' && !kilometrosLimite) {
-            alert('Por favor, ingresa los kilómetros límite para mantenimiento');
+            showToast('Por favor, ingresa los kilómetros límite para mantenimiento', 'warning');
             return;
         }
 
         if (tipo !== 'mantenimiento' && !fechaLimite) {
-            alert('Por favor, selecciona una fecha límite');
+            showToast('Por favor, selecciona una fecha límite', 'warning');
             return;
         }
 
+        try {
         if (editingReminder) {
             updateReminder(editingReminder.id, {
                 titulo: titulo.trim(),
@@ -77,6 +80,7 @@ const RemindersScreen: React.FC<{ navigateTo: (page: Seccion) => void }> = ({ na
                 kilometrosLimite: kilometrosLimite ? parseFloat(kilometrosLimite) : undefined,
                 kilometrosActuales: kilometrosActuales ? parseFloat(kilometrosActuales) : undefined,
             });
+                showToast('Recordatorio actualizado correctamente', 'success');
         } else {
             saveReminder({
                 titulo: titulo.trim(),
@@ -89,11 +93,15 @@ const RemindersScreen: React.FC<{ navigateTo: (page: Seccion) => void }> = ({ na
                 kilometrosLimite: kilometrosLimite ? parseFloat(kilometrosLimite) : undefined,
                 kilometrosActuales: kilometrosActuales ? parseFloat(kilometrosActuales) : undefined,
             });
+                showToast('Recordatorio guardado correctamente', 'success');
         }
 
         loadReminders();
         resetForm();
         setShowAddModal(false);
+        } catch (error) {
+            ErrorHandler.handle(error, 'RemindersScreen - handleSave');
+        }
     };
 
     const handleEdit = (reminder: Reminder) => {

@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect, useMemo } from 'react';
 import { Seccion, Turno, CarreraVista } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import {
   getIngresosForCurrentMonth,
   getGastosForCurrentMonth,
@@ -11,6 +12,7 @@ import {
   getWorkingDays,
 } from '../services/api';
 import { getRemindersForToday, checkMaintenanceReminders } from '../services/reminders';
+import PredictionWidget from '../components/PredictionWidget';
 
 // --- ICONOS MODERNOS, ESTILO COHERENTE (20px, stroke-based) ---
 
@@ -155,9 +157,9 @@ const BellIcon = () => (
 );
 
 const TrainIcon = () => (
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-    </svg>
+  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+  </svg>
 );
 
 const PlaneIcon = () => (
@@ -168,11 +170,17 @@ const PlaneIcon = () => (
 
 // --- COMPONENTE PRINCIPAL (REPLICADO DE LA FOTO) ---
 
+import QuickActionsWidget from '../components/QuickActionsWidget';
+
+// ...
+
 interface HomeScreenProps {
   navigateTo: (page: Seccion, id?: string) => void;
+  onQuickAction?: (action: string) => void;
 }
 
-const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
+const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction }) => {
+
   const { isDark } = useTheme();
   const [turnoActivo, setTurnoActivo] = useState<Turno | null>(null);
   const [carreras, setCarreras] = useState<CarreraVista[]>([]);
@@ -185,7 +193,21 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
   const [remindersToday, setRemindersToday] = useState<any[]>([]);
 
   useEffect(() => {
-    const unsubscribe = subscribeToActiveTurno((turno) => setTurnoActivo(turno));
+    const unsubscribe = subscribeToActiveTurno(async (turno) => {
+      if (turno && !turno.numero) {
+        // Si el turno no tiene número, calcularlo
+        const fechaTurno = new Date(turno.fechaInicio);
+        fechaTurno.setHours(0, 0, 0, 0);
+        const { getTurnosByDate } = await import('../services/api');
+        const turnosDelDia = await getTurnosByDate(fechaTurno);
+        const turnosOrdenados = turnosDelDia.sort((a, b) =>
+          new Date(a.fechaInicio).getTime() - new Date(b.fechaInicio).getTime()
+        );
+        const indice = turnosOrdenados.findIndex(t => t.id === turno.id);
+        turno.numero = indice >= 0 ? indice + 1 : 1;
+      }
+      setTurnoActivo(turno);
+    });
     return () => unsubscribe();
   }, []);
 
@@ -205,23 +227,23 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
         ]);
         setIngresos(ingresosData);
         setGastos(gastosData);
-        
+
         // Cargar objetivo diario
         const objetivo = ajustes?.objetivoDiario || parseFloat(localStorage.getItem('objetivoDiario') || '100');
         setObjetivoDiario(objetivo);
-        
+
         // Calcular ingresos de hoy
         const hoy = new Date();
         hoy.setHours(0, 0, 0, 0);
         const carrerasHoy = await getCarrerasByDate(hoy);
         const ingresosHoyValue = carrerasHoy.reduce((sum, c) => sum + (c.cobrado || 0), 0);
         setIngresosHoy(ingresosHoyValue);
-        
+
         // Calcular promedio de últimos 7 días trabajados (excluyendo hoy)
         const fechaInicio = new Date(hoy);
         fechaInicio.setDate(fechaInicio.getDate() - 14); // Buscar en últimos 14 días para tener al menos 7 días trabajados
         const diasTrabajados = await getWorkingDays(fechaInicio, new Date(hoy.getTime() - 1)); // Hasta ayer
-        
+
         if (diasTrabajados.length > 0) {
           const ingresosPorDia = await Promise.all(
             diasTrabajados.slice(-7).map(async (fecha) => {
@@ -245,7 +267,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
   useEffect(() => {
     // Cargar recordatorios del día
     const reminders = getRemindersForToday();
-    
+
     // Verificar recordatorios de mantenimiento por kilómetros
     if (turnoActivo && turnoActivo.kilometrosInicio) {
       const maintenanceReminders = checkMaintenanceReminders(turnoActivo.kilometrosInicio);
@@ -257,7 +279,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
         }
       });
     }
-    
+
     setRemindersToday(reminders);
   }, [turnoActivo]);
 
@@ -345,8 +367,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
       }}
     >
       {loading ? (
-        <div className={`text-center py-12 text-lg ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>
-          Cargando datos...
+        <div className="flex items-center justify-center py-12">
+          <LoadingSpinner text="Cargando datos..." size="lg" />
         </div>
       ) : (
         <div className="space-y-6 max-w-xl mx-auto">
@@ -369,6 +391,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
               <SettingsIcon />
             </button>
           </div>
+
+          {/* Quick Actions Widget */}
+          <QuickActionsWidget onQuickAction={onQuickAction} />
 
           {/* Alertas de Recordatorios */}
           {remindersToday.length > 0 && (
@@ -461,15 +486,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
           {(() => {
             const porcentajeProgreso = objetivoDiario > 0 ? Math.min((ingresosHoy / objetivoDiario) * 100, 100) : 0;
             const diferencia = ingresosHoy - objetivoDiario;
-            const porcentajeVsPromedio = promedioDiasAnteriores > 0 
-              ? ((ingresosHoy - promedioDiasAnteriores) / promedioDiasAnteriores) * 100 
+            const porcentajeVsPromedio = promedioDiasAnteriores > 0
+              ? ((ingresosHoy - promedioDiasAnteriores) / promedioDiasAnteriores) * 100
               : 0;
-            
+
             // Determinar color según progreso
             let statusColor: string;
             let statusIcon: string;
             let statusText: string;
-            
+
             if (porcentajeProgreso >= 100) {
               statusColor = isDark ? '#00FF94' : '#16A34A'; // Verde
               statusIcon = '✅';
@@ -505,11 +530,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
                       Progreso del Día
                     </h3>
                   </div>
-                  <span 
+                  <span
                     className="text-sm font-semibold px-2 py-1 rounded-lg"
-                    style={{ 
+                    style={{
                       backgroundColor: statusColor + '20',
-                      color: statusColor 
+                      color: statusColor
                     }}
                   >
                     {statusText}
@@ -522,14 +547,14 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
                     <span className={`text-xs ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>
                       {formatCurrency(ingresosHoy)} / {formatCurrency(objetivoDiario)}
                     </span>
-                    <span 
+                    <span
                       className="text-sm font-bold"
                       style={{ color: statusColor }}
                     >
                       {porcentajeProgreso.toFixed(0)}%
                     </span>
                   </div>
-                  <div 
+                  <div
                     className="w-full h-3 rounded-full overflow-hidden"
                     style={{ backgroundColor: isDark ? '#1A1A1F' : '#E5E7EB' }}
                   >
@@ -554,14 +579,14 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
                       ⚠️ Te faltan {formatCurrency(Math.abs(diferencia))} para el objetivo
                     </p>
                   )}
-                  
+
                   {promedioDiasAnteriores > 0 && (
                     <div className="flex items-center justify-between pt-1 border-t" style={{ borderColor: cardBorder }}>
                       <span className={`text-xs ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>
                         Promedio últimos días:
                       </span>
                       <span className={`text-xs font-semibold ${porcentajeVsPromedio >= 0 ? (isDark ? 'text-green-400' : 'text-green-600') : (isDark ? 'text-red-400' : 'text-red-600')}`}>
-                        {formatCurrency(promedioDiasAnteriores)} 
+                        {formatCurrency(promedioDiasAnteriores)}
                         {porcentajeVsPromedio !== 0 && (
                           <span> ({porcentajeVsPromedio >= 0 ? '+' : ''}{porcentajeVsPromedio.toFixed(1)}%)</span>
                         )}
@@ -569,100 +594,99 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo }) => {
                     </div>
                   )}
                 </div>
+
+                {/* Estado del turno integrado */}
+                {turnoActivo && (
+                  <div className="mt-4 pt-4 border-t" style={{ borderColor: cardBorder }}>
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h2 className={`text-sm font-bold tracking-wide uppercase ${isDark ? 'text-cyan-400' : 'text-blue-600'
+                          }`}>
+                          {`Turno ${turnoActivo.numero ?? 1}`}
+                        </h2>
+                        <p className={`uppercase tracking-wide text-xs ${isDark ? 'text-zinc-400' : 'text-zinc-600'
+                          }`}>
+                          {turnoActivo.fechaInicio.toLocaleDateString('es-ES', {
+                            weekday: 'short',
+                            day: '2-digit',
+                            month: 'short',
+                          })}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-600'
+                          }`}>Total turno</p>
+                        <p className={`text-xl font-bold mt-1 ${isDark ? 'text-green-400' : 'text-green-600'
+                          }`}>{formatCurrency(totalTurno)}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3 mb-3 text-sm">
+                      <div className="text-center">
+                        <p className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-600'
+                          }`}>Kms Inic.</p>
+                        <p className={`text-lg mt-1 ${isDark ? 'text-zinc-100' : 'text-zinc-900'}`}>
+                          {turnoActivo.kilometrosInicio}
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <p className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-600'
+                          }`}>H. Inicio</p>
+                        <p className={`text-lg mt-1 ${isDark ? 'text-zinc-100' : 'text-zinc-900'}`}>
+                          {turnoActivo.fechaInicio.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <p className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-600'
+                          }`}>Carreras</p>
+                        <p className={`text-lg mt-1 ${isDark ? 'text-zinc-100' : 'text-zinc-900'}`}>
+                          {carrerasDelTurno.length}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => navigateTo(Seccion.VistaCarreras)}
+                      className={`w-full py-2 rounded-xl font-semibold text-sm shadow-md hover:opacity-95 transition-opacity ${isDark
+                        ? 'bg-gradient-to-r from-green-400 to-cyan-400 text-zinc-900'
+                        : 'bg-gradient-to-r from-green-500 to-blue-500 text-white'
+                        }`}
+                    >
+                      Ver Detalles
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })()}
 
-          {/* Estado del turno (como en la foto) */}
-          {turnoActivo ? (
+          {/* Estado cuando no hay turno activo */}
+          {!turnoActivo && (
             <div
-              className="rounded-3xl p-6 shadow-xl"
+              className="rounded-2xl p-4 shadow-xl text-center"
               style={{
-                backgroundColor: turnoCardBg,
-                borderColor: turnoCardBorder,
-                borderWidth: '1px',
-                borderStyle: 'solid'
-              }}
-            >
-              <div className="flex justify-between items-start mb-5">
-                <div>
-                  <h2 className={`text-sm font-bold tracking-wide uppercase ${isDark ? 'text-cyan-400' : 'text-blue-600'
-                    }`}>
-                    {`Turno ${turnoActivo.numero ?? 1}`}
-                  </h2>
-                  <p className={`uppercase tracking-wide ${isDark ? 'text-zinc-400' : 'text-zinc-600'
-                    }`}>
-                    {turnoActivo.fechaInicio.toLocaleDateString('es-ES', {
-                      weekday: 'short',
-                      day: '2-digit',
-                      month: 'short',
-                    })}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-600'
-                    }`}>Total turno</p>
-                  <p className={`text-2xl font-bold mt-1 ${isDark ? 'text-green-400' : 'text-green-600'
-                    }`}>{formatCurrency(totalTurno)}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-5 mb-3 text-sm">
-                <div className="text-center">
-                  <p className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-600'
-                    }`}>Kms Inic.</p>
-                  <p className={`text-xl mt-1 ${isDark ? 'text-zinc-100' : 'text-zinc-900'}`}>
-                    {turnoActivo.kilometrosInicio}
-                  </p>
-                </div>
-                <div className="text-center">
-                  <p className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-600'
-                    }`}>H. Inicio</p>
-                  <p className={`text-xl mt-1 ${isDark ? 'text-zinc-100' : 'text-zinc-900'}`}>
-                    {turnoActivo.fechaInicio.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-                  </p>
-                </div>
-                <div className="text-center">
-                  <p className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-600'
-                    }`}>Carreras</p>
-                  <p className={`text-xl mt-1 ${isDark ? 'text-zinc-100' : 'text-zinc-900'}`}>
-                    {carrerasDelTurno.length}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => navigateTo(Seccion.VistaCarreras)}
-                className={`w-full py-2 rounded-xl font-semibold text-sm shadow-md hover:opacity-95 transition-opacity ${isDark
-                  ? 'bg-gradient-to-r from-green-400 to-cyan-400 text-zinc-900'
-                  : 'bg-gradient-to-r from-green-500 to-blue-500 text-white'
-                  }`}
-              >
-                Ver Detalles
-              </button>
-            </div>
-          ) : (
-            <div
-              className="rounded-3xl px-6 py-8 text-center shadow-xl"
-              style={{
-                backgroundColor: noTurnoCardBg,
+                backgroundColor: cardBg,
                 borderColor: cardBorder,
                 borderWidth: '1px',
                 borderStyle: 'solid'
               }}
             >
-              <div className={`mx-auto mb-5 w-14 h-14 rounded-full flex items-center justify-center ${isDark ? 'bg-purple-900/50 text-pink-400' : 'bg-purple-100 text-pink-600'
+              <div className={`mx-auto mb-4 w-12 h-12 rounded-full flex items-center justify-center ${isDark ? 'bg-purple-900/50 text-pink-400' : 'bg-purple-100 text-pink-600'
                 }`}>
                 <PauseCircleIcon />
               </div>
-              <p className={`text-lg font-semibold mb-1 ${isDark ? 'text-cyan-400' : 'text-blue-600'
+              <p className={`text-base font-semibold mb-1 ${isDark ? 'text-cyan-400' : 'text-blue-600'
                 }`}>{formattedDateCapitalized}</p>
-              <h3 className={`font-bold text-lg tracking-wide mb-3 uppercase ${isDark ? 'text-pink-400' : 'text-pink-600'
+              <h3 className={`font-bold text-base tracking-wide mb-2 uppercase ${isDark ? 'text-pink-400' : 'text-pink-600'
                 }`}>NO HAY TURNO ACTIVO</h3>
-              <p className={`text-base leading-relaxed ${isDark ? 'text-zinc-300' : 'text-zinc-700'
+              <p className={`text-sm leading-relaxed ${isDark ? 'text-zinc-300' : 'text-zinc-700'
                 }`}>Inicia un nuevo turno para comenzar</p>
             </div>
           )}
+
+
+          {/* Widget de Predicción */}
+          {!turnoActivo && <PredictionWidget />}
 
           {/* Accesos directos en 3 filas de 3 (ajustado para 9 acciones) */}
           <div className="grid grid-cols-3 gap-1">

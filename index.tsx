@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { FontSizeProvider } from './contexts/FontSizeContext';
+import { ToastProvider } from './components/Toast';
+import ErrorBoundary from './components/ErrorBoundary';
 import './index.css';
 
 const rootElement = document.getElementById('root');
@@ -13,10 +15,14 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
+    <ErrorBoundary>
     <ThemeProvider>
       <FontSizeProvider>
+          <ToastProvider>
         <App />
+          </ToastProvider>
       </FontSizeProvider>
     </ThemeProvider>
+    </ErrorBoundary>
   </React.StrictMode>
 );

@@ -57,7 +57,12 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
 
     // Calcular estadísticas por turno
     const turnosConEstadisticas = useMemo(() => {
-        return turnos.map((turno, index) => {
+        // Ordenar turnos por fecha de inicio para calcular números correctos
+        const turnosOrdenados = [...turnos].sort((a, b) => 
+            new Date(a.fechaInicio).getTime() - new Date(b.fechaInicio).getTime()
+        );
+
+        return turnosOrdenados.map((turno, index) => {
             // Filtrar carreras que pertenecen a este turno
             const carrerasDelTurno = carreras.filter(c => {
                 // Si la carrera tiene turnoId, debe coincidir
@@ -86,6 +91,9 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
                 .filter(c => c.formaPago === 'Vales')
                 .reduce((sum, c) => sum + (c.cobrado || 0), 0);
 
+            // Usar el número del turno si existe, sino calcular basado en el índice ordenado
+            const numeroTurno = turno.numero ?? (index + 1);
+
             return {
                 ...turno,
                 total,
@@ -96,7 +104,7 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
                 sumaEmisora,
                 cVales,
                 sumaVales,
-                turnoIndex: index + 1,
+                turnoIndex: numeroTurno,
                 kmTotal: (turno.kilometrosFin && turno.kilometrosInicio) ? turno.kilometrosFin - turno.kilometrosInicio : 0,
                 horasTotal: (() => {
                     if (!turno.fechaFin) return 'En curso';

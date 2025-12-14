@@ -19,11 +19,28 @@ const customReportsCollection = db.collection('customReports');
 
 const docToCustomReport = (doc: any): CustomReport => {
     const data = doc.data();
+
+    // Parse filters to ensure Dates are Dates (handling Firestore Timestamps)
+    const filtros = data.filtros || {};
+    if (filtros.fechaDesde && typeof filtros.fechaDesde.toDate === 'function') {
+        filtros.fechaDesde = filtros.fechaDesde.toDate();
+    } else if (filtros.fechaDesde && !(filtros.fechaDesde instanceof Date)) {
+        // Fallback for strings
+        filtros.fechaDesde = new Date(filtros.fechaDesde);
+    }
+
+    if (filtros.fechaHasta && typeof filtros.fechaHasta.toDate === 'function') {
+        filtros.fechaHasta = filtros.fechaHasta.toDate();
+    } else if (filtros.fechaHasta && !(filtros.fechaHasta instanceof Date)) {
+        // Fallback for strings
+        filtros.fechaHasta = new Date(filtros.fechaHasta);
+    }
+
     return {
         id: doc.id,
         nombre: data.nombre,
         descripcion: data.descripcion || '',
-        filtros: data.filtros || {},
+        filtros: filtros,
         tipoExportacion: data.tipoExportacion || 'excel',
         agrupacion: data.agrupacion || 'ninguna',
         createdAt: data.createdAt ? data.createdAt.toDate() : new Date(),
@@ -62,13 +79,13 @@ export const getCustomReports = async (): Promise<CustomReport[]> => {
  */
 export const updateCustomReport = async (id: string, updates: Partial<CustomReport>): Promise<void> => {
     const updateData: any = {};
-    
+
     if (updates.nombre !== undefined) updateData.nombre = updates.nombre;
     if (updates.descripcion !== undefined) updateData.descripcion = updates.descripcion;
     if (updates.filtros !== undefined) updateData.filtros = updates.filtros;
     if (updates.tipoExportacion !== undefined) updateData.tipoExportacion = updates.tipoExportacion;
     if (updates.agrupacion !== undefined) updateData.agrupacion = updates.agrupacion;
-    
+
     // @ts-ignore
     updateData.lastUsed = firebase.firestore.FieldValue.serverTimestamp();
 

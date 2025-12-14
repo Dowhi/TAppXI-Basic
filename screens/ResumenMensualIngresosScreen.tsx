@@ -111,6 +111,7 @@ const ResumenMensualIngresosScreen: React.FC<ResumenMensualIngresosScreenProps> 
     };
 
     const formatCurrency = (value: number): string => {
+        if (value === 0) return '';
         return value.toFixed(2).replace('.', ',');
     };
 
@@ -177,7 +178,9 @@ const ResumenMensualIngresosScreen: React.FC<ResumenMensualIngresosScreenProps> 
                                     <div className="col-span-2 text-right text-cyan-400 font-medium">{formatCurrency(dato.ingresos)}</div>
                                     <div className="col-span-4 text-right text-red-400 font-medium">{formatCurrency(dato.gastos)}</div>
                                     <div className="col-span-4 text-right font-medium">
-                                        {total >= 0 ? (
+                                        {total === 0 ? (
+                                            <span></span>
+                                        ) : total >= 0 ? (
                                             <span className="text-emerald-400">{formatCurrency(total)}</span>
                                         ) : (
                                             <span className="text-red-400">{formatCurrency(total)}</span>

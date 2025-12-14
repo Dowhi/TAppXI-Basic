@@ -83,6 +83,7 @@ const docToTurno = (doc: any): Turno => {
         kilometrosInicio: data.kilometrosInicio,
         fechaFin: data.fechaFin ? data.fechaFin.toDate() : undefined,
         kilometrosFin: data.kilometrosFin,
+        numero: data.numero || undefined,
     };
 };
 
@@ -548,13 +549,35 @@ export const getActiveTurno = async (): Promise<Turno | null> => {
 };
 
 export const addTurno = async (kilometrosInicio: number): Promise<string> => {
+    // Calcular el número del turno basado en cuántos turnos hay en el mismo día
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const mañana = new Date(hoy);
+    mañana.setDate(mañana.getDate() + 1);
+
+    // @ts-ignore
+    const startTimestamp = firebase.firestore.Timestamp.fromDate(hoy);
+    // @ts-ignore
+    const endTimestamp = firebase.firestore.Timestamp.fromDate(mañana);
+
+    // Obtener todos los turnos del día actual (incluyendo cerrados)
+    const turnosDelDia = await turnosCollection
+        .where('fechaInicio', '>=', startTimestamp)
+        .where('fechaInicio', '<', endTimestamp)
+        .orderBy('fechaInicio', 'asc')
+        .get();
+
+    // El número del nuevo turno será la cantidad de turnos del día + 1
+    const numeroTurno = turnosDelDia.size + 1;
+
     // @ts-ignore
     const dataToAdd = {
         kilometrosInicio: kilometrosInicio,
         // @ts-ignore
         fechaInicio: firebase.firestore.FieldValue.serverTimestamp(),
         kilometrosFin: null,
-        fechaFin: null
+        fechaFin: null,
+        numero: numeroTurno
     };
     const docRef = await turnosCollection.add(dataToAdd);
     return docRef.id;
@@ -568,6 +591,7 @@ export const restoreTurno = async (turno: Turno) => {
         // @ts-ignore
         fechaFin: turno.fechaFin ? firebase.firestore.Timestamp.fromDate(new Date(turno.fechaFin)) : null,
         kilometrosFin: turno.kilometrosFin || null,
+        numero: turno.numero || null,
     };
 
     await turnosCollection.doc(turno.id).set(dataToSave);
@@ -934,6 +958,22 @@ export interface Ajustes {
     objetivoDiario: number;
     temaColor?: string;
     altoContraste?: boolean;
+    tarifaMinima?: number; // Deprecated, mapped to tarifa1/2/3
+    tarifaAeropuerto?: number; // Deprecated, mapped to Aero Dia/Noche
+    tarifa1?: number; // Diurna Laborable
+    tarifa2?: number; // Nocturna / Sabados / Festiva
+    tarifa3?: number; // Especial Nocturna
+    tarifaAeropuertoDia?: number; // T4
+    tarifaAeropuertoNoche?: number; // T5
+    // Branding / Professionalism
+    logo?: string; // Base64 encoded image
+    datosFiscales?: {
+        nombre: string;
+        nif: string;
+        direccion: string;
+        telefono: string;
+        email: string;
+    };
 }
 
 export const saveAjustes = async (ajustes: Ajustes): Promise<void> => {

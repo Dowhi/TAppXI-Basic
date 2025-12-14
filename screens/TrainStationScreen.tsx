@@ -172,6 +172,9 @@ const TrainStationScreen: React.FC<TrainStationScreenProps> = ({ navigateTo }) =
                                         🚂 {stationInfo.nombre}
                                     </h2>
                                     <div className={`${secondaryTextColor} text-xs`}>
+                                        Código ADIF: {stationInfo.codigo}
+                                    </div>
+                                    <div className={`${secondaryTextColor} text-xs`}>
                                         Última actualización: {stationInfo.ultimaActualizacion.toLocaleTimeString('es-ES', { 
                                             hour: '2-digit', 
                                             minute: '2-digit',
@@ -180,13 +183,12 @@ const TrainStationScreen: React.FC<TrainStationScreenProps> = ({ navigateTo }) =
                                     </div>
                                 </div>
                                 <div className="flex flex-col items-end gap-1">
-                                    {stationInfo && (stationInfo.llegadas.length > 0 || stationInfo.salidas.length > 0) && 
-                                     import.meta.env.VITE_TRAIN_PROXY_URL ? (
+                                    {stationInfo && stationInfo.isRealData ? (
                                         <div className={`text-xs px-3 py-1 rounded-full ${isDark ? 'bg-green-500/20 text-green-400' : 'bg-green-100 text-green-700'}`}>
                                             ✅ Datos Reales
                                         </div>
                                     ) : (
-                                        <div className={`text-xs px-3 py-1 rounded-full ${isDark ? 'bg-yellow-500/20 text-yellow-400' : 'bg-yellow-100 text-yellow-700'}`}>
+                                        <div className={`text-xs px-3 py-1 rounded-full ${isDark ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>
                                             📋 Horarios Aproximados
                                         </div>
                                     )}

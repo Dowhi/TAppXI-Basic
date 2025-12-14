@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Seccion, Proveedor, Concepto, Taller } from '../types';
 import ScreenTopBar from '../components/ScreenTopBar';
+import { useToast } from '../components/Toast';
+import { ErrorHandler } from '../services/errorHandler';
 import { addGasto, updateGasto, deleteGasto, getGastoById, getProveedores, getConceptos, getTalleres, addProveedor, addConcepto, addTaller } from '../services/api';
 import {
     getTemplates,
@@ -10,6 +12,7 @@ import {
     getMostUsedTemplates,
     ExpenseTemplate
 } from '../services/expenseTemplates';
+import { ExpenseScanner } from '../components/ExpenseScanner';
 
 // Icons
 const AddIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg>;
@@ -65,7 +68,9 @@ interface ExpensesScreenProps {
 
 const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo, gastoId }) => {
     const isEditing = gastoId !== null && gastoId !== undefined;
+    const { showToast } = useToast();
     const [activeTab, setActiveTab] = useState<'actividad' | 'vehiculo'>('actividad');
+    const [showScanner, setShowScanner] = useState(false);
 
     // Estados para encabezado
     const [fecha, setFecha] = useState('');
@@ -469,6 +474,20 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo, gastoId }) 
         }
     };
 
+    const handleScanComplete = (data: { importe?: number; litros?: number; concepto?: string }) => {
+        setShowScanner(false);
+        if (data.importe) setImporteTotal(data.importe.toString());
+        if (data.litros) setLitros(data.litros.toString());
+        if (data.concepto) {
+            setConceptoName(data.concepto);
+            // Logic to auto-select tab based on concept could go here if robust enough
+            if (data.concepto === 'Combustible' || data.concepto === 'Mantenimiento') {
+                // Common defaults
+            }
+        }
+        showToast('Datos escaneados aplicados', 'success');
+    };
+
     const handleSaveExpense = async () => {
         const importeValue = parseFloat(importeTotal) || 0;
 
@@ -708,10 +727,10 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo, gastoId }) 
                     console.log('Gasto actualizado, esperando un momento antes de navegar...');
                     // Esperar un momento para que Firebase procese la actualización
                     await new Promise(resolve => setTimeout(resolve, 500));
-                    alert('Gasto actualizado correctamente');
+                    showToast('Gasto actualizado correctamente', 'success');
                     navigateTo(Seccion.ResumenGastosMensual);
                 } catch (error) {
-                    console.error('Error al actualizar gasto:', error);
+                    ErrorHandler.handle(error, 'ExpensesScreen - updateGasto');
                     setError('Error al actualizar el gasto. Por favor, inténtalo de nuevo.');
                 }
             } else {
@@ -725,10 +744,10 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo, gastoId }) 
                 setTallerName('');
                 setServices([{}]);
                 setNotas('');
-                alert('Gasto guardado correctamente');
+                showToast('Gasto guardado correctamente', 'success');
             }
         } catch (err) {
-            console.error('Error saving expense:', err);
+            ErrorHandler.handle(err, 'ExpensesScreen - handleSaveExpense');
             setError('Error al guardar el gasto. Por favor, inténtalo de nuevo.');
         } finally {
             setIsSaving(false);
@@ -814,15 +833,24 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo, gastoId }) 
                             />
                         </FormField>
                         <FormField label="Importe Total">
-                            <div className="relative">
-                                <TextInput
-                                    type="number"
-                                    placeholder="0.00"
-                                    value={importeTotal}
-                                    onChange={(e) => setImporteTotal(e.target.value)}
-                                    className="pl-8"
-                                />
-                                <span className="absolute left-3 top-2 text-zinc-500">€</span>
+                            <div className="relative flex gap-2">
+                                <div className="relative flex-grow">
+                                    <TextInput
+                                        type="number"
+                                        placeholder="0.00"
+                                        value={importeTotal}
+                                        onChange={(e) => setImporteTotal(e.target.value)}
+                                        className="pl-8"
+                                    />
+                                    <span className="absolute left-3 top-2 text-zinc-500">€</span>
+                                </div>
+                                <button
+                                    onClick={() => setShowScanner(true)}
+                                    className="p-2 bg-zinc-800 border border-zinc-700 rounded-lg hover:bg-zinc-700 text-zinc-300"
+                                    title="Escanear Ticket"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px" fill="currentColor"><path d="M0 0h24v24H0z" fill="none" /><circle cx="12" cy="12" r="3.2" /><path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z" /></svg>
+                                </button>
                             </div>
                         </FormField>
                         <FormField label="Kilómetros">
@@ -1601,8 +1629,15 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo, gastoId }) 
                     </div>
                 )
             }
+            {showScanner && (
+                <ExpenseScanner
+                    onScanComplete={handleScanComplete}
+                    onClose={() => setShowScanner(false)}
+                />
+            )}
         </div >
     );
 };
 
 export default ExpensesScreen;
+

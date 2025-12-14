@@ -1,7 +1,34 @@
 /* Archivo de estilos mejorado: variables de tema, alto contraste y tamaño base de fuente */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap');
 
 html {
+  font-family: 'Inter', sans-serif;
   font-size: var(--base-font-size, 12px);
+}
+
+.font-outfit {
+  font-family: 'Outfit', sans-serif;
+}
+
+.glass-panel {
+  background: rgba(24, 24, 27, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.glass-card {
+  background: linear-gradient(145deg, rgba(39, 39, 42, 0.4), rgba(24, 24, 27, 0.4));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.btn-ripple {
+    position: relative;
+    overflow: hidden;
+    transform: translateZ(0);
 }
 
 body {
@@ -95,6 +122,22 @@ body {
 
 .animate-fade-in-up {
   animation: fadeInUp 0.25s ease-out;
+}
+
+/* Animación para Toast */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.3s ease-out;
 }
 
 /* Mejoras para móvil */

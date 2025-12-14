@@ -192,7 +192,7 @@ const FlightStationScreen: React.FC<FlightStationScreenProps> = ({ navigateTo })
                                             ✅ Datos Reales
                                         </div>
                                     ) : (
-                                        <div className={`text-xs px-3 py-1 rounded-full ${isDark ? 'bg-yellow-500/20 text-yellow-400' : 'bg-yellow-100 text-yellow-700'}`}>
+                                        <div className={`text-xs px-3 py-1 rounded-full ${isDark ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>
                                             📋 Horarios Aproximados
                                         </div>
                                     )}
@@ -209,12 +209,12 @@ const FlightStationScreen: React.FC<FlightStationScreenProps> = ({ navigateTo })
                                 <button
                                     onClick={() => setActiveTab('llegadas')}
                                     className={`flex-1 py-2 px-4 rounded-lg font-semibold text-sm transition-all ${activeTab === 'llegadas'
-                                            ? isDark
-                                                ? 'bg-cyan-500 text-white'
-                                                : 'bg-blue-600 text-white'
-                                            : isDark
-                                                ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                        ? isDark
+                                            ? 'bg-cyan-500 text-white'
+                                            : 'bg-blue-600 text-white'
+                                        : isDark
+                                            ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                         }`}
                                 >
                                     Llegadas ({airportInfo.llegadas.length})
@@ -222,12 +222,12 @@ const FlightStationScreen: React.FC<FlightStationScreenProps> = ({ navigateTo })
                                 <button
                                     onClick={() => setActiveTab('salidas')}
                                     className={`flex-1 py-2 px-4 rounded-lg font-semibold text-sm transition-all ${activeTab === 'salidas'
-                                            ? isDark
-                                                ? 'bg-cyan-500 text-white'
-                                                : 'bg-blue-600 text-white'
-                                            : isDark
-                                                ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                        ? isDark
+                                            ? 'bg-cyan-500 text-white'
+                                            : 'bg-blue-600 text-white'
+                                        : isDark
+                                            ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                         }`}
                                 >
                                     Salidas ({airportInfo.salidas.length})
@@ -290,6 +290,10 @@ const FlightStationScreen: React.FC<FlightStationScreenProps> = ({ navigateTo })
 };
 
 export default FlightStationScreen;
+
+
+
+
 
 
 

@@ -15,6 +15,13 @@ interface AjustesScreenProps {
     navigateTo: (page: Seccion) => void;
 }
 
+const FormField = ({ label, children }: { label: string; children: React.ReactNode }) => (
+    <div className="space-y-1">
+        <label className="block text-xs font-medium text-zinc-400">{label}</label>
+        {children}
+    </div>
+);
+
 const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
     const { isDark, setTheme, themeName, setThemeName, highContrast, toggleHighContrast } = useTheme();
     const { fontSize, setFontSize } = useFontSize();
@@ -33,6 +40,28 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
     const [archiveMonths, setArchiveMonths] = useState<number>(24);
     const [archiveResult, setArchiveResult] = useState<string | null>(null);
     const [hasUserChanged, setHasUserChanged] = useState<boolean>(false);
+
+    // Configuración Tarifas
+    const [tarifa1, setTarifa1] = useState<number>(() => {
+        const stored = localStorage.getItem("tarifa1");
+        return stored ? parseFloat(stored) : 4.40;
+    });
+    const [tarifa2, setTarifa2] = useState<number>(() => {
+        const stored = localStorage.getItem("tarifa2");
+        return stored ? parseFloat(stored) : 5.47;
+    });
+    const [tarifa3, setTarifa3] = useState<number>(() => {
+        const stored = localStorage.getItem("tarifa3");
+        return stored ? parseFloat(stored) : 6.85;
+    });
+    const [tarifaAeropuertoDia, setTarifaAeropuertoDia] = useState<number>(() => {
+        const stored = localStorage.getItem("tarifaAeropuertoDia");
+        return stored ? parseFloat(stored) : 25.72;
+    });
+    const [tarifaAeropuertoNoche, setTarifaAeropuertoNoche] = useState<number>(() => {
+        const stored = localStorage.getItem("tarifaAeropuertoNoche");
+        return stored ? parseFloat(stored) : 28.67;
+    });
 
     // Estados para backup
     const [uploadingToDrive, setUploadingToDrive] = useState<boolean>(false);
@@ -56,6 +85,16 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
     const [newReportDescripcion, setNewReportDescripcion] = useState<string>('');
     const [newReportFiltros, setNewReportFiltros] = useState<ExportFilter>({});
     const [newReportTipo, setNewReportTipo] = useState<'excel' | 'pdf' | 'csv'>('excel');
+
+    // Branding State
+    const [logo, setLogo] = useState<string>('');
+    const [fiscalData, setFiscalData] = useState({
+        nombre: '',
+        nif: '',
+        direccion: '',
+        telefono: '',
+        email: ''
+    });
 
     // Restore
     const [restoring, setRestoring] = useState<boolean>(false);
@@ -132,6 +171,44 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                     localStorage.setItem("objetivoDiario", (ajustes.objetivoDiario ?? 100).toString());
                     localStorage.setItem("temaColor", storedThemeName);
                     localStorage.setItem("altoContraste", String(storedHighContrast));
+
+                    // Tarifas
+                    if (ajustes.tarifa1 !== undefined) {
+                        setTarifa1(ajustes.tarifa1);
+                        localStorage.setItem("tarifa1", ajustes.tarifa1.toString());
+                    }
+                    if (ajustes.tarifa2 !== undefined) {
+                        setTarifa2(ajustes.tarifa2);
+                        localStorage.setItem("tarifa2", ajustes.tarifa2.toString());
+                    }
+                    if (ajustes.tarifa3 !== undefined) {
+                        setTarifa3(ajustes.tarifa3);
+                        localStorage.setItem("tarifa3", ajustes.tarifa3.toString());
+                    }
+                    if (ajustes.tarifaAeropuertoDia !== undefined) {
+                        setTarifaAeropuertoDia(ajustes.tarifaAeropuertoDia);
+                        localStorage.setItem("tarifaAeropuertoDia", ajustes.tarifaAeropuertoDia.toString());
+                    }
+                    if (ajustes.tarifaAeropuertoNoche !== undefined) {
+                        setTarifaAeropuertoNoche(ajustes.tarifaAeropuertoNoche);
+                        localStorage.setItem("tarifaAeropuertoNoche", ajustes.tarifaAeropuertoNoche.toString());
+                    }
+
+                    // Branding
+                    if (ajustes.logo) {
+                        setLogo(ajustes.logo);
+                        localStorage.setItem('branding_logo', ajustes.logo);
+                    }
+                    if (ajustes.datosFiscales) {
+                        setFiscalData(ajustes.datosFiscales);
+                        localStorage.setItem('branding_datosFiscales', JSON.stringify(ajustes.datosFiscales));
+                    }
+                } else {
+                    // Check localStorage directly if API returns nothing for these
+                    const storedLogo = localStorage.getItem('branding_logo');
+                    if (storedLogo) setLogo(storedLogo);
+                    const storedFiscal = localStorage.getItem('branding_datosFiscales');
+                    if (storedFiscal) setFiscalData(JSON.parse(storedFiscal));
                 }
             } catch (err) {
                 console.error("Error cargando ajustes:", err);
@@ -176,6 +253,15 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                 // nuevos campos de personalización de tema
                 temaColor: temaColor,
                 altoContraste: altoContraste,
+                // tarifas
+                tarifa1,
+                tarifa2,
+                tarifa3,
+                tarifaAeropuertoDia,
+                tarifaAeropuertoNoche,
+                // branding
+                logo,
+                datosFiscales: fiscalData,
             });
 
             setTheme(temaOscuro);
@@ -191,6 +277,13 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
             localStorage.setItem("objetivoDiario", objetivoDiario.toString());
             localStorage.setItem("temaColor", temaColor);
             localStorage.setItem("altoContraste", altoContraste.toString());
+            localStorage.setItem("tarifa1", tarifa1.toString());
+            localStorage.setItem("tarifa2", tarifa2.toString());
+            localStorage.setItem("tarifa3", tarifa3.toString());
+            localStorage.setItem("tarifaAeropuertoDia", tarifaAeropuertoDia.toString());
+            localStorage.setItem("tarifaAeropuertoNoche", tarifaAeropuertoNoche.toString());
+            localStorage.setItem("branding_logo", logo);
+            localStorage.setItem("branding_datosFiscales", JSON.stringify(fiscalData));
 
             setHasUserChanged(false);
             setGuardado(true);
@@ -477,7 +570,7 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                         } catch (e: any) {
                             console.error("Error eliminando datos:", e);
                             let errorMessage = `❌ Error al eliminar los datos: ${e.message}`;
-                            
+
                             if (e?.message?.includes('permission') || e?.code === 'permission-denied') {
                                 errorMessage += '\n\n🔧 SOLUCIÓN:\n';
                                 errorMessage += '1. Ve a Firebase Console: https://console.firebase.google.com/\n';
@@ -488,7 +581,7 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                                 errorMessage += '6. Recarga la aplicación\n\n';
                                 errorMessage += '📖 Consulta PASOS_SOLUCION_PERMISOS.md para instrucciones detalladas.';
                             }
-                            
+
                             showAlert(errorMessage);
                         } finally {
                             setIsDeleting(false);
@@ -688,19 +781,28 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                 getRecentTurnos(1000),
             ]);
 
-            // Aplicar filtros del reporte
+            // Parsear fechas de los filtros si existen (vienen como strings de localStorage)
+            const filtros = { ...reporte.filtros };
+            if (filtros.fechaDesde) {
+                filtros.fechaDesde = new Date(filtros.fechaDesde);
+            }
+            if (filtros.fechaHasta) {
+                filtros.fechaHasta = new Date(filtros.fechaHasta);
+            }
+
+            // Aplicar filtros del reporte con las fechas parseadas
             let carrerasFiltradas = carreras;
             let gastosFiltrados = gastos;
             let turnosFiltrados = turnos;
 
-            if (reporte.filtros.fechaDesde && reporte.filtros.fechaHasta) {
+            if (filtros.fechaDesde && filtros.fechaHasta) {
                 carrerasFiltradas = carreras.filter(c => {
                     const fecha = c.fechaHora instanceof Date ? c.fechaHora : new Date(c.fechaHora);
-                    return fecha >= reporte.filtros.fechaDesde! && fecha <= reporte.filtros.fechaHasta!;
+                    return fecha >= filtros.fechaDesde! && fecha <= filtros.fechaHasta!;
                 });
                 gastosFiltrados = gastos.filter(g => {
                     const fecha = g.fecha instanceof Date ? g.fecha : new Date(g.fecha);
-                    return fecha >= reporte.filtros.fechaDesde! && fecha <= reporte.filtros.fechaHasta!;
+                    return fecha >= filtros.fechaDesde! && fecha <= filtros.fechaHasta!;
                 });
             }
 
@@ -711,11 +813,11 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
             };
 
             if (reporte.tipoExportacion === 'excel') {
-                exportToExcel(data, reporte.filtros, `${reporte.nombre}.xlsx`);
+                exportToExcel(data, filtros, `${reporte.nombre}.xlsx`);
             } else if (reporte.tipoExportacion === 'csv') {
-                exportToCSV(data, reporte.filtros, `${reporte.nombre}.csv`);
+                exportToCSV(data, filtros, `${reporte.nombre}.csv`);
             } else {
-                exportToPDFAdvanced(data, reporte.filtros, `${reporte.nombre}.pdf`);
+                exportToPDFAdvanced(data, filtros, `${reporte.nombre}.pdf`);
             }
 
             await markReportAsUsed(reporte.id);
@@ -794,6 +896,89 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                             />
                         </button>
                     ))}
+                </div>
+            </div>
+
+            <div className="bg-zinc-800 rounded-lg p-2.5 border border-zinc-700">
+                <div className="mb-2">
+                    <h3 className="text-zinc-100 font-bold text-base mb-0.5">Tarifas Urbanas (Mínimas)</h3>
+                    <p className="text-zinc-400 text-sm">Configura los importes para las tarifas 1, 2 y 3.</p>
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div>
+                        <label className="block text-xs font-medium text-zinc-400 mb-1">Tarifa 1 (Día Lab)</label>
+                        <input
+                            type="number"
+                            step="0.01"
+                            value={tarifa1}
+                            onChange={(e) => {
+                                setHasUserChanged(true);
+                                setTarifa1(parseFloat(e.target.value) || 0);
+                            }}
+                            className="w-full p-2 bg-zinc-900 border border-zinc-600 rounded-lg text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-zinc-400 mb-1">Tarifa 2 (Noche L-J/Finde)</label>
+                        <input
+                            type="number"
+                            step="0.01"
+                            value={tarifa2}
+                            onChange={(e) => {
+                                setHasUserChanged(true);
+                                setTarifa2(parseFloat(e.target.value) || 0);
+                            }}
+                            className="w-full p-2 bg-zinc-900 border border-zinc-600 rounded-lg text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-zinc-400 mb-1">Tarifa 3 (Especial/Noche Vi-Sa)</label>
+                        <input
+                            type="number"
+                            step="0.01"
+                            value={tarifa3}
+                            onChange={(e) => {
+                                setHasUserChanged(true);
+                                setTarifa3(parseFloat(e.target.value) || 0);
+                            }}
+                            className="w-full p-2 bg-zinc-900 border border-zinc-600 rounded-lg text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <div className="bg-zinc-800 rounded-lg p-2.5 border border-zinc-700">
+                <div className="mb-2">
+                    <h3 className="text-zinc-100 font-bold text-base mb-0.5">Tarifas Aeropuerto</h3>
+                    <p className="text-zinc-400 text-sm">Configura los importes fijos para T4 y T5.</p>
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                        <label className="block text-xs font-medium text-zinc-400 mb-1">Tarifa 4 (Día)</label>
+                        <input
+                            type="number"
+                            step="0.01"
+                            value={tarifaAeropuertoDia}
+                            onChange={(e) => {
+                                setHasUserChanged(true);
+                                setTarifaAeropuertoDia(parseFloat(e.target.value) || 0);
+                            }}
+                            className="w-full p-2 bg-zinc-900 border border-zinc-600 rounded-lg text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-zinc-400 mb-1">Tarifa 5 (Noche/Finde)</label>
+                        <input
+                            type="number"
+                            step="0.01"
+                            value={tarifaAeropuertoNoche}
+                            onChange={(e) => {
+                                setHasUserChanged(true);
+                                setTarifaAeropuertoNoche(parseFloat(e.target.value) || 0);
+                            }}
+                            className="w-full p-2 bg-zinc-900 border border-zinc-600 rounded-lg text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
+                    </div>
                 </div>
             </div>
 

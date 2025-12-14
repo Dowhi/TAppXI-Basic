@@ -3,6 +3,9 @@ import Card from '../components/NeumorphicCard';
 import ScreenTopBar from '../components/ScreenTopBar';
 import { Seccion, Turno } from '../types';
 import { getActiveTurno, addTurno, subscribeToActiveTurno, getRecentTurnos, deleteTurno } from '../services/api';
+import { useToast } from '../components/Toast';
+import { ErrorHandler } from '../services/errorHandler';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 
 // Icons
 const TaxiIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z" /></svg>;
@@ -155,9 +158,9 @@ const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
                 await deleteTurno(id);
                 // Recargar la lista después de eliminar
                 loadTurnosRecientes();
+                showToast('Turno eliminado correctamente', 'success');
             } catch (err) {
-                console.error("Error deleting turno:", err);
-                alert("Error al eliminar el turno. Por favor, inténtalo de nuevo.");
+                ErrorHandler.handle(err, 'ShiftsScreen - handleDeleteTurno');
             }
         }
     };
@@ -175,7 +178,9 @@ const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
         return (
             <div className="bg-zinc-950 min-h-screen text-zinc-100 px-3 pt-3 pb-6 space-y-4">
                 {topBar}
-                <div className="text-center p-8 text-zinc-400">Cargando...</div>
+                <div className="flex items-center justify-center py-12">
+                    <LoadingSpinner text="Cargando turnos..." size="lg" />
+                </div>
             </div>
         );
     }
@@ -227,7 +232,9 @@ const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
             <div>
                 <h2 className="text-zinc-100 text-lg font-bold mb-2 tracking-tight">Turnos recientes</h2>
                 {loadingTurnos ? (
-                    <div className="text-center p-4 text-zinc-400 text-sm">Cargando turnos...</div>
+                    <div className="flex items-center justify-center p-4">
+                        <LoadingSpinner text="Cargando turnos..." size="sm" />
+                    </div>
                 ) : turnosRecientes.length === 0 ? (
                     <div className="text-center p-4 text-zinc-500 text-sm">No hay turnos cerrados aún</div>
                 ) : (
