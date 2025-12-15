@@ -675,3 +675,5 @@ export const GlobalSearch: React.FC<{ navigateTo: (page: Seccion, id?: string) =
 
 
 
+
+

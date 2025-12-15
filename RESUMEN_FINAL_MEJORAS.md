@@ -223,3 +223,5 @@ La aplicación ahora es:
 **Versión:** 2.0 - Mejoras Completas
 
 
+
+
