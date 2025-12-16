@@ -66,17 +66,6 @@ export class ErrorHandler {
     }
 
     if (error?.message) {
-      // Errores de Firebase
-      if (error.code === 'permission-denied') {
-        return 'No tienes permisos para realizar esta acción. Verifica la configuración de Firebase.';
-      }
-      if (error.code === 'unavailable') {
-        return 'El servicio no está disponible. Verifica tu conexión a internet.';
-      }
-      if (error.code === 'deadline-exceeded') {
-        return 'La operación tardó demasiado. Por favor, intenta de nuevo.';
-      }
-      
       return error.message;
     }
 

@@ -9,8 +9,8 @@ import {
     updateReminder,
     deleteReminder,
     completeReminder,
-    Reminder,
 } from '../services/reminders';
+import { Reminder } from '../types';
 
 const RemindersScreen: React.FC<{ navigateTo: (page: Seccion) => void }> = ({ navigateTo }) => {
     const { isDark } = useTheme();

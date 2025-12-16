@@ -3,7 +3,7 @@ import { Seccion, Proveedor, Concepto, Taller } from '../types';
 import ScreenTopBar from '../components/ScreenTopBar';
 import { useToast } from '../components/Toast';
 import { ErrorHandler } from '../services/errorHandler';
-import { addGasto, updateGasto, deleteGasto, getGastoById, getProveedores, getConceptos, getTalleres, addProveedor, addConcepto, addTaller } from '../services/api';
+import { addGasto, updateGasto, deleteGasto, getGasto, getProveedores, getConceptos, getTalleres, addProveedor, addConcepto, addTaller } from '../services/api';
 import {
     getTemplates,
     saveTemplate,
@@ -194,7 +194,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo, gastoId }) 
 
             setIsLoading(true);
             try {
-                const gasto = await getGastoById(gastoId);
+                const gasto = await getGasto(gastoId);
                 if (gasto) {
                     // Formatear fecha para input type="date"
                     const fechaDate = gasto.fecha instanceof Date ? gasto.fecha : new Date(gasto.fecha);

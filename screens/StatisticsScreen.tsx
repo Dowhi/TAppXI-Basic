@@ -14,6 +14,7 @@ interface DayData {
     gastos: number;
     balance: number;
     numCarreras: number;
+    isRestDay?: boolean;
 }
 
 const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
@@ -29,7 +30,7 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
         const end = new Date();
         end.setHours(23, 59, 59, 999);
         const start = new Date();
-        
+
         switch (selectedPeriod) {
             case 'week':
                 start.setDate(start.getDate() - 7);
@@ -63,7 +64,7 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                         try {
                             // Verificar si es día de descanso
                             const restDay = await isRestDay(date);
-                            
+
                             // Si es día de descanso, retornar datos vacíos (no se incluyen en estadísticas)
                             if (restDay) {
                                 return {
@@ -82,15 +83,16 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                             ]);
 
                             const ingresos = carreras.reduce((sum, c) => sum + (c.cobrado || 0), 0);
+                            const totalGastos = gastos.reduce((sum, g) => sum + (g.importe || 0), 0);
 
                             return {
                                 date,
                                 ingresos,
-                                gastos,
-                                balance: ingresos - gastos,
+                                gastos: totalGastos,
+                                balance: ingresos - totalGastos,
                                 numCarreras: carreras.length,
                                 isRestDay: false,
-                            } as DayData & { isRestDay?: boolean };
+                            } as DayData;
                         } catch (error) {
                             console.error(`Error cargando datos para ${date.toISOString()}:`, error);
                             return {
@@ -112,7 +114,7 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                 setLoading(false);
             }
         };
-        
+
         loadData();
     }, [dateRange]);
 
@@ -120,7 +122,7 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
     useEffect(() => {
         const loadZoneTimeAnalysis = async () => {
             if (!showZoneTimeAnalysis) return;
-            
+
             setLoadingZoneTime(true);
             try {
                 const allCarreras = await getCarreras();
@@ -140,7 +142,7 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
     const stats = useMemo(() => {
         // Filtrar solo días trabajados (excluir días de descanso)
         const workingDays = dayData.filter((d: any) => !d.isRestDay);
-        
+
         if (workingDays.length === 0) {
             return {
                 totalIngresos: 0,
@@ -164,17 +166,17 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
         const totalGastos = workingDays.reduce((sum, d) => sum + d.gastos, 0);
         const totalBalance = totalIngresos - totalGastos;
         const totalCarreras = workingDays.reduce((sum, d) => sum + d.numCarreras, 0);
-        
+
         const diasConIngresos = workingDays.filter(d => d.ingresos > 0).length;
         const diasConGastos = workingDays.filter(d => d.gastos > 0).length;
         const diasTrabajados = workingDays.length;
         const diasDescanso = dayData.length - diasTrabajados;
-        
-        const mejorDia = workingDays.reduce((best, current) => 
+
+        const mejorDia = workingDays.reduce((best, current) =>
             current.balance > (best?.balance || -Infinity) ? current : best, null as DayData | null
         );
-        
-        const peorDia = workingDays.reduce((worst, current) => 
+
+        const peorDia = workingDays.reduce((worst, current) =>
             current.balance < (worst?.balance || Infinity) ? current : worst, null as DayData | null
         );
 
@@ -201,14 +203,14 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
         // Filtrar solo días trabajados
         const workingDays = data.filter((d: any) => !d.isRestDay);
         if (workingDays.length === 0) return null;
-        
+
         const svgWidth = 400; // Ancho fijo para cálculos, se escalará con width="100%"
         const padding = 40;
         const chartWidth = svgWidth - (padding * 2);
         const barSpacing = chartWidth / workingDays.length;
         const barWidth = Math.max(2, barSpacing * 0.8);
         const maxBarHeight = height - 40;
-        
+
         return (
             <div className="relative" style={{ height: `${height}px` }}>
                 <svg width="100%" height={height} viewBox={`0 0 ${svgWidth} ${height}`} preserveAspectRatio="none" className="overflow-visible">
@@ -240,14 +242,14 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                             </g>
                         );
                     })}
-                    
+
                     {/* Barras de ingresos y gastos (solo días trabajados) */}
                     {workingDays.map((day, index) => {
                         const x = padding + (index * barSpacing) + (barSpacing / 2) - (barWidth / 2);
                         const ingresosHeight = maxValue > 0 ? (day.ingresos / maxValue) * maxBarHeight : 0;
                         const gastosHeight = maxValue > 0 ? (day.gastos / maxValue) * maxBarHeight : 0;
                         const yBase = height - 20;
-                        
+
                         return (
                             <g key={index}>
                                 {/* Barra de ingresos */}
@@ -279,7 +281,7 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                         );
                     })}
                 </svg>
-                
+
                 {/* Etiquetas del eje X */}
                 <div className="flex justify-between mt-2 text-xs text-zinc-500 px-2">
                     {workingDays.length > 0 && (
@@ -305,7 +307,7 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
         // Filtrar solo días trabajados
         const workingDays = data.filter((d: any) => !d.isRestDay);
         if (workingDays.length === 0) return null;
-        
+
         const maxBalance = Math.max(...workingDays.map(d => Math.abs(d.balance)), 1);
         const minBalance = Math.min(...workingDays.map(d => d.balance), 0);
         const range = maxBalance - minBalance || 1;
@@ -314,7 +316,7 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
         const svgWidth = 400; // Ancho fijo para cálculos, se escalará con width="100%"
         const padding = 20;
         const chartWidth = svgWidth - (padding * 2);
-        
+
         const points = workingDays.map((day, index) => {
             const xPercent = index / (workingDays.length - 1 || 1);
             const x = padding + (xPercent * chartWidth);
@@ -322,11 +324,11 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
             const y = centerY - ((normalizedBalance - 0.5) * maxBarHeight);
             return { x, y, balance: day.balance };
         });
-        
-        const pathData = points.map((p, i) => 
+
+        const pathData = points.map((p, i) =>
             `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`
         ).join(' ');
-        
+
         return (
             <div className="relative" style={{ height: `${height}px` }}>
                 <svg width="100%" height={height} viewBox={`0 0 ${svgWidth} ${height}`} preserveAspectRatio="none" className="overflow-visible">
@@ -341,7 +343,7 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                         className="text-zinc-700"
                         strokeDasharray="2,2"
                     />
-                    
+
                     {/* Línea del balance */}
                     <path
                         d={pathData}
@@ -351,7 +353,7 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                         strokeLinecap="round"
                         strokeLinejoin="round"
                     />
-                    
+
                     {/* Puntos */}
                     {points.map((point, index) => (
                         <circle
@@ -365,7 +367,7 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                         />
                     ))}
                 </svg>
-                
+
                 {/* Etiquetas */}
                 <div className="flex justify-between mt-2 text-xs text-zinc-500 px-2">
                     <span>0€</span>
@@ -392,31 +394,28 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                 <div className="flex gap-2">
                     <button
                         onClick={() => setSelectedPeriod('week')}
-                        className={`flex-1 py-2 px-3 rounded-lg font-semibold text-sm transition-all ${
-                            selectedPeriod === 'week'
-                                ? 'bg-cyan-500 text-white'
-                                : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-                        }`}
+                        className={`flex-1 py-2 px-3 rounded-lg font-semibold text-sm transition-all ${selectedPeriod === 'week'
+                            ? 'bg-cyan-500 text-white'
+                            : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                            }`}
                     >
                         7 Días
                     </button>
                     <button
                         onClick={() => setSelectedPeriod('month')}
-                        className={`flex-1 py-2 px-4 rounded-lg font-semibold text-sm transition-all ${
-                            selectedPeriod === 'month'
-                                ? 'bg-cyan-500 text-white'
-                                : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-                        }`}
+                        className={`flex-1 py-2 px-4 rounded-lg font-semibold text-sm transition-all ${selectedPeriod === 'month'
+                            ? 'bg-cyan-500 text-white'
+                            : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                            }`}
                     >
                         1 Mes
                     </button>
                     <button
                         onClick={() => setSelectedPeriod('3months')}
-                        className={`flex-1 py-2 px-4 rounded-lg font-semibold text-sm transition-all ${
-                            selectedPeriod === '3months'
-                                ? 'bg-cyan-500 text-white'
-                                : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-                        }`}
+                        className={`flex-1 py-2 px-4 rounded-lg font-semibold text-sm transition-all ${selectedPeriod === '3months'
+                            ? 'bg-cyan-500 text-white'
+                            : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                            }`}
                     >
                         3 Meses
                     </button>
@@ -450,9 +449,8 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                                 <div className="bg-zinc-800 rounded-lg p-1 flex flex-col items-center justify-center">
                                     <div className="text-zinc-400 text-xs mb-1 text-center">Balance</div>
                                     <div
-                                        className={`text-lg  w-full text-first whitespace-nowrap ${
-                                            stats.totalBalance >= 0 ? 'text-green-400' : 'text-red-400'
-                                        }`}
+                                        className={`text-lg  w-full text-first whitespace-nowrap ${stats.totalBalance >= 0 ? 'text-green-400' : 'text-red-400'
+                                            }`}
                                     >
                                         {stats.totalBalance.toFixed(2)}€
                                     </div>
@@ -510,7 +508,7 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="bg-zinc-800 rounded-lg p-3">
                                         <div className="text-zinc-400 text-xs mb-1">Total Carreras</div>
@@ -530,18 +528,18 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                                     <div className="bg-green-900/30 border border-green-500/50 rounded-lg p-3">
                                         <div className="text-green-400 text-xs mb-1 font-semibold">Mejor Día</div>
                                         <div className="text-white text-sm mb-1">
-                                            {stats.mejorDia.date.toLocaleDateString('es-ES', { 
-                                                weekday: 'long', 
-                                                day: '2-digit', 
-                                                month: 'long' 
+                                            {stats.mejorDia.date.toLocaleDateString('es-ES', {
+                                                weekday: 'long',
+                                                day: '2-digit',
+                                                month: 'long'
                                             })}
                                         </div>
                                         <div className="text-green-400 text-lg font-bold">
                                             +{stats.mejorDia.balance.toFixed(2)}€
                                         </div>
                                         <div className="text-zinc-400 text-xs mt-1">
-                                            Ingresos: {stats.mejorDia.ingresos.toFixed(2)}€ | 
-                                            Gastos: {stats.mejorDia.gastos.toFixed(2)}€ | 
+                                            Ingresos: {stats.mejorDia.ingresos.toFixed(2)}€ |
+                                            Gastos: {stats.mejorDia.gastos.toFixed(2)}€ |
                                             Carreras: {stats.mejorDia.numCarreras}
                                         </div>
                                     </div>
@@ -551,18 +549,18 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                                     <div className="bg-red-900/30 border border-red-500/50 rounded-lg p-3">
                                         <div className="text-red-400 text-xs mb-1 font-semibold">Peor Día</div>
                                         <div className="text-white text-sm mb-1">
-                                            {stats.peorDia.date.toLocaleDateString('es-ES', { 
-                                                weekday: 'long', 
-                                                day: '2-digit', 
-                                                month: 'long' 
+                                            {stats.peorDia.date.toLocaleDateString('es-ES', {
+                                                weekday: 'long',
+                                                day: '2-digit',
+                                                month: 'long'
                                             })}
                                         </div>
                                         <div className="text-red-400 text-lg font-bold">
                                             {stats.peorDia.balance.toFixed(2)}€
                                         </div>
                                         <div className="text-zinc-400 text-xs mt-1">
-                                            Ingresos: {stats.peorDia.ingresos.toFixed(2)}€ | 
-                                            Gastos: {stats.peorDia.gastos.toFixed(2)}€ | 
+                                            Ingresos: {stats.peorDia.ingresos.toFixed(2)}€ |
+                                            Gastos: {stats.peorDia.gastos.toFixed(2)}€ |
                                             Carreras: {stats.peorDia.numCarreras}
                                         </div>
                                     </div>

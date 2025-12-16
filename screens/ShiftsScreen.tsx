@@ -26,6 +26,7 @@ interface ShiftsScreenProps {
 }
 
 const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
+    const { showToast } = useToast();
     const [turnoActivo, setTurnoActivo] = useState<Turno | null>(null);
     const [turnosRecientes, setTurnosRecientes] = useState<Turno[]>([]);
     const [kmsIniciales, setKmsIniciales] = useState('');
@@ -140,7 +141,10 @@ const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
         setError(null);
 
         try {
-            await addTurno(kmsInicio);
+            await addTurno({
+                fechaInicio: new Date(),
+                kilometrosInicio: kmsInicio
+            });
             setKmsIniciales('');
             // La suscripción actualizará automáticamente el estado
             navigateTo(Seccion.VistaCarreras);

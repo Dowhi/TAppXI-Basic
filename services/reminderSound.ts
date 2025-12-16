@@ -1,6 +1,7 @@
 // Servicio para gestionar avisos sonoros de recordatorios
 
-import { filterRemindersToSound, markReminderAsNotified, Reminder } from './reminders';
+import { filterRemindersToSound, markReminderAsNotified } from './reminders';
+import { Reminder } from '../types';
 import { subscribeToReminders } from './api';
 
 let soundCheckInterval: NodeJS.Timeout | null = null;

@@ -1,1869 +1,583 @@
-﻿
-import { db } from '../firebaseConfig';
-import { CarreraVista, Gasto, Turno, Proveedor, Concepto, Taller } from '../types';
+﻿// services/api.ts - Reimplemented using IndexedDB
+import { addItem, getAllItems, getItem, deleteItem } from '../src/lib/indexedDB';
 
-// Type for data sent to Firestore (without id)
-export type CarreraData = Omit<CarreraVista, 'id'>;
-export interface ValeDirectoryEntry {
-    codigoEmpresa: string;
-    empresa: string;
+// Types (import from types.ts)
+import type { CarreraVista, Gasto, Turno, Proveedor, Concepto, Taller, Reminder, Ajustes } from '../types';
+
+// Helper functions to map data structures if needed (currently identity)
+
+/** Carreras */
+export async function getCarreras(): Promise<CarreraVista[]> {
+    return getAllItems('carreras');
 }
 
-const carrerasCollection = db.collection('carreras');
-const gastosCollection = db.collection('gastos');
-const turnosCollection = db.collection('turnos');
-const talleresCollection = db.collection('talleres');
-const proveedoresCollection = db.collection('proveedores');
-const conceptosCollection = db.collection('conceptos');
-const ajustesCollection = db.collection('ajustes');
-const breakConfigurationsCollection = db.collection('breakConfigurations');
-const excepcionesCollection = db.collection('excepciones');
+export async function getCarrera(id: string): Promise<CarreraVista | undefined> {
+    return getItem<CarreraVista>('carreras', id);
+}
 
-// --- Converters ---
+export async function addCarrera(carrera: Omit<CarreraVista, 'id'> & { id?: string }): Promise<string> {
+    const key = carrera.id ?? crypto.randomUUID();
+    await addItem('carreras', key, { ...carrera, id: key });
+    return key;
+}
 
-const docToCarrera = (doc: any): CarreraVista => {
-    const data = doc.data();
-    const valeInfo = data.valeInfo
-        ? {
-            despacho: data.valeInfo.despacho || '',
-            numeroAlbaran: data.valeInfo.numeroAlbaran || '',
-            empresa: data.valeInfo.empresa || '',
-            codigoEmpresa: data.valeInfo.codigoEmpresa || '',
-            autoriza: data.valeInfo.autoriza || '',
-        }
-        : null;
-    return {
-        id: doc.id,
-        taximetro: data.taximetro,
-        cobrado: data.cobrado,
-        formaPago: data.formaPago,
-        tipoCarrera: data.tipoCarrera || 'Urbana', // Por defecto 'Urbana' si no existe
-        emisora: data.emisora,
-        aeropuerto: data.aeropuerto,
-        estacion: data.estacion || false, // Por defecto false si no existe
-        fechaHora: data.fechaHora.toDate(), // Convert Firestore Timestamp to JS Date
-        turnoId: data.turnoId || undefined, // ID del turno relacionado
-        valeInfo,
-        notas: data.notas || null,
-    };
-};
+export async function updateCarrera(id: string, updates: Partial<CarreraVista>): Promise<void> {
+    const existing = await getItem<CarreraVista>('carreras', id);
+    if (!existing) throw new Error('Carrera not found');
+    await addItem('carreras', id, { ...existing, ...updates });
+}
 
-const docToGasto = (doc: any): Gasto => {
-    const data = doc.data();
-    return {
-        id: doc.id,
-        importe: data.importe,
-        fecha: data.fecha.toDate(),
-        tipo: data.tipo,
-        categoria: data.categoria,
-        formaPago: data.formaPago,
-        proveedor: data.proveedor,
-        concepto: data.concepto,
-        taller: data.taller,
-        numeroFactura: data.numeroFactura,
-        baseImponible: data.baseImponible,
-        ivaImporte: data.ivaImporte,
-        ivaPorcentaje: data.ivaPorcentaje,
-        kilometros: data.kilometros,
-        kilometrosVehiculo: data.kilometrosVehiculo,
-        kmParciales: data.kmParciales,
-        litros: data.litros,
-        precioPorLitro: data.precioPorLitro,
-        descuento: data.descuento,
-        servicios: data.servicios,
-        notas: data.notas,
-    };
-};
+export async function deleteCarrera(id: string): Promise<void> {
+    await deleteItem('carreras', id);
+}
 
-const docToTurno = (doc: any): Turno => {
-    const data = doc.data();
-    return {
-        id: doc.id,
-        fechaInicio: data.fechaInicio.toDate(),
-        kilometrosInicio: data.kilometrosInicio,
-        fechaFin: data.fechaFin ? data.fechaFin.toDate() : undefined,
-        kilometrosFin: data.kilometrosFin,
-        numero: data.numero || undefined,
-    };
-};
-
-
-// --- API Functions ---
-
-// Carreras
-export const getCarreras = async (): Promise<CarreraVista[]> => {
-    // Mantener esta función para compatibilidad: devuelve todas las carreras ordenadas por fecha.
-    // IMPORTANTE: Para listados de histórico usa mejor getCarrerasPaginadas para evitar cargar toda la colección.
-    const snapshot = await carrerasCollection.orderBy('fechaHora', 'desc').get();
-    return snapshot.docs.map(docToCarrera);
-};
-
-export const getCarrerasPaginadas = async (
-    limit: number = 200,
-    startAfterFecha?: Date
-): Promise<CarreraVista[]> => {
-    let query: any = carrerasCollection.orderBy('fechaHora', 'desc').limit(limit);
-
-    if (startAfterFecha) {
-        // @ts-ignore
-        const startAfterTs = firebase.firestore.Timestamp.fromDate(startAfterFecha);
-        query = query.startAfter(startAfterTs);
-    }
-
-    const snapshot = await query.get();
-    return snapshot.docs.map(docToCarrera);
-};
-
-export const getCarrerasByTurnoId = async (turnoId: string): Promise<CarreraVista[]> => {
-    const snapshot = await carrerasCollection.where('turnoId', '==', turnoId).orderBy('fechaHora', 'desc').get();
-    return snapshot.docs.map(docToCarrera);
-};
-
-export const getCarrera = async (id: string): Promise<CarreraVista | null> => {
-    const doc = await carrerasCollection.doc(id).get();
-    return doc.exists ? docToCarrera(doc) : null;
-};
-
-export const getValesDirectory = async (): Promise<ValeDirectoryEntry[]> => {
-    const snapshot = await carrerasCollection.where('formaPago', '==', 'Vales').get();
-    const directoryMap = new Map<string, string>();
-
-    snapshot.docs.forEach((doc: any) => {
-        const data = doc.data();
-        const codigoEmpresa = data?.valeInfo?.codigoEmpresa ? String(data.valeInfo.codigoEmpresa).trim() : '';
-        if (!codigoEmpresa) {
-            return;
-        }
-        if (!directoryMap.has(codigoEmpresa)) {
-            directoryMap.set(codigoEmpresa, String(data.valeInfo?.empresa || '').trim());
-        }
+export async function getCarrerasByDate(date: Date): Promise<CarreraVista[]> {
+    const all = await getCarreras();
+    const targetISO = date.toISOString().split('T')[0];
+    return all.filter(c => {
+        const cDate = c.fechaHora instanceof Date ? c.fechaHora : new Date(c.fechaHora);
+        return cDate.toISOString().split('T')[0] === targetISO;
     });
+}
 
-    return Array.from(directoryMap.entries()).map(([codigoEmpresa, empresa]) => ({
-        codigoEmpresa,
-        empresa,
-    }));
-};
+/** Gastos */
+export async function getGastos(): Promise<Gasto[]> {
+    return getAllItems('gastos');
+}
 
-type CarreraInputData = Omit<CarreraData, 'fechaHora'> & { fechaHora?: Date; turnoId?: string };
+export async function getGasto(id: string): Promise<Gasto | undefined> {
+    return getItem<Gasto>('gastos', id);
+}
 
-export const addCarrera = async (carrera: CarreraInputData) => {
-    // Si no se proporciona turnoId, obtener el turno activo automáticamente
-    let turnoId = carrera.turnoId;
-    if (!turnoId) {
-        const turnoActivo = await getActiveTurno();
-        if (turnoActivo) {
-            turnoId = turnoActivo.id;
-        }
-    }
+export async function addGasto(gasto: Omit<Gasto, 'id'> & { id?: string }): Promise<string> {
+    const key = gasto.id ?? crypto.randomUUID();
+    await addItem('gastos', key, { ...gasto, id: key });
+    return key;
+}
 
-    const dataToAdd: any = {
-        taximetro: carrera.taximetro,
-        cobrado: carrera.cobrado,
-        formaPago: carrera.formaPago,
-        tipoCarrera: carrera.tipoCarrera || 'Urbana', // Por defecto 'Urbana'
-        emisora: carrera.emisora,
-        aeropuerto: carrera.aeropuerto,
-        estacion: carrera.estacion || false, // Por defecto false
-        // @ts-ignore
-        fechaHora: carrera.fechaHora ? firebase.firestore.Timestamp.fromDate(carrera.fechaHora) : firebase.firestore.FieldValue.serverTimestamp()
-    };
+export async function updateGasto(id: string, updates: Partial<Gasto>): Promise<void> {
+    const existing = await getItem<Gasto>('gastos', id);
+    if (!existing) throw new Error('Gasto not found');
+    await addItem('gastos', id, { ...existing, ...updates });
+}
 
-    if (carrera.valeInfo && carrera.formaPago === 'Vales') {
-        dataToAdd.valeInfo = carrera.valeInfo;
-    } else {
-        dataToAdd.valeInfo = null;
-    }
+export async function deleteGasto(id: string): Promise<void> {
+    await deleteItem('gastos', id);
+}
 
-    if (carrera.notas) {
-        dataToAdd.notas = carrera.notas;
-    } else {
-        dataToAdd.notas = null;
-    }
-
-    // Agregar turnoId si existe
-    if (turnoId) {
-        dataToAdd.turnoId = turnoId;
-    }
-
-    const docRef = await carrerasCollection.add(dataToAdd);
-    return docRef.id;
-};
-
-export const restoreCarrera = async (carrera: CarreraVista) => {
-    const dataToSave: any = {
-        taximetro: carrera.taximetro,
-        cobrado: carrera.cobrado,
-        formaPago: carrera.formaPago,
-        tipoCarrera: carrera.tipoCarrera || 'Urbana',
-        emisora: carrera.emisora,
-        aeropuerto: carrera.aeropuerto,
-        estacion: carrera.estacion || false,
-        // @ts-ignore
-        fechaHora: carrera.fechaHora ? firebase.firestore.Timestamp.fromDate(new Date(carrera.fechaHora)) : firebase.firestore.FieldValue.serverTimestamp(),
-        valeInfo: carrera.valeInfo || null,
-        notas: carrera.notas || null,
-        turnoId: carrera.turnoId || null,
-    };
-
-    await carrerasCollection.doc(carrera.id).set(dataToSave);
-};
-
-// Gastos
-export const addGasto = async (gasto: Omit<Gasto, 'id'>) => {
-    const dataToAdd: any = {
-        importe: gasto.importe,
-        // @ts-ignore
-        fecha: gasto.fecha ? firebase.firestore.Timestamp.fromDate(gasto.fecha) : firebase.firestore.FieldValue.serverTimestamp(),
-        // Campos opcionales - tipo siempre se guarda si existe
-        ...(gasto.tipo !== undefined && gasto.tipo !== null && { tipo: gasto.tipo }),
-        ...(gasto.categoria && { categoria: gasto.categoria }),
-        ...(gasto.formaPago && { formaPago: gasto.formaPago }),
-        ...(gasto.proveedor && { proveedor: gasto.proveedor }),
-        ...(gasto.concepto && { concepto: gasto.concepto }),
-        ...(gasto.taller && { taller: gasto.taller }),
-        ...(gasto.numeroFactura && { numeroFactura: gasto.numeroFactura }),
-        ...(gasto.baseImponible !== undefined && { baseImponible: gasto.baseImponible }),
-        ...(gasto.ivaImporte !== undefined && { ivaImporte: gasto.ivaImporte }),
-        ...(gasto.ivaPorcentaje !== undefined && { ivaPorcentaje: gasto.ivaPorcentaje }),
-        ...(gasto.kilometros !== undefined && { kilometros: gasto.kilometros }),
-        ...(gasto.kilometrosVehiculo !== undefined && { kilometrosVehiculo: gasto.kilometrosVehiculo }),
-        ...(gasto.kmParciales !== undefined && { kmParciales: gasto.kmParciales }),
-        ...(gasto.litros !== undefined && { litros: gasto.litros }),
-        ...(gasto.precioPorLitro !== undefined && { precioPorLitro: gasto.precioPorLitro }),
-        ...(gasto.descuento !== undefined && { descuento: gasto.descuento }),
-        ...(gasto.servicios && { servicios: gasto.servicios }),
-        ...(gasto.notas && { notas: gasto.notas }),
-    };
-    const docRef = await gastosCollection.add(dataToAdd);
-    return docRef.id;
-};
-
-export const restoreGasto = async (gasto: Gasto) => {
-    const dataToSave: any = {
-        importe: gasto.importe,
-        // @ts-ignore
-        fecha: gasto.fecha ? firebase.firestore.Timestamp.fromDate(new Date(gasto.fecha)) : firebase.firestore.FieldValue.serverTimestamp(),
-        tipo: gasto.tipo || null,
-        categoria: gasto.categoria || null,
-        formaPago: gasto.formaPago || null,
-        proveedor: gasto.proveedor || null,
-        concepto: gasto.concepto || null,
-        taller: gasto.taller || null,
-        numeroFactura: gasto.numeroFactura || null,
-        baseImponible: gasto.baseImponible || 0,
-        ivaImporte: gasto.ivaImporte || 0,
-        ivaPorcentaje: gasto.ivaPorcentaje || 0,
-        kilometros: gasto.kilometros || 0,
-        kilometrosVehiculo: gasto.kilometrosVehiculo || 0,
-        descuento: gasto.descuento || 0,
-        servicios: gasto.servicios || null,
-        notas: gasto.notas || null,
-    };
-
-    await gastosCollection.doc(gasto.id).set(dataToSave);
-};
-
-export const getGastoById = async (id: string): Promise<Gasto | null> => {
-    try {
-        const doc = await gastosCollection.doc(id).get();
-        if (!doc.exists) {
-            return null;
-        }
-        return docToGasto(doc);
-    } catch (error) {
-        console.error('Error getting gasto by id:', error);
-        return null;
-    }
-};
-
-export const updateGasto = async (id: string, gasto: Partial<Omit<Gasto, 'id' | 'fecha'>> & { fecha?: Date }) => {
-    const updates: any = {};
-
-    // Siempre actualizar importe y fecha si están presentes
-    if (gasto.importe !== undefined) updates.importe = gasto.importe;
-    if (gasto.fecha !== undefined) {
-        // @ts-ignore
-        updates.fecha = firebase.firestore.Timestamp.fromDate(gasto.fecha);
-    }
-
-    // Actualizar tipo y formaPago si están presentes
-    if (gasto.tipo !== undefined) updates.tipo = gasto.tipo;
-    if (gasto.formaPago !== undefined) updates.formaPago = gasto.formaPago;
-
-    // Campos opcionales - actualizar todos los que están presentes en el objeto
-    // Usar Object.keys para iterar sobre todas las propiedades
-    const camposOpcionales = ['categoria', 'proveedor', 'concepto', 'taller', 'numeroFactura',
-        'baseImponible', 'ivaImporte', 'ivaPorcentaje', 'kilometros',
-        'kilometrosVehiculo', 'kmParciales', 'litros', 'precioPorLitro',
-        'descuento', 'servicios', 'notas'];
-
-    camposOpcionales.forEach(campo => {
-        if (campo in gasto) {
-            updates[campo] = gasto[campo as keyof typeof gasto] !== undefined
-                ? gasto[campo as keyof typeof gasto]
-                : null;
-        }
+export async function getGastosByDate(date: Date): Promise<Gasto[]> {
+    const all = await getGastos();
+    const targetISO = date.toISOString().split('T')[0];
+    return all.filter(g => {
+        const gDate = g.fecha instanceof Date ? g.fecha : new Date(g.fecha);
+        return gDate.toISOString().split('T')[0] === targetISO;
     });
+}
 
-    console.log('Actualizando gasto ID:', id);
-    console.log('Datos recibidos:', gasto);
-    console.log('Updates a aplicar:', updates);
+/** Turnos */
+export async function getTurnos(): Promise<Turno[]> {
+    return getAllItems('turnos');
+}
 
-    try {
-        await gastosCollection.doc(id).update(updates);
-        console.log('Gasto actualizado exitosamente');
-    } catch (error) {
-        console.error('Error al actualizar gasto en Firebase:', error);
-        throw error;
-    }
-};
+export async function getTurno(id: string): Promise<Turno | undefined> {
+    return getItem<Turno>('turnos', id);
+}
 
-export const deleteGasto = async (id: string) => {
-    return gastosCollection.doc(id).delete();
-};
+export async function addTurno(turno: Omit<Turno, 'id'> & { id?: string }): Promise<string> {
+    const key = turno.id ?? crypto.randomUUID();
+    // @ts-ignore - id is optional in input but required in Turno
+    await addItem('turnos', key, { ...turno, id: key });
+    return key;
+}
 
-export const updateCarrera = async (id: string, carrera: Partial<CarreraInputData>) => {
-    const updates: any = { ...carrera };
-    if ('formaPago' in updates) {
-        if (updates.formaPago === 'Vales') {
-            if (updates.valeInfo) {
-                updates.valeInfo = updates.valeInfo;
-            } else {
-                updates.valeInfo = null;
-            }
-        } else {
-            updates.valeInfo = null;
-        }
-    } else if ('valeInfo' in updates && updates.valeInfo === undefined) {
-        delete updates.valeInfo;
-    }
-    if ('notas' in updates) {
-        updates.notas = updates.notas ? updates.notas : null;
-    }
-    await carrerasCollection.doc(id).update(updates);
-};
+export async function updateTurno(id: string, updates: Partial<Turno>): Promise<void> {
+    const existing = await getItem<Turno>('turnos', id);
+    if (!existing) throw new Error('Turno not found');
+    await addItem('turnos', id, { ...existing, ...updates });
+}
 
-export const deleteCarrera = (id: string) => {
-    return carrerasCollection.doc(id).delete();
-};
+export async function deleteTurno(id: string): Promise<void> {
+    await deleteItem('turnos', id);
+}
 
+export async function getTurnosByDate(date: Date): Promise<Turno[]> {
+    const allTurnos = await getTurnos();
+    const targetDate = new Date(date);
+    targetDate.setHours(0, 0, 0, 0);
+    const targetISO = targetDate.toISOString().split('T')[0];
 
-// Home Screen Data
-export const getIngresosForCurrentMonth = async (): Promise<number> => {
-    const now = new Date();
-    const month = now.getMonth();
-    const year = now.getFullYear();
-    // Usar la función que ya filtra días de descanso
-    return getIngresosByMonthYear(month, year);
-};
-
-export const getGastos = async (): Promise<Gasto[]> => {
-    // @ts-ignore
-    const snapshot = await gastosCollection.orderBy('fecha', 'desc').get();
-    return snapshot.docs.map(docToGasto);
-};
-
-export const getGastosForCurrentMonth = async (): Promise<number> => {
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-
-    const snapshot = await gastosCollection
-        .where('fecha', '>=', startOfMonth)
-        .where('fecha', '<=', endOfMonth)
-        .get();
-
-    return snapshot.docs.reduce((total, doc) => total + doc.data().importe, 0);
-};
-
-// Obtener ingresos por año (retorna array de 12 elementos, uno por mes)
-export const getIngresosByYear = async (year: number): Promise<number[]> => {
-    const startOfYear = new Date(year, 0, 1);
-    const endOfYear = new Date(year, 11, 31, 23, 59, 59);
-
-    // @ts-ignore
-    const startTimestamp = firebase.firestore.Timestamp.fromDate(startOfYear);
-    // @ts-ignore
-    const endTimestamp = firebase.firestore.Timestamp.fromDate(endOfYear);
-
-    const snapshot = await carrerasCollection
-        .where('fechaHora', '>=', startTimestamp)
-        .where('fechaHora', '<=', endTimestamp)
-        .get();
-
-    // Inicializar array con 12 meses
-    const ingresosPorMes = new Array(12).fill(0);
-
-    snapshot.docs.forEach(doc => {
-        const data = doc.data();
-        const fechaHora = data.fechaHora.toDate();
-        const mes = fechaHora.getMonth(); // 0-11
-        const cobrado = data.cobrado || 0;
-        ingresosPorMes[mes] += cobrado;
+    return allTurnos.filter(t => {
+        const tDate = new Date(t.fechaInicio);
+        tDate.setHours(0, 0, 0, 0);
+        return tDate.toISOString().split('T')[0] === targetISO;
     });
+}
 
-    return ingresosPorMes;
-};
-
-// Obtener gastos por año (retorna array de 12 elementos, uno por mes)
-export const getGastosByYear = async (year: number): Promise<number[]> => {
-    const startOfYear = new Date(year, 0, 1);
-    const endOfYear = new Date(year, 11, 31, 23, 59, 59);
-
-    // @ts-ignore
-    const startTimestamp = firebase.firestore.Timestamp.fromDate(startOfYear);
-    // @ts-ignore
-    const endTimestamp = firebase.firestore.Timestamp.fromDate(endOfYear);
-
-    const snapshot = await gastosCollection
-        .where('fecha', '>=', startTimestamp)
-        .where('fecha', '<=', endTimestamp)
-        .get();
-
-    // Inicializar array con 12 meses
-    const gastosPorMes = new Array(12).fill(0);
-
-    snapshot.docs.forEach(doc => {
-        const data = doc.data();
-        const fecha = data.fecha.toDate();
-        const mes = fecha.getMonth(); // 0-11
-        const importe = data.importe || 0;
-        gastosPorMes[mes] += importe;
-    });
-
-    return gastosPorMes;
-};
-
-// Talleres
-export const addTaller = async (taller: { nombre: string; direccion?: string | null; telefono?: string | null }) => {
-    const dataToAdd = {
-        ...taller,
-        // @ts-ignore - `firebase` is declared globally in firebaseConfig.ts
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
-    const docRef = await talleresCollection.add(dataToAdd);
-    return docRef.id;
-};
-
-export const addProveedor = async (proveedor: { nombre: string; direccion?: string | null; telefono?: string | null; nif?: string | null }) => {
-    const dataToAdd = {
-        ...proveedor,
-        // @ts-ignore
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
-    const docRef = await proveedoresCollection.add(dataToAdd);
-    return docRef.id;
-};
-
-export const addConcepto = async (concepto: { nombre: string; descripcion?: string | null; categoria?: string | null }) => {
-    const dataToAdd = {
-        ...concepto,
-        // @ts-ignore
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
-    const docRef = await conceptosCollection.add(dataToAdd);
-    return docRef.id;
-};
-
-// Funciones de restauración para proveedores, conceptos, talleres
-export const restoreProveedor = async (proveedor: any) => {
-    const dataToSave: any = {
-        nombre: proveedor.nombre || '',
-        direccion: proveedor.direccion || null,
-        telefono: proveedor.telefono || null,
-        nif: proveedor.nif || null,
-        // @ts-ignore
-        createdAt: proveedor.createdAt ? firebase.firestore.Timestamp.fromDate(new Date(proveedor.createdAt)) : firebase.firestore.FieldValue.serverTimestamp()
-    };
-    await proveedoresCollection.doc(proveedor.id).set(dataToSave);
-};
-
-export const restoreConcepto = async (concepto: any) => {
-    const dataToSave: any = {
-        nombre: concepto.nombre || '',
-        descripcion: concepto.descripcion || null,
-        categoria: concepto.categoria || null,
-        // @ts-ignore
-        createdAt: concepto.createdAt ? firebase.firestore.Timestamp.fromDate(new Date(concepto.createdAt)) : firebase.firestore.FieldValue.serverTimestamp()
-    };
-    await conceptosCollection.doc(concepto.id).set(dataToSave);
-};
-
-export const restoreTaller = async (taller: any) => {
-    const dataToSave: any = {
-        nombre: taller.nombre || '',
-        direccion: taller.direccion || null,
-        telefono: taller.telefono || null,
-        // @ts-ignore
-        createdAt: taller.createdAt ? firebase.firestore.Timestamp.fromDate(new Date(taller.createdAt)) : firebase.firestore.FieldValue.serverTimestamp()
-    };
-    await talleresCollection.doc(taller.id).set(dataToSave);
-};
-
-// Get functions for dropdowns
-export const getProveedores = async (): Promise<Proveedor[]> => {
-    const snapshot = await proveedoresCollection.orderBy('nombre').get();
-    return snapshot.docs.map(doc => ({
-        id: doc.id,
-        nombre: doc.data().nombre,
-        direccion: doc.data().direccion || null,
-        telefono: doc.data().telefono || null,
-        nif: doc.data().nif || null,
-    }));
-};
-
-export const getConceptos = async (): Promise<Concepto[]> => {
-    const snapshot = await conceptosCollection.orderBy('nombre').get();
-    return snapshot.docs.map(doc => ({
-        id: doc.id,
-        nombre: doc.data().nombre,
-        descripcion: doc.data().descripcion || null,
-        categoria: doc.data().categoria || null,
-    }));
-};
-
-export const getTalleres = async (): Promise<Taller[]> => {
-    const snapshot = await talleresCollection.orderBy('nombre').get();
-    return snapshot.docs.map(doc => ({
-        id: doc.id,
-        nombre: doc.data().nombre,
-        direccion: doc.data().direccion || null,
-        telefono: doc.data().telefono || null,
-    }));
-};
-
-
-// Turnos
-export const getActiveTurno = async (): Promise<Turno | null> => {
-    const snapshot = await turnosCollection
-        .where('kilometrosFin', '==', null)
-        .limit(1)
-        .get();
-
-    if (snapshot.empty) {
-        return null;
-    }
-
-    return docToTurno(snapshot.docs[0]);
-};
-
-export const addTurno = async (kilometrosInicio: number): Promise<string> => {
-    // Calcular el número del turno basado en cuántos turnos hay en el mismo día
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-    const mañana = new Date(hoy);
-    mañana.setDate(mañana.getDate() + 1);
-
-    // @ts-ignore
-    const startTimestamp = firebase.firestore.Timestamp.fromDate(hoy);
-    // @ts-ignore
-    const endTimestamp = firebase.firestore.Timestamp.fromDate(mañana);
-
-    // Obtener todos los turnos del día actual (incluyendo cerrados)
-    const turnosDelDia = await turnosCollection
-        .where('fechaInicio', '>=', startTimestamp)
-        .where('fechaInicio', '<', endTimestamp)
-        .orderBy('fechaInicio', 'asc')
-        .get();
-
-    // El número del nuevo turno será la cantidad de turnos del día + 1
-    const numeroTurno = turnosDelDia.size + 1;
-
-    // @ts-ignore
-    const dataToAdd = {
-        kilometrosInicio: kilometrosInicio,
-        // @ts-ignore
-        fechaInicio: firebase.firestore.FieldValue.serverTimestamp(),
-        kilometrosFin: null,
-        fechaFin: null,
-        numero: numeroTurno
-    };
-    const docRef = await turnosCollection.add(dataToAdd);
-    return docRef.id;
-};
-
-export const restoreTurno = async (turno: Turno) => {
-    const dataToSave: any = {
-        // @ts-ignore
-        fechaInicio: turno.fechaInicio ? firebase.firestore.Timestamp.fromDate(new Date(turno.fechaInicio)) : firebase.firestore.FieldValue.serverTimestamp(),
-        kilometrosInicio: turno.kilometrosInicio,
-        // @ts-ignore
-        fechaFin: turno.fechaFin ? firebase.firestore.Timestamp.fromDate(new Date(turno.fechaFin)) : null,
-        kilometrosFin: turno.kilometrosFin || null,
-        numero: turno.numero || null,
-    };
-
-    await turnosCollection.doc(turno.id).set(dataToSave);
-};
-
-export const getTurno = async (id: string): Promise<Turno | null> => {
-    const doc = await turnosCollection.doc(id).get();
-    return doc.exists ? docToTurno(doc) : null;
-};
-
-export const updateTurno = async (
-    turnoId: string,
-    updates: {
-        fechaInicio?: Date;
-        kilometrosInicio?: number;
-        fechaFin?: Date;
-        kilometrosFin?: number;
-    }
-): Promise<void> => {
-    const updateData: any = {};
-
-    if (updates.fechaInicio !== undefined) {
-        // @ts-ignore
-        updateData.fechaInicio = firebase.firestore.Timestamp.fromDate(updates.fechaInicio);
-    }
-    if (updates.kilometrosInicio !== undefined) {
-        updateData.kilometrosInicio = updates.kilometrosInicio;
-    }
-    if (updates.fechaFin !== undefined) {
-        // @ts-ignore
-        updateData.fechaFin = updates.fechaFin ? firebase.firestore.Timestamp.fromDate(updates.fechaFin) : null;
-    }
-    if (updates.kilometrosFin !== undefined) {
-        updateData.kilometrosFin = updates.kilometrosFin;
-    }
-
-    // @ts-ignore
-    await turnosCollection.doc(turnoId).update(updateData);
-};
-
-export const closeTurno = async (turnoId: string, kilometrosFin: number): Promise<void> => {
-    // @ts-ignore
-    await turnosCollection.doc(turnoId).update({
-        kilometrosFin: kilometrosFin,
-        fechaFin: firebase.firestore.FieldValue.serverTimestamp()
-    });
-};
-
-export const deleteTurno = async (id: string) => {
-    return turnosCollection.doc(id).delete();
-};
-
-export const getRecentTurnos = async (limit: number = 10): Promise<Turno[]> => {
-    // Obtener todos los turnos y filtrar/ordenar en memoria
-    // Esto es necesario porque Firestore no permite usar != con orderBy fácilmente
-    const snapshot = await turnosCollection.get();
-    const turnos = snapshot.docs
-        .map(docToTurno)
-        .filter(t => t.kilometrosFin !== undefined && t.fechaFin !== undefined)
-        .sort((a, b) => {
-            if (!a.fechaFin || !b.fechaFin) return 0;
-            return b.fechaFin.getTime() - a.fechaFin.getTime();
-        })
+export async function getRecentTurnos(limit: number): Promise<Turno[]> {
+    const allTurnos = await getTurnos();
+    return allTurnos
+        .sort((a, b) => new Date(b.fechaInicio).getTime() - new Date(a.fechaInicio).getTime())
         .slice(0, limit);
-    return turnos;
-};
+}
 
-export const getAllTurnos = async (): Promise<Turno[]> => {
-    const snapshot = await turnosCollection.orderBy('fechaInicio', 'desc').get();
-    return snapshot.docs.map(docToTurno);
-};
+export async function getActiveTurno(): Promise<Turno | null> {
+    const allTurnos = await getTurnos();
+    return allTurnos.find(t => !t.fechaFin) || null;
+}
 
-export const getTurnosByDate = async (date: Date): Promise<Turno[]> => {
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
+/** Proveedores */
+export async function getProveedores(): Promise<Proveedor[]> {
+    return getAllItems('proveedores');
+}
 
-    // @ts-ignore
-    const startTimestamp = firebase.firestore.Timestamp.fromDate(startOfDay);
-    // @ts-ignore
-    const endTimestamp = firebase.firestore.Timestamp.fromDate(endOfDay);
+export async function addProveedor(proveedor: Omit<Proveedor, 'id'> & { id?: string }): Promise<string> {
+    const key = proveedor.id ?? crypto.randomUUID();
+    await addItem('proveedores', key, { ...proveedor, id: key });
+    return key;
+}
 
-    const snapshot = await turnosCollection
-        .where('fechaInicio', '>=', startTimestamp)
-        .where('fechaInicio', '<=', endTimestamp)
-        .orderBy('fechaInicio', 'asc')
-        .get();
+export async function deleteProveedor(id: string): Promise<void> {
+    await deleteItem('proveedores', id);
+}
 
-    return snapshot.docs.map(docToTurno);
-};
+/** Conceptos */
+export async function getConceptos(): Promise<Concepto[]> {
+    return getAllItems('conceptos');
+}
 
-export const getCarrerasByDate = async (date: Date): Promise<CarreraVista[]> => {
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
+export async function addConcepto(concepto: Omit<Concepto, 'id'> & { id?: string }): Promise<string> {
+    const key = concepto.id ?? crypto.randomUUID();
+    await addItem('conceptos', key, { ...concepto, id: key });
+    return key;
+}
 
-    // @ts-ignore
-    const startTimestamp = firebase.firestore.Timestamp.fromDate(startOfDay);
-    // @ts-ignore
-    const endTimestamp = firebase.firestore.Timestamp.fromDate(endOfDay);
+/** Talleres */
+export async function getTalleres(): Promise<Taller[]> {
+    return getAllItems('talleres');
+}
 
-    const snapshot = await carrerasCollection
-        .where('fechaHora', '>=', startTimestamp)
-        .where('fechaHora', '<=', endTimestamp)
-        .orderBy('fechaHora', 'desc')
-        .get();
+export async function addTaller(taller: Omit<Taller, 'id'> & { id?: string }): Promise<string> {
+    const key = taller.id ?? crypto.randomUUID();
+    await addItem('talleres', key, { ...taller, id: key });
+    return key;
+}
 
-    return snapshot.docs.map(docToCarrera);
-};
+export async function closeTurno(id: string, kilometrosFin: number): Promise<void> {
+    const turno = await getItem<Turno>('turnos', id);
+    if (!turno) throw new Error('Turno no encontrado');
 
-export const getGastosByDate = async (date: Date): Promise<number> => {
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
-
-    // @ts-ignore
-    const startTimestamp = firebase.firestore.Timestamp.fromDate(startOfDay);
-    // @ts-ignore
-    const endTimestamp = firebase.firestore.Timestamp.fromDate(endOfDay);
-
-    const snapshot = await gastosCollection
-        .where('fecha', '>=', startTimestamp)
-        .where('fecha', '<=', endTimestamp)
-        .get();
-
-    return snapshot.docs.reduce((total, doc) => {
-        const data = doc.data();
-        return total + (data.importe || 0);
-    }, 0);
-};
-
-// Obtener carreras por mes (mes y año)
-export const getCarrerasByMonth = async (month: number, year: number): Promise<CarreraVista[]> => {
-    const startOfMonth = new Date(year, month, 1);
-    startOfMonth.setHours(0, 0, 0, 0);
-    const endOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
-
-    // @ts-ignore
-    const startTimestamp = firebase.firestore.Timestamp.fromDate(startOfMonth);
-    // @ts-ignore
-    const endTimestamp = firebase.firestore.Timestamp.fromDate(endOfMonth);
-
-    const snapshot = await carrerasCollection
-        .where('fechaHora', '>=', startTimestamp)
-        .where('fechaHora', '<=', endTimestamp)
-        .orderBy('fechaHora', 'desc')
-        .get();
-
-    return snapshot.docs.map(docToCarrera);
-};
-
-// Obtener gastos por mes (mes y año)
-export const getGastosByMonth = async (month: number, year: number, forceRefresh: boolean = false): Promise<Gasto[]> => {
-    const startOfMonth = new Date(year, month, 1);
-    startOfMonth.setHours(0, 0, 0, 0);
-    const endOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
-
-    // @ts-ignore
-    const startTimestamp = firebase.firestore.Timestamp.fromDate(startOfMonth);
-    // @ts-ignore
-    const endTimestamp = firebase.firestore.Timestamp.fromDate(endOfMonth);
-
-    let query = gastosCollection
-        .where('fecha', '>=', startTimestamp)
-        .where('fecha', '<=', endTimestamp)
-        .orderBy('fecha', 'desc');
-
-    // Si se fuerza la recarga, obtener desde el servidor (evitar caché)
-    // @ts-ignore
-    const snapshot = forceRefresh
-        ? await query.get({ source: 'server' })
-        : await query.get();
-
-    const gastos = snapshot.docs.map(docToGasto);
-    console.log(`getGastosByMonth: ${gastos.length} gastos encontrados para ${month + 1}/${year}${forceRefresh ? ' (desde servidor)' : ''}`);
-    return gastos;
-};
-
-// Obtener turnos por mes (mes y año)
-export const getTurnosByMonth = async (month: number, year: number): Promise<Turno[]> => {
-    const startOfMonth = new Date(year, month, 1);
-    startOfMonth.setHours(0, 0, 0, 0);
-    const endOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
-
-    // @ts-ignore
-    const startTimestamp = firebase.firestore.Timestamp.fromDate(startOfMonth);
-    // @ts-ignore
-    const endTimestamp = firebase.firestore.Timestamp.fromDate(endOfMonth);
-
-    const snapshot = await turnosCollection
-        .where('fechaInicio', '>=', startTimestamp)
-        .where('fechaInicio', '<=', endTimestamp)
-        .orderBy('fechaInicio', 'asc')
-        .get();
-
-    return snapshot.docs.map(docToTurno);
-};
-
-// Gastos - Get total gastos for today
-export const getGastosForToday = async (): Promise<number> => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    // @ts-ignore
-    const todayTimestamp = firebase.firestore.Timestamp.fromDate(today);
-    // @ts-ignore
-    const tomorrowTimestamp = firebase.firestore.Timestamp.fromDate(tomorrow);
-
-    const snapshot = await gastosCollection
-        .where('fecha', '>=', todayTimestamp)
-        .where('fecha', '<', tomorrowTimestamp)
-        .get();
-
-    return snapshot.docs.reduce((total, doc) => {
-        const data = doc.data();
-        return total + (data.importe || 0);
-    }, 0);
-};
-
-// Real-time subscriptions
-export const subscribeToCarreras = (
-    callback: (carreras: CarreraVista[]) => void,
-    errorCallback?: (error: any) => void
-): () => void => {
-    const unsubscribe = carrerasCollection
-        .orderBy('fechaHora', 'desc')
-        .onSnapshot((snapshot: any) => {
-            try {
-                const carreras = snapshot.docs.map(docToCarrera);
-                callback(carreras);
-            } catch (error) {
-                console.error("Error processing carreras:", error);
-                if (errorCallback) errorCallback(error);
-            }
-        }, (error: any) => {
-            console.error("Error subscribing to carreras:", error);
-            if (error?.code === 'permission-denied') {
-                console.error("FirebaseError: Missing or insufficient permissions.");
-                console.error("SOLUCIÓN: Configura las reglas de Firestore para permitir acceso.");
-                console.error("Ve a Firebase Console > Firestore Database > Reglas");
-                console.error("Y aplica las reglas del archivo firestore.rules");
-            }
-            if (errorCallback) errorCallback(error);
-        });
-    return unsubscribe;
-};
-
-export const subscribeToGastos = (
-    callback: (total: number) => void,
-    errorCallback?: (error: any) => void
-): () => void => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    // @ts-ignore
-    const todayTimestamp = firebase.firestore.Timestamp.fromDate(today);
-    // @ts-ignore
-    const tomorrowTimestamp = firebase.firestore.Timestamp.fromDate(tomorrow);
-
-    const unsubscribe = gastosCollection
-        .where('fecha', '>=', todayTimestamp)
-        .where('fecha', '<', tomorrowTimestamp)
-        .onSnapshot((snapshot: any) => {
-            try {
-                const total = snapshot.docs.reduce((sum: number, doc: any) => {
-                    const data = doc.data();
-                    return sum + (data.importe || 0);
-                }, 0);
-                callback(total);
-            } catch (error) {
-                console.error("Error processing gastos:", error);
-                callback(0);
-                if (errorCallback) errorCallback(error);
-            }
-        }, (error: any) => {
-            console.error("Error subscribing to gastos:", error);
-            callback(0);
-            if (errorCallback) errorCallback(error);
-        });
-    return unsubscribe;
-};
-
-export const subscribeToGastosByMonth = (
-    month: number,
-    year: number,
-    callback: (gastos: Gasto[]) => void,
-    errorCallback?: (error: any) => void
-): () => void => {
-    const startOfMonth = new Date(year, month, 1);
-    startOfMonth.setHours(0, 0, 0, 0);
-    const endOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
-
-    // @ts-ignore
-    const startTimestamp = firebase.firestore.Timestamp.fromDate(startOfMonth);
-    // @ts-ignore
-    const endTimestamp = firebase.firestore.Timestamp.fromDate(endOfMonth);
-
-    const unsubscribe = gastosCollection
-        .where('fecha', '>=', startTimestamp)
-        .where('fecha', '<=', endTimestamp)
-        .orderBy('fecha', 'desc')
-        .onSnapshot((snapshot: any) => {
-            try {
-                const gastos = snapshot.docs.map(docToGasto);
-                console.log(`📡 Listener: ${gastos.length} gastos actualizados para ${month + 1}/${year}`);
-                callback(gastos);
-            } catch (error) {
-                console.error("Error processing gastos by month:", error);
-                if (errorCallback) errorCallback(error);
-            }
-        }, (error: any) => {
-            console.error("Error subscribing to gastos by month:", error);
-            if (errorCallback) errorCallback(error);
-        });
-    return unsubscribe;
-};
-
-export const subscribeToActiveTurno = (
-    callback: (turno: Turno | null) => void,
-    errorCallback?: (error: any) => void
-): () => void => {
-    const unsubscribe = turnosCollection
-        .where('kilometrosFin', '==', null)
-        .limit(1)
-        .onSnapshot((snapshot: any) => {
-            try {
-                if (snapshot.empty) {
-                    callback(null);
-                } else {
-                    callback(docToTurno(snapshot.docs[0]));
-                }
-            } catch (error) {
-                console.error("Error processing turno:", error);
-                callback(null);
-                if (errorCallback) errorCallback(error);
-            }
-        }, (error: any) => {
-            console.error("Error subscribing to active turno:", error);
-            if (error?.code === 'permission-denied') {
-                console.error("FirebaseError: Missing or insufficient permissions.");
-                console.error("SOLUCIÓN: Configura las reglas de Firestore para permitir acceso.");
-                console.error("Ve a Firebase Console > Firestore Database > Reglas");
-                console.error("Y aplica las reglas del archivo firestore.rules");
-            }
-            callback(null);
-            if (errorCallback) errorCallback(error);
-        });
-    return unsubscribe;
-};
-
-// --- Ajustes ---
-
-export interface Ajustes {
-    temaOscuro: boolean;
-    tamanoFuente: number;
-    letraDescanso: string;
-    objetivoDiario: number;
-    temaColor?: string;
-    altoContraste?: boolean;
-    tarifaMinima?: number; // Deprecated, mapped to tarifa1/2/3
-    tarifaAeropuerto?: number; // Deprecated, mapped to Aero Dia/Noche
-    tarifa1?: number; // Diurna Laborable
-    tarifa2?: number; // Nocturna / Sabados / Festiva
-    tarifa3?: number; // Especial Nocturna
-    tarifaAeropuertoDia?: number; // T4
-    tarifaAeropuertoNoche?: number; // T5
-    // Branding / Professionalism
-    logo?: string; // Base64 encoded image
-    datosFiscales?: {
-        nombre: string;
-        nif: string;
-        direccion: string;
-        telefono: string;
-        email: string;
+    const updatedTurno: Turno = {
+        ...turno,
+        fechaFin: new Date(),
+        kilometrosFin
     };
+
+    await addItem('turnos', id, updatedTurno);
 }
 
-// Ajustes
-import { Ajustes } from '../types'; // Importar la interfaz
-
-export const saveAjustes = async (ajustes: Partial<Ajustes>): Promise<void> => {
-    try {
-        const ajustesSnapshot = await ajustesCollection.limit(1).get();
-
-        // No filtramos nada, guardamos todo lo que viene en el objeto ajustes
-        // Firebase fusionará los campos si usamos merge: true
-        const dataToSave = { ...ajustes };
-
-        if (!ajustesSnapshot.empty) {
-            const docId = ajustesSnapshot.docs[0].id;
-            await ajustesCollection.doc(docId).set(dataToSave, { merge: true });
-        } else {
-            await ajustesCollection.add(dataToSave);
-        }
-    } catch (error) {
-        console.error('Error guardando ajustes:', error);
-        throw error;
-    }
-};
-
-export const getAjustes = async (): Promise<Ajustes | null> => {
-    try {
-        const snapshot = await ajustesCollection.limit(1).get();
-        if (snapshot.empty) {
-            return null;
-        }
-
-        const raw = snapshot.docs[0].data() as any;
-        return {
-            temaOscuro: raw.temaOscuro ?? false,
-            tamanoFuente: raw.tamanoFuente ?? raw['tam\u00f1oFuente'] ?? 14,
-            letraDescanso: raw.letraDescanso ?? '',
-            objetivoDiario: raw.objetivoDiario ?? 100,
-            // Recuperar nuevos campos
-            temaColor: raw.temaColor ?? 'azul',
-            altoContraste: raw.altoContraste ?? false,
-            tarifa1: raw.tarifa1,
-            tarifa2: raw.tarifa2,
-            tarifa3: raw.tarifa3,
-            tarifaAeropuertoDia: raw.tarifaAeropuertoDia,
-            tarifaAeropuertoNoche: raw.tarifaAeropuertoNoche,
-            logo: raw.logo || '',
-            datosFiscales: raw.datosFiscales || {
-                nombre: '',
-                nif: '',
-                direccion: '',
-                telefono: '',
-                email: ''
-            }
-        };
-    } catch (error: any) {
-        console.error('Error obteniendo ajustes:', error);
-        if (error?.code === 'permission-denied') {
-            console.error('FirebaseError: Missing or insufficient permissions.');
-        }
-        return null;
-    }
-};
-
-export interface BreakConfiguration {
-    startDate: string;
-    startDayLetter: string;
-    weekendPattern: string;
-    userBreakLetter: string;
-    updatedAt: Date | null;
+/** Reminders */
+export async function getReminders(): Promise<Reminder[]> {
+    return getAllItems('reminders');
 }
 
-export const saveBreakConfiguration = async (config: Omit<BreakConfiguration, 'updatedAt'>): Promise<void> => {
-    try {
-        const snapshot = await breakConfigurationsCollection.limit(1).get();
-        const dataToSave = {
-            startDate: config.startDate,
-            startDayLetter: config.startDayLetter,
-            weekendPattern: config.weekendPattern,
-            userBreakLetter: config.userBreakLetter,
-            // @ts-ignore
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        };
+export async function addReminder(reminder: Reminder): Promise<string> {
+    const key = reminder.id ?? crypto.randomUUID();
+    await addItem('reminders', key, { ...reminder, id: key });
+    return key;
+}
 
-        if (!snapshot.empty) {
-            const docId = snapshot.docs[0].id;
-            await breakConfigurationsCollection.doc(docId).set(dataToSave, { merge: true });
-        } else {
-            await breakConfigurationsCollection.add(dataToSave);
-        }
-    } catch (error) {
-        console.error('Error guardando configuracion de descansos:', error);
-        throw error;
-    }
-};
+export async function updateReminder(id: string, updates: Partial<Reminder>): Promise<void> {
+    const existing = await getItem<Reminder>('reminders', id);
+    if (!existing) throw new Error('Reminder not found');
+    await addItem('reminders', id, { ...existing, ...updates });
+}
 
-export const getBreakConfiguration = async (): Promise<BreakConfiguration | null> => {
-    try {
-        const snapshot = await breakConfigurationsCollection.limit(1).get();
-        if (snapshot.empty) {
-            return null;
-        }
+export async function deleteReminder(id: string): Promise<void> {
+    await deleteItem('reminders', id);
+}
 
-        const data = snapshot.docs[0].data() as any;
-        return {
-            startDate: data.startDate ?? '',
-            startDayLetter: data.startDayLetter ?? 'A',
-            weekendPattern: data.weekendPattern ?? 'Sabado: AC / Domingo: BD',
-            userBreakLetter: data.userBreakLetter ?? 'A',
-            updatedAt: data.updatedAt ? data.updatedAt.toDate() : null,
-        };
-    } catch (error: any) {
-        console.error('Error obteniendo configuracion de descansos:', error);
-        if (error?.code === 'permission-denied') {
-            console.error('FirebaseError: Missing or insufficient permissions.');
-            console.error('SOLUCIÓN: Configura las reglas de Firestore para permitir acceso.');
-            console.error('Ve a Firebase Console > Firestore Database > Reglas');
-            console.error('Y aplica las reglas del archivo firestore.rules');
-        }
-        return null;
-    }
-};
+// ...
+export function subscribeToReminders(callback: (reminders: Reminder[]) => void, errorCallback?: (error: any) => void): () => void {
+    getReminders().then(callback).catch(err => {
+        console.error(err);
+        if (errorCallback) errorCallback(err);
+    });
+    return () => { };
+}
 
-// --- Excepciones de Descanso ---
+/** Subscriptions (Mock for Local DB) */
+export function subscribeToActiveTurno(callback: (turno: Turno | null) => void, errorCallback?: (error: any) => void): () => void {
+    getTurnos().then(turnos => {
+        // Find open turno (no fechaFin)
+        const active = turnos.find(t => !t.fechaFin) || null;
+        callback(active);
+    }).catch(err => {
+        console.error(err);
+        if (errorCallback) errorCallback(err);
+    });
+    return () => { };
+}
 
+export function subscribeToCarreras(callback: (carreras: CarreraVista[]) => void, errorCallback?: (error: any) => void): () => void {
+    getCarreras().then(callback).catch(err => {
+        console.error(err);
+        if (errorCallback) errorCallback(err);
+    });
+    return () => { };
+}
+
+// ...
+export function subscribeToGastos(callback: (total: number) => void, errorCallback?: (error: any) => void): () => void {
+    getGastos().then(gastos => {
+        const total = gastos.reduce((sum, g) => sum + (g.importe || 0), 0);
+        callback(total);
+    }).catch(err => {
+        console.error(err);
+        if (errorCallback) errorCallback(err);
+    });
+    return () => { };
+}
+
+export async function getGastosByMonth(month: number, year: number): Promise<Gasto[]> {
+    const start = new Date(year, month, 1);
+    const end = new Date(year, month + 1, 0, 23, 59, 59, 999);
+    return getGastosByDateRange(start, end);
+}
+
+export async function getCarrerasByMonth(month: number, year: number): Promise<CarreraVista[]> {
+    const start = new Date(year, month, 1);
+    const end = new Date(year, month + 1, 0, 23, 59, 59, 999);
+    return getCarrerasByDateRange(start, end);
+}
+
+export async function getIngresosByYear(year: number): Promise<number[]> {
+    const start = new Date(year, 0, 1);
+    const end = new Date(year, 11, 31, 23, 59, 59, 999);
+    const carreras = await getCarrerasByDateRange(start, end);
+
+    const monthly = new Array(12).fill(0);
+    carreras.forEach(c => {
+        const d = c.fechaHora instanceof Date ? c.fechaHora : new Date(c.fechaHora);
+        const month = d.getMonth();
+        monthly[month] += (c.cobrado || 0);
+    });
+    return monthly;
+}
+
+export async function getGastosByYear(year: number): Promise<number[]> {
+    const start = new Date(year, 0, 1);
+    const end = new Date(year, 11, 31, 23, 59, 59, 999);
+    const gastos = await getGastosByDateRange(start, end);
+
+    const monthly = new Array(12).fill(0);
+    gastos.forEach(g => {
+        const d = g.fecha instanceof Date ? g.fecha : new Date(g.fecha);
+        const month = d.getMonth();
+        monthly[month] += (g.importe || 0);
+    });
+    return monthly;
+}
+
+export async function getRecentCarreras(limit: number): Promise<CarreraVista[]> {
+    const carreras = await getCarreras();
+    return carreras
+        .sort((a, b) => new Date(b.fechaHora).getTime() - new Date(a.fechaHora).getTime())
+        .slice(0, limit);
+}
+
+export async function getTurnosByMonth(month: number, year: number): Promise<Turno[]> {
+    const start = new Date(year, month, 1);
+    const end = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+    // Create a helper for turnos range if not exists, or inline
+    const all = await getTurnos();
+    return all.filter(t => {
+        const d = new Date(t.fechaInicio);
+        return d >= start && d <= end;
+    });
+}
+
+export function subscribeToGastosByMonth(month: number, year: number, callback: (gastos: Gasto[]) => void, errorCallback?: (error: any) => void): () => void {
+    getGastosByMonth(month, year).then(callback).catch(err => {
+        console.error(err);
+        if (errorCallback) errorCallback(err);
+    });
+    return () => { };
+}
+
+/** Settings / Ajustes */
+export async function getAjustes(): Promise<Ajustes | null> {
+    const settings = await getItem<Ajustes>('settings', 'ajustes');
+    return settings || null;
+}
+
+export async function saveAjustes(ajustes: any): Promise<void> {
+    await addItem('settings', 'ajustes', { ...ajustes, key: 'ajustes' });
+}
+
+/** Break Configuration */
+export async function getBreakConfiguration(): Promise<any> {
+    const config = await getItem<any>('settings', 'breakConfig');
+    return config || null;
+}
+
+export async function saveBreakConfiguration(config: any): Promise<void> {
+    await addItem('settings', 'breakConfig', { ...config, key: 'breakConfig' });
+}
+
+/** Excepciones */
 export interface Excepcion {
     id: string;
-    fechaDesde: Date;
-    fechaHasta: Date;
+    fechaDesde: string | Date;
+    fechaHasta: string | Date;
     tipo: string;
-    aplicaPar: boolean;
-    aplicaImpar: boolean;
-    descripcion?: string;
     nuevaLetra?: string;
-    createdAt: Date;
+    nota?: string;
+    descripcion?: string;
+    aplicaPar?: boolean;
+    aplicaImpar?: boolean;
 }
 
-export type ExcepcionData = Omit<Excepcion, 'id' | 'createdAt'>;
+/** Vales Directory */
+export interface ValeDirectoryEntry {
+    id: string;
+    empresa: string;
+    codigoEmpresa: string;
+    direccion?: string;
+    telefono?: string;
+}
 
-const docToExcepcion = (doc: any): Excepcion => {
-    const data = doc.data();
-    return {
-        id: doc.id,
-        fechaDesde: data.fechaDesde.toDate(),
-        fechaHasta: data.fechaHasta.toDate(),
-        tipo: data.tipo,
-        aplicaPar: data.aplicaPar || false,
-        aplicaImpar: data.aplicaImpar || false,
-        descripcion: data.descripcion || '',
-        nuevaLetra: data.nuevaLetra || undefined,
-        createdAt: data.createdAt.toDate(),
-    };
-};
+export async function getValesDirectory(): Promise<ValeDirectoryEntry[]> {
+    return getAllItems('vales');
+}
 
-export const restoreExcepcion = async (excepcion: any) => {
-    const dataToSave: any = {
-        // @ts-ignore
-        fechaDesde: firebase.firestore.Timestamp.fromDate(new Date(excepcion.fechaDesde)),
-        // @ts-ignore
-        fechaHasta: firebase.firestore.Timestamp.fromDate(new Date(excepcion.fechaHasta)),
-        tipo: excepcion.tipo || '',
-        aplicaPar: excepcion.aplicaPar || false,
-        aplicaImpar: excepcion.aplicaImpar || false,
-        descripcion: excepcion.descripcion || '',
-        nuevaLetra: excepcion.nuevaLetra || null,
-        // @ts-ignore
-        createdAt: excepcion.createdAt ? firebase.firestore.Timestamp.fromDate(new Date(excepcion.createdAt)) : firebase.firestore.FieldValue.serverTimestamp()
-    };
-    await excepcionesCollection.doc(excepcion.id).set(dataToSave);
-};
+export async function addValeDirectoryEntry(entry: Omit<ValeDirectoryEntry, 'id'> & { id?: string }): Promise<string> {
+    const key = entry.id ?? crypto.randomUUID();
+    await addItem('vales', key, { ...entry, id: key });
+    return key;
+}
 
-export const addExcepcion = async (excepcion: ExcepcionData): Promise<string> => {
-    const dataToAdd: any = {
-        // @ts-ignore
-        fechaDesde: firebase.firestore.Timestamp.fromDate(excepcion.fechaDesde),
-        // @ts-ignore
-        fechaHasta: firebase.firestore.Timestamp.fromDate(excepcion.fechaHasta),
-        tipo: excepcion.tipo,
-        aplicaPar: excepcion.aplicaPar,
-        aplicaImpar: excepcion.aplicaImpar,
-        descripcion: excepcion.descripcion || '',
-        // @ts-ignore
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
+export async function deleteValeDirectoryEntry(id: string): Promise<void> {
+    await deleteItem('vales', id);
+}
 
-    if (excepcion.nuevaLetra) {
-        dataToAdd.nuevaLetra = excepcion.nuevaLetra;
-    }
+export async function getExcepciones(): Promise<Excepcion[]> {
+    return getAllItems('excepciones');
+}
 
-    const docRef = await excepcionesCollection.add(dataToAdd);
-    return docRef.id;
-};
+export async function addExcepcion(excepcion: Omit<Excepcion, 'id'> & { id?: string }): Promise<string> {
+    const key = excepcion.id ?? crypto.randomUUID();
+    await addItem('excepciones', key, { ...excepcion, id: key });
+    return key;
+}
 
-export const getExcepciones = async (): Promise<Excepcion[]> => {
-    try {
-        const snapshot = await excepcionesCollection.orderBy('createdAt', 'desc').get();
-        return snapshot.docs.map(docToExcepcion);
-    } catch (error: any) {
-        console.error('Error obteniendo excepciones:', error);
-        if (error?.code === 'permission-denied') {
-            console.error('FirebaseError: Missing or insufficient permissions.');
-            console.error('SOLUCIÓN: Configura las reglas de Firestore para permitir acceso.');
-            console.error('Ve a Firebase Console > Firestore Database > Reglas');
-            console.error('Y aplica las reglas del archivo firestore.rules');
+export async function updateExcepcion(id: string, updates: Partial<Excepcion>): Promise<void> {
+    const existing = await getItem<Excepcion>('excepciones', id);
+    if (!existing) throw new Error('Excepcion not found');
+    await addItem('excepciones', id, { ...existing, ...updates });
+}
+
+export async function deleteExcepcion(id: string): Promise<void> {
+    await deleteItem('excepciones', id);
+}
+
+export async function restoreExcepcion(excepcion: any): Promise<void> {
+    await addItem('excepciones', excepcion.id, excepcion);
+}
+
+export async function isRestDay(date: Date): Promise<boolean> {
+    // Simplified: Only check exceptions for now. 
+    // Logic for letter-based rest days requires re-implementation.
+    const excepciones = await getExcepciones();
+    const dateStr = date.toISOString().split('T')[0];
+
+    return excepciones.some((e: any) => {
+        try {
+            const eDate = e.fecha instanceof Date ? e.fecha : new Date(e.fecha);
+            return eDate.toISOString().split('T')[0] === dateStr;
+        } catch {
+            return false;
         }
-        return [];
-    }
-};
+    });
+}
 
-export const updateExcepcion = async (id: string, excepcion: ExcepcionData): Promise<void> => {
-    const dataToUpdate: any = {
-        // @ts-ignore
-        fechaDesde: firebase.firestore.Timestamp.fromDate(excepcion.fechaDesde),
-        // @ts-ignore
-        fechaHasta: firebase.firestore.Timestamp.fromDate(excepcion.fechaHasta),
-        tipo: excepcion.tipo,
-        aplicaPar: excepcion.aplicaPar,
-        aplicaImpar: excepcion.aplicaImpar,
-        descripcion: excepcion.descripcion || '',
-    };
+/** Restore Functions (Wrappers) */
+export async function restoreCarrera(carrera: any): Promise<void> {
+    await addItem('carreras', carrera.id, carrera);
+}
+export async function restoreGasto(gasto: any): Promise<void> {
+    await addItem('gastos', gasto.id, gasto);
+}
+export async function restoreTurno(turno: any): Promise<void> {
+    await addItem('turnos', turno.id, turno);
+}
+export async function restoreProveedor(proveedor: any): Promise<void> {
+    await addItem('proveedores', proveedor.id, proveedor);
+}
+export async function restoreConcepto(concepto: any): Promise<void> {
+    await addItem('conceptos', concepto.id, concepto);
+}
+// ... existing code ...
+export async function restoreTaller(taller: any): Promise<void> {
+    await addItem('talleres', taller.id, taller);
+}
 
-    if (excepcion.nuevaLetra) {
-        dataToUpdate.nuevaLetra = excepcion.nuevaLetra;
-    } else {
-        // Si no hay nuevaLetra, eliminarla del documento
-        dataToUpdate.nuevaLetra = firebase.firestore.FieldValue.delete();
-    }
+/** Statistics Helpers */
+export async function getIngresosForCurrentMonth(): Promise<number> {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
-    await excepcionesCollection.doc(id).update(dataToUpdate);
-};
+    const carreras = await getCarrerasByDateRange(startOfMonth, endOfMonth);
+    return carreras.reduce((sum, c) => sum + (c.cobrado || 0), 0);
+}
 
-export const deleteExcepcion = async (id: string): Promise<void> => {
-    await excepcionesCollection.doc(id).delete();
-};
+export async function getGastosForCurrentMonth(): Promise<number> {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
-// --- Análisis Avanzado ---
+    const gastos = await getGastosByDateRange(startOfMonth, endOfMonth);
+    return gastos.reduce((sum, g) => sum + (g.importe || 0), 0);
+}
 
-// --- Funciones auxiliares para determinar días de descanso ---
+export async function getWorkingDays(startDate: Date, endDate: Date): Promise<Date[]> {
+    const dayData: Set<string> = new Set();
+    const cursor = new Date(startDate);
 
-// Función auxiliar para parsear el patrón de fin de semana
-const parseWeekendPattern = (patternRaw: string) => {
-    const normalized = (patternRaw || '')
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .toLowerCase();
+    // Naively iterate? Better to get all carreras and extract unique dates
+    const allCarreras = await getCarreras();
 
-    const saturdayMatch = normalized.match(/sabado\s*:\s*([a-z]+)/);
-    const sundayMatch = normalized.match(/domingo\s*:\s*([a-z]+)/);
-
-    return {
-        saturday: (saturdayMatch?.[1] ?? 'ac').toUpperCase(),
-        sunday: (sundayMatch?.[1] ?? 'bd').toUpperCase(),
-    };
-};
-
-// Calcular la letra de un día específico
-const calculateDayLetter = (
-    date: Date,
-    breakConfig: BreakConfiguration,
-    excepciones: Excepcion[]
-): string | null => {
-    if (!breakConfig || !breakConfig.startDate) return null;
-
-    try {
-        const [dayStr, monthStr, yearStr] = breakConfig.startDate.split('/');
-        const startDate = new Date(parseInt(yearStr), parseInt(monthStr) - 1, parseInt(dayStr));
-        const lettersArray = ['A', 'B', 'C', 'D'];
-        const mod = (value: number, divisor: number) => ((value % divisor) + divisor) % divisor;
-        const weekendPattern = parseWeekendPattern(breakConfig.weekendPattern || '');
-
-        const startLetter = breakConfig.startDayLetter || 'A';
-        const startLetterIndex = lettersArray.indexOf(startLetter);
-        if (startLetterIndex === -1) return null;
-
-        const startDayOfWeek = startDate.getDay();
-        const startWeekday = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
-        const mondayOfStartWeekLetterIndex = mod(startLetterIndex - startWeekday, 4);
-
-        // Verificar excepciones primero
-        const dayDate = new Date(date);
-        dayDate.setHours(0, 0, 0, 0);
-
-        for (const excepcion of excepciones) {
-            const fechaDesde = new Date(excepcion.fechaDesde);
-            fechaDesde.setHours(0, 0, 0, 0);
-            const fechaHasta = new Date(excepcion.fechaHasta);
-            fechaHasta.setHours(23, 59, 59, 999);
-
-            if (dayDate >= fechaDesde && dayDate <= fechaHasta) {
-                if (excepcion.tipo === 'Cambio de Letra' && excepcion.nuevaLetra) {
-                    return excepcion.nuevaLetra;
-                }
-            }
+    allCarreras.forEach(c => {
+        const d = c.fechaHora instanceof Date ? c.fechaHora : new Date(c.fechaHora);
+        if (d >= startDate && d <= endDate) {
+            dayData.add(d.toISOString().split('T')[0]);
         }
-
-        const diffTime = dayDate.getTime() - startDate.getTime();
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-        if (diffDays < 0) return null;
-
-        const dayOfWeek = dayDate.getDay();
-        const isSaturday = dayOfWeek === 6;
-        const isSunday = dayOfWeek === 0;
-
-        if (isSaturday || isSunday) {
-            const weekNumber = Math.floor((diffDays + startWeekday) / 7);
-            const swapPattern = weekNumber % 2 === 1;
-            const saturdayLetters = swapPattern ? weekendPattern.sunday : weekendPattern.saturday;
-            const sundayLetters = swapPattern ? weekendPattern.saturday : weekendPattern.sunday;
-            return isSaturday ? saturdayLetters : sundayLetters;
-        } else {
-            const weekday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-            const weekNumber = Math.floor((diffDays + startWeekday) / 7);
-            const mondayLetterIndex = mod(mondayOfStartWeekLetterIndex + weekNumber, 4);
-            const letterIndex = mod(mondayLetterIndex + weekday, 4);
-            return lettersArray[letterIndex];
-        }
-    } catch (error) {
-        console.error('Error calculando letra del día:', error);
-        return null;
-    }
-};
-
-// Determinar si un día es de descanso
-export const isRestDay = async (date: Date): Promise<boolean> => {
-    try {
-        const [breakConfig, excepciones] = await Promise.all([
-            getBreakConfiguration(),
-            getExcepciones(),
-        ]);
-
-        if (!breakConfig || !breakConfig.userBreakLetter) {
-            return false; // Si no hay configuración, no es día de descanso
-        }
-
-        // Verificar si es vacaciones
-        const dayDate = new Date(date);
-        dayDate.setHours(0, 0, 0, 0);
-
-        for (const excepcion of excepciones) {
-            if (excepcion.tipo === 'Vacaciones') {
-                const fechaDesde = new Date(excepcion.fechaDesde);
-                fechaDesde.setHours(0, 0, 0, 0);
-                const fechaHasta = new Date(excepcion.fechaHasta);
-                fechaHasta.setHours(23, 59, 59, 999);
-
-                if (dayDate >= fechaDesde && dayDate <= fechaHasta) {
-                    return true;
-                }
-            }
-        }
-
-        const dayLetter = calculateDayLetter(date, breakConfig, excepciones);
-        if (!dayLetter) return false;
-
-        const userLetter = breakConfig.userBreakLetter.toUpperCase();
-        const dayLetterUpper = dayLetter.toUpperCase();
-
-        // Verificar si coincide con la letra del usuario
-        return (
-            dayLetterUpper === userLetter ||
-            (dayLetterUpper === 'AC' && (userLetter === 'A' || userLetter === 'C')) ||
-            (dayLetterUpper === 'BD' && (userLetter === 'B' || userLetter === 'D'))
-        );
-    } catch (error) {
-        console.error('Error determinando si es día de descanso:', error);
-        return false;
-    }
-};
-
-// Obtener lista de días trabajados en un rango de fechas
-export const getWorkingDays = async (startDate: Date, endDate: Date): Promise<Date[]> => {
-    const workingDays: Date[] = [];
-    const current = new Date(startDate);
-    current.setHours(0, 0, 0, 0);
-    const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999);
-
-    while (current <= end) {
-        const isRest = await isRestDay(new Date(current));
-        if (!isRest) {
-            workingDays.push(new Date(current));
-        }
-        current.setDate(current.getDate() + 1);
-    }
-
-    return workingDays;
-};
-
-// Obtener ingresos por hora del día (0-23) para un rango de fechas (solo días trabajados)
-export const getIngresosByHour = async (startDate: Date, endDate: Date): Promise<number[]> => {
-    // @ts-ignore
-    const startTimestamp = firebase.firestore.Timestamp.fromDate(startDate);
-    // @ts-ignore
-    const endTimestamp = firebase.firestore.Timestamp.fromDate(endDate);
-
-    const snapshot = await carrerasCollection
-        .where('fechaHora', '>=', startTimestamp)
-        .where('fechaHora', '<=', endTimestamp)
-        .get();
-
-    const ingresosPorHora = new Array(24).fill(0);
-    const [breakConfig, excepciones] = await Promise.all([
-        getBreakConfiguration(),
-        getExcepciones(),
-    ]);
-
-    snapshot.docs.forEach(doc => {
-        const data = doc.data();
-        const fechaHora = data.fechaHora.toDate();
-
-        // Verificar si es día de descanso
-        const fechaDia = new Date(fechaHora);
-        fechaDia.setHours(0, 0, 0, 0);
-
-        // Verificar vacaciones
-        let isVacaciones = false;
-        for (const excepcion of excepciones) {
-            if (excepcion.tipo === 'Vacaciones') {
-                const fechaDesde = new Date(excepcion.fechaDesde);
-                fechaDesde.setHours(0, 0, 0, 0);
-                const fechaHasta = new Date(excepcion.fechaHasta);
-                fechaHasta.setHours(23, 59, 59, 999);
-                if (fechaDia >= fechaDesde && fechaDia <= fechaHasta) {
-                    isVacaciones = true;
-                    break;
-                }
-            }
-        }
-
-        if (isVacaciones) return; // Saltar días de vacaciones
-
-        // Verificar letra de descanso
-        if (breakConfig && breakConfig.userBreakLetter) {
-            const dayLetter = calculateDayLetter(fechaDia, breakConfig, excepciones);
-            if (dayLetter) {
-                const userLetter = breakConfig.userBreakLetter.toUpperCase();
-                const dayLetterUpper = dayLetter.toUpperCase();
-                const isRest = (
-                    dayLetterUpper === userLetter ||
-                    (dayLetterUpper === 'AC' && (userLetter === 'A' || userLetter === 'C')) ||
-                    (dayLetterUpper === 'BD' && (userLetter === 'B' || userLetter === 'D'))
-                );
-                if (isRest) return; // Saltar días de descanso
-            }
-        }
-
-        const hora = fechaHora.getHours(); // 0-23
-        const cobrado = data.cobrado || 0;
-        ingresosPorHora[hora] += cobrado;
     });
 
-    return ingresosPorHora;
-};
+    return Array.from(dayData).map(d => new Date(d));
+}
 
-// Obtener ingresos por día de la semana (0=Domingo, 1=Lunes, ..., 6=Sábado) - solo días trabajados
-export const getIngresosByDayOfWeek = async (startDate: Date, endDate: Date): Promise<number[]> => {
-    // @ts-ignore
-    const startTimestamp = firebase.firestore.Timestamp.fromDate(startDate);
-    // @ts-ignore
-    const endTimestamp = firebase.firestore.Timestamp.fromDate(endDate);
+// Duplicates removed
 
-    const snapshot = await carrerasCollection
-        .where('fechaHora', '>=', startTimestamp)
-        .where('fechaHora', '<=', endTimestamp)
-        .get();
-
-    const ingresosPorDia = new Array(7).fill(0);
-    const contadorPorDia = new Array(7).fill(0);
-    const [breakConfig, excepciones] = await Promise.all([
-        getBreakConfiguration(),
-        getExcepciones(),
-    ]);
-
-    snapshot.docs.forEach(doc => {
-        const data = doc.data();
-        const fechaHora = data.fechaHora.toDate();
-
-        // Verificar si es día de descanso
-        const fechaDia = new Date(fechaHora);
-        fechaDia.setHours(0, 0, 0, 0);
-
-        // Verificar vacaciones
-        let isVacaciones = false;
-        for (const excepcion of excepciones) {
-            if (excepcion.tipo === 'Vacaciones') {
-                const fechaDesde = new Date(excepcion.fechaDesde);
-                fechaDesde.setHours(0, 0, 0, 0);
-                const fechaHasta = new Date(excepcion.fechaHasta);
-                fechaHasta.setHours(23, 59, 59, 999);
-                if (fechaDia >= fechaDesde && fechaDia <= fechaHasta) {
-                    isVacaciones = true;
-                    break;
-                }
-            }
-        }
-
-        if (isVacaciones) return; // Saltar días de vacaciones
-
-        // Verificar letra de descanso
-        if (breakConfig && breakConfig.userBreakLetter) {
-            const dayLetter = calculateDayLetter(fechaDia, breakConfig, excepciones);
-            if (dayLetter) {
-                const userLetter = breakConfig.userBreakLetter.toUpperCase();
-                const dayLetterUpper = dayLetter.toUpperCase();
-                const isRest = (
-                    dayLetterUpper === userLetter ||
-                    (dayLetterUpper === 'AC' && (userLetter === 'A' || userLetter === 'C')) ||
-                    (dayLetterUpper === 'BD' && (userLetter === 'B' || userLetter === 'D'))
-                );
-                if (isRest) return; // Saltar días de descanso
-            }
-        }
-
-        const diaSemana = fechaHora.getDay(); // 0-6
-        const cobrado = data.cobrado || 0;
-        ingresosPorDia[diaSemana] += cobrado;
-        contadorPorDia[diaSemana] += 1;
+// Helper for ranges
+async function getCarrerasByDateRange(start: Date, end: Date): Promise<CarreraVista[]> {
+    const all = await getCarreras();
+    return all.filter(c => {
+        const d = c.fechaHora instanceof Date ? c.fechaHora : new Date(c.fechaHora);
+        return d >= start && d <= end;
     });
-
-    // Calcular promedio por día
-    return ingresosPorDia.map((total, index) =>
-        contadorPorDia[index] > 0 ? total / contadorPorDia[index] : 0
-    );
-};
-
-// Obtener total de ingresos por día de la semana (sin promediar) - solo días trabajados
-export const getTotalIngresosByDayOfWeek = async (startDate: Date, endDate: Date): Promise<number[]> => {
-    // @ts-ignore
-    const startTimestamp = firebase.firestore.Timestamp.fromDate(startDate);
-    // @ts-ignore
-    const endTimestamp = firebase.firestore.Timestamp.fromDate(endDate);
-
-    const snapshot = await carrerasCollection
-        .where('fechaHora', '>=', startTimestamp)
-        .where('fechaHora', '<=', endTimestamp)
-        .get();
-
-    const ingresosPorDia = new Array(7).fill(0);
-    const [breakConfig, excepciones] = await Promise.all([
-        getBreakConfiguration(),
-        getExcepciones(),
-    ]);
-
-    snapshot.docs.forEach(doc => {
-        const data = doc.data();
-        const fechaHora = data.fechaHora.toDate();
-
-        // Verificar si es día de descanso
-        const fechaDia = new Date(fechaHora);
-        fechaDia.setHours(0, 0, 0, 0);
-
-        // Verificar vacaciones
-        let isVacaciones = false;
-        for (const excepcion of excepciones) {
-            if (excepcion.tipo === 'Vacaciones') {
-                const fechaDesde = new Date(excepcion.fechaDesde);
-                fechaDesde.setHours(0, 0, 0, 0);
-                const fechaHasta = new Date(excepcion.fechaHasta);
-                fechaHasta.setHours(23, 59, 59, 999);
-                if (fechaDia >= fechaDesde && fechaDia <= fechaHasta) {
-                    isVacaciones = true;
-                    break;
-                }
-            }
-        }
-
-        if (isVacaciones) return; // Saltar días de vacaciones
-
-        // Verificar letra de descanso
-        if (breakConfig && breakConfig.userBreakLetter) {
-            const dayLetter = calculateDayLetter(fechaDia, breakConfig, excepciones);
-            if (dayLetter) {
-                const userLetter = breakConfig.userBreakLetter.toUpperCase();
-                const dayLetterUpper = dayLetter.toUpperCase();
-                const isRest = (
-                    dayLetterUpper === userLetter ||
-                    (dayLetterUpper === 'AC' && (userLetter === 'A' || userLetter === 'C')) ||
-                    (dayLetterUpper === 'BD' && (userLetter === 'B' || userLetter === 'D'))
-                );
-                if (isRest) return; // Saltar días de descanso
-            }
-        }
-
-        const diaSemana = fechaHora.getDay(); // 0-6
-        const cobrado = data.cobrado || 0;
-        ingresosPorDia[diaSemana] += cobrado;
-    });
-
-    return ingresosPorDia;
-};
-
-// Obtener ingresos de un mes específico (solo días trabajados)
-export const getIngresosByMonthYear = async (month: number, year: number): Promise<number> => {
-    const startOfMonth = new Date(year, month, 1);
-    startOfMonth.setHours(0, 0, 0, 0);
-    const endOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
-
-    // @ts-ignore
-    const startTimestamp = firebase.firestore.Timestamp.fromDate(startOfMonth);
-    // @ts-ignore
-    const endTimestamp = firebase.firestore.Timestamp.fromDate(endOfMonth);
-
-    const snapshot = await carrerasCollection
-        .where('fechaHora', '>=', startTimestamp)
-        .where('fechaHora', '<=', endTimestamp)
-        .get();
-
-    const [breakConfig, excepciones] = await Promise.all([
-        getBreakConfiguration(),
-        getExcepciones(),
-    ]);
-
-    return snapshot.docs.reduce((total, doc) => {
-        const data = doc.data();
-        const fechaHora = data.fechaHora.toDate();
-
-        // Verificar si es día de descanso
-        const fechaDia = new Date(fechaHora);
-        fechaDia.setHours(0, 0, 0, 0);
-
-        // Verificar vacaciones
-        for (const excepcion of excepciones) {
-            if (excepcion.tipo === 'Vacaciones') {
-                const fechaDesde = new Date(excepcion.fechaDesde);
-                fechaDesde.setHours(0, 0, 0, 0);
-                const fechaHasta = new Date(excepcion.fechaHasta);
-                fechaHasta.setHours(23, 59, 59, 999);
-                if (fechaDia >= fechaDesde && fechaDia <= fechaHasta) {
-                    return total; // Saltar días de vacaciones
-                }
-            }
-        }
-
-        // Verificar letra de descanso
-        if (breakConfig && breakConfig.userBreakLetter) {
-            const dayLetter = calculateDayLetter(fechaDia, breakConfig, excepciones);
-            if (dayLetter) {
-                const userLetter = breakConfig.userBreakLetter.toUpperCase();
-                const dayLetterUpper = dayLetter.toUpperCase();
-                const isRest = (
-                    dayLetterUpper === userLetter ||
-                    (dayLetterUpper === 'AC' && (userLetter === 'A' || userLetter === 'C')) ||
-                    (dayLetterUpper === 'BD' && (userLetter === 'B' || userLetter === 'D'))
-                );
-                if (isRest) return total; // Saltar días de descanso
-            }
-        }
-
-        return total + (data.cobrado || 0);
-    }, 0);
-};
-
-// Obtener gastos de un mes específico
-export const getGastosByMonthYear = async (month: number, year: number): Promise<number> => {
-    const startOfMonth = new Date(year, month, 1);
-    startOfMonth.setHours(0, 0, 0, 0);
-    const endOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
-
-    // @ts-ignore
-    const startTimestamp = firebase.firestore.Timestamp.fromDate(startOfMonth);
-    // @ts-ignore
-    const endTimestamp = firebase.firestore.Timestamp.fromDate(endOfMonth);
-
-    const snapshot = await gastosCollection
-        .where('fecha', '>=', startTimestamp)
-        .where('fecha', '<=', endTimestamp)
-        .get();
-
-    return snapshot.docs.reduce((total, doc) => {
-        const data = doc.data();
-        return total + (data.importe || 0);
-    }, 0);
-};
-
-// Obtener total de ingresos de un año específico (retorna número, no array) - solo días trabajados
-export const getTotalIngresosByYear = async (year: number): Promise<number> => {
-    const startOfYear = new Date(year, 0, 1);
-    startOfYear.setHours(0, 0, 0, 0);
-    const endOfYear = new Date(year, 11, 31, 23, 59, 59, 999);
-
-    // @ts-ignore
-    const startTimestamp = firebase.firestore.Timestamp.fromDate(startOfYear);
-    // @ts-ignore
-    const endTimestamp = firebase.firestore.Timestamp.fromDate(endOfYear);
-
-    const snapshot = await carrerasCollection
-        .where('fechaHora', '>=', startTimestamp)
-        .where('fechaHora', '<=', endTimestamp)
-        .get();
-
-    const [breakConfig, excepciones] = await Promise.all([
-        getBreakConfiguration(),
-        getExcepciones(),
-    ]);
-
-    return snapshot.docs.reduce((total, doc) => {
-        const data = doc.data();
-        const fechaHora = data.fechaHora.toDate();
-
-        // Verificar si es día de descanso
-        const fechaDia = new Date(fechaHora);
-        fechaDia.setHours(0, 0, 0, 0);
-
-        // Verificar vacaciones
-        for (const excepcion of excepciones) {
-            if (excepcion.tipo === 'Vacaciones') {
-                const fechaDesde = new Date(excepcion.fechaDesde);
-                fechaDesde.setHours(0, 0, 0, 0);
-                const fechaHasta = new Date(excepcion.fechaHasta);
-                fechaHasta.setHours(23, 59, 59, 999);
-                if (fechaDia >= fechaDesde && fechaDia <= fechaHasta) {
-                    return total; // Saltar días de vacaciones
-                }
-            }
-        }
-
-        // Verificar letra de descanso
-        if (breakConfig && breakConfig.userBreakLetter) {
-            const dayLetter = calculateDayLetter(fechaDia, breakConfig, excepciones);
-            if (dayLetter) {
-                const userLetter = breakConfig.userBreakLetter.toUpperCase();
-                const dayLetterUpper = dayLetter.toUpperCase();
-                const isRest = (
-                    dayLetterUpper === userLetter ||
-                    (dayLetterUpper === 'AC' && (userLetter === 'A' || userLetter === 'C')) ||
-                    (dayLetterUpper === 'BD' && (userLetter === 'B' || userLetter === 'D'))
-                );
-                if (isRest) return total; // Saltar días de descanso
-            }
-        }
-
-        return total + (data.cobrado || 0);
-    }, 0);
-};
-
-// Obtener total de gastos de un año específico (retorna número, no array)
-export const getTotalGastosByYear = async (year: number): Promise<number> => {
-    const startOfYear = new Date(year, 0, 1);
-    startOfYear.setHours(0, 0, 0, 0);
-    const endOfYear = new Date(year, 11, 31, 23, 59, 59, 999);
-
-    // @ts-ignore
-    const startTimestamp = firebase.firestore.Timestamp.fromDate(startOfYear);
-    // @ts-ignore
-    const endTimestamp = firebase.firestore.Timestamp.fromDate(endOfYear);
-
-    const snapshot = await gastosCollection
-        .where('fecha', '>=', startTimestamp)
-        .where('fecha', '<=', endTimestamp)
-        .get();
-
-    return snapshot.docs.reduce((total, doc) => {
-        const data = doc.data();
-        return total + (data.importe || 0);
-    }, 0);
-};
-
-
-
-// --- Eliminación Total de Datos ---
+}
 
 export interface DeleteProgress {
     percentage: number;
     message: string;
 }
 
-export const deleteAllData = async (
-    onProgress?: (progress: DeleteProgress) => void
-): Promise<void> => {
-    try {
-        const collections = [
-            { name: 'carreras', ref: carrerasCollection, label: 'Carreras' },
-            { name: 'gastos', ref: gastosCollection, label: 'Gastos' },
-            { name: 'turnos', ref: turnosCollection, label: 'Turnos' },
-            { name: 'talleres', ref: talleresCollection, label: 'Talleres' },
-            { name: 'proveedores', ref: proveedoresCollection, label: 'Proveedores' },
-            { name: 'conceptos', ref: conceptosCollection, label: 'Conceptos' },
-            { name: 'ajustes', ref: ajustesCollection, label: 'Ajustes' },
-            { name: 'breakConfigurations', ref: breakConfigurationsCollection, label: 'Configuración de Descansos' },
-            { name: 'excepciones', ref: excepcionesCollection, label: 'Excepciones' },
-        ];
+export async function deleteAllData(onProgress?: (progress: DeleteProgress) => void): Promise<void> {
+    const stores = ['carreras', 'gastos', 'turnos', 'proveedores', 'conceptos', 'talleres', 'reminders', 'customReports', 'settings', 'excepciones', 'vales'];
+    const total = stores.length;
 
-        const totalCollections = collections.length;
-
-        for (let i = 0; i < collections.length; i++) {
-            const collection = collections[i];
-            const percentage = Math.floor((i / totalCollections) * 100);
-
-            if (onProgress) {
-                onProgress({
-                    percentage,
-                    message: `Eliminando ${collection.label}...`
-                });
-            }
-
-            // Get all documents in the collection
-            const snapshot = await collection.ref.get();
-
-            // Delete documents in batches of 500 (Firestore limit)
-            const batchSize = 500;
-            const docs = snapshot.docs;
-
-            for (let j = 0; j < docs.length; j += batchSize) {
-                const batch = db.batch();
-                const batchDocs = docs.slice(j, j + batchSize);
-
-                batchDocs.forEach(doc => {
-                    batch.delete(doc.ref);
-                });
-
-                await batch.commit();
-
-                // Update progress within collection deletion
-                const collectionProgress = Math.floor((j + batchDocs.length) / docs.length * 100);
-                const overallPercentage = Math.floor(
-                    ((i + (collectionProgress / 100)) / totalCollections) * 100
-                );
-
-                if (onProgress && docs.length > batchSize) {
-                    onProgress({
-                        percentage: overallPercentage,
-                        message: `Eliminando ${collection.label}... (${j + batchDocs.length}/${docs.length})`
-                    });
-                }
-            }
-        }
-
-        // Final progress update
+    for (let i = 0; i < total; i++) {
+        const storeName = stores[i];
         if (onProgress) {
             onProgress({
-                percentage: 100,
-                message: 'Eliminación completada'
+                percentage: Math.round((i / total) * 100),
+                message: `Eliminando ${storeName}...`
             });
         }
 
-    } catch (error: any) {
-        console.error('Error eliminando todos los datos:', error);
-        if (error?.code === 'permission-denied') {
-            const permissionError = new Error(
-                'Missing or insufficient permissions.\n\n' +
-                'SOLUCIÓN:\n' +
-                '1. Ve a Firebase Console: https://console.firebase.google.com/\n' +
-                '2. Selecciona tu proyecto\n' +
-                '3. Ve a Firestore Database > Reglas\n' +
-                '4. Copia y pega estas reglas:\n\n' +
-                'rules_version = \'2\';\n' +
-                'service cloud.firestore {\n' +
-                '  match /databases/{database}/documents {\n' +
-                '    match /{document=**} {\n' +
-                '      allow read, write: if true;\n' +
-                '    }\n' +
-                '  }\n' +
-                '}\n\n' +
-                '5. Haz clic en "Publicar"\n' +
-                '6. Recarga la aplicación'
-            );
-            permissionError.name = 'FirebasePermissionError';
-            throw permissionError;
+        // We don't have clearStore in api.ts but we can implement it or use deleteItem in loop
+        // But better to expose clearStore or just implement it here using existing primitives if possible
+        // Actually, IndexedDB has clear() method on objectStore.
+        // My library abstraction doesn't expose clearStore.
+        // I should probably add clearStore to lib/indexedDB.ts or just iterate and delete.
+        // For now, I'll naively get all keys and delete them.
+
+        const items = await getAllItems(storeName);
+        for (const item of items) {
+            // Assuming items have 'id' or 'key'
+            const key = (item as any).id || (item as any).key;
+            if (key) await deleteItem(storeName, key);
         }
-        throw error;
     }
-};
 
-// --- RECORDATORIOS ---
+    if (onProgress) {
+        onProgress({ percentage: 100, message: 'Completado' });
+    }
+}
 
-const recordatoriosCollection = db.collection('recordatorios');
-
-export const subscribeToReminders = (callback: (reminders: any[]) => void): (() => void) => {
-    return recordatoriosCollection.onSnapshot((snapshot) => {
-        const reminders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        callback(reminders);
-    }, (error) => {
-        console.error("Error subscribing to reminders:", error);
+async function getGastosByDateRange(start: Date, end: Date): Promise<Gasto[]> {
+    const all = await getGastos();
+    return all.filter(g => {
+        const d = g.fecha instanceof Date ? g.fecha : new Date(g.fecha);
+        return d >= start && d <= end;
     });
-};
+}
 
-export const addReminderFirebase = async (reminder: any): Promise<string> => {
-    const { id, ...data } = reminder;
-    const docRef = id ? recordatoriosCollection.doc(id) : recordatoriosCollection.doc();
-    const cleanData = JSON.parse(JSON.stringify(data));
-    await docRef.set({ ...cleanData, createdAt: data.createdAt || new Date().toISOString() }, { merge: true });
-    return docRef.id;
-};
+/** Advanced Statistics Helpers */
 
-export const updateReminderFirebase = async (id: string, updates: any): Promise<void> => {
-    const cleanUpdates = JSON.parse(JSON.stringify(updates));
-    await recordatoriosCollection.doc(id).update(cleanUpdates);
-};
+export async function getIngresosByHour(startDate: Date, endDate: Date): Promise<number[]> {
+    const carreras = await getCarrerasByDateRange(startDate, endDate);
+    const hours = new Array(24).fill(0);
+    carreras.forEach(c => {
+        const d = c.fechaHora instanceof Date ? c.fechaHora : new Date(c.fechaHora);
+        hours[d.getHours()] += (c.cobrado || 0);
+    });
+    return hours;
+}
 
-export const deleteReminderFirebase = async (id: string): Promise<void> => {
-    await recordatoriosCollection.doc(id).delete();
-};
+export async function getIngresosByDayOfWeek(startDate: Date, endDate: Date): Promise<number[]> {
+    // Average earnings per day of week
+    const carreras = await getCarrerasByDateRange(startDate, endDate);
+    const dayTotals = new Array(7).fill(0);
+    const dayCounts = new Array(7).fill(0);
+    const uniqueDays = new Set<string>();
+
+    carreras.forEach(c => {
+        const d = c.fechaHora instanceof Date ? c.fechaHora : new Date(c.fechaHora);
+        // 0=Sunday, 1=Monday...
+        dayTotals[d.getDay()] += (c.cobrado || 0);
+        uniqueDays.add(d.toISOString().split('T')[0]);
+    });
+
+    // Count occurrences of each weekday in the unique days
+    uniqueDays.forEach(dateStr => {
+        const d = new Date(dateStr);
+        dayCounts[d.getDay()]++;
+    });
+
+    return dayTotals.map((total, i) => dayCounts[i] > 0 ? total / dayCounts[i] : 0);
+}
+
+export async function getTotalIngresosByDayOfWeek(startDate: Date, endDate: Date): Promise<number[]> {
+    const carreras = await getCarrerasByDateRange(startDate, endDate);
+    const dayTotals = new Array(7).fill(0);
+    carreras.forEach(c => {
+        const d = c.fechaHora instanceof Date ? c.fechaHora : new Date(c.fechaHora);
+        dayTotals[d.getDay()] += (c.cobrado || 0);
+    });
+    return dayTotals;
+}
+
+export async function getIngresosByMonthYear(month: number, year: number): Promise<number> {
+    const start = new Date(year, month, 1);
+    const end = new Date(year, month + 1, 0, 23, 59, 59, 999);
+    const carreras = await getCarrerasByDateRange(start, end);
+    return carreras.reduce((sum, c) => sum + (c.cobrado || 0), 0);
+}
+
+export async function getGastosByMonthYear(month: number, year: number): Promise<number> {
+    const gastos = await getGastosByMonth(month, year);
+    return gastos.reduce((sum, g) => sum + (g.importe || 0), 0);
+}
+
+export async function getTotalIngresosByYear(year: number): Promise<number> {
+    const monthly = await getIngresosByYear(year);
+    return monthly.reduce((sum, val) => sum + val, 0);
+}
+
+export async function getTotalGastosByYear(year: number): Promise<number> {
+    const monthly = await getGastosByYear(year);
+    return monthly.reduce((sum, val) => sum + val, 0);
+}

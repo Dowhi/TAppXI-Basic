@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import Card from '../components/NeumorphicCard';
 import ScreenTopBar from '../components/ScreenTopBar';
 import { Seccion, Turno, CarreraVista, Gasto } from '../types';
-import { getRecentTurnos, getCarrerasPaginadas, getGastos } from '../services/api';
+import { getRecentTurnos, getRecentCarreras, getGastos } from '../services/api';
 
 // Icons
-const TaxiIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>;
-const AttachMoneyIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c2.16-.43 3.5-1.77 3.5-3.6 0-2.13-1.87-3.29-4.7-4.15z"/></svg>;
+const TaxiIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z" /></svg>;
+const AttachMoneyIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c2.16-.43 3.5-1.77 3.5-3.6 0-2.13-1.87-3.29-4.7-4.15z" /></svg>;
 
 interface HistoricoScreenProps {
     navigateTo: (page: Seccion) => void;
@@ -37,7 +37,7 @@ const HistoricoScreen: React.FC<HistoricoScreenProps> = ({ navigateTo }) => {
                 setLoading(true);
                 const [turnosData, carrerasData, gastosData] = await Promise.all([
                     getRecentTurnos(50), // Obtener últimos 50 turnos
-                    getCarrerasPaginadas(300), // Obtener últimas carreras (paginadas)
+                    getRecentCarreras(300), // Obtener últimas carreras (paginadas)
                     getGastos() // Obtener todos los gastos
                 ]);
                 setTurnos(turnosData || []);
@@ -90,11 +90,10 @@ const HistoricoScreen: React.FC<HistoricoScreenProps> = ({ navigateTo }) => {
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
-                            activeTab === tab.id
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${activeTab === tab.id
                                 ? 'bg-blue-600 text-white'
                                 : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-                        }`}
+                            }`}
                     >
                         <span className="w-4 h-4">{tab.icon}</span>
                         {tab.label}
@@ -123,8 +122,8 @@ const HistoricoScreen: React.FC<HistoricoScreenProps> = ({ navigateTo }) => {
                             ) : (
                                 turnos.map(turno => {
                                     const totalTurno = calcularTotalTurno(turno.id);
-                                    const kmsRecorridos = turno.kilometrosFin && turno.kilometrosInicio 
-                                        ? turno.kilometrosFin - turno.kilometrosInicio 
+                                    const kmsRecorridos = turno.kilometrosFin && turno.kilometrosInicio
+                                        ? turno.kilometrosFin - turno.kilometrosInicio
                                         : null;
 
                                     return (
@@ -212,12 +211,11 @@ const HistoricoScreen: React.FC<HistoricoScreenProps> = ({ navigateTo }) => {
                                                         )}
                                                     </div>
                                                     <div className="flex gap-2 mt-2">
-                                                        <span className={`text-xs px-2 py-0.5 rounded ${
-                                                            carrera.formaPago === 'Efectivo' ? 'bg-green-900/50 text-green-300' :
-                                                            carrera.formaPago === 'Tarjeta' ? 'bg-blue-900/50 text-blue-300' :
-                                                            carrera.formaPago === 'Bizum' ? 'bg-purple-900/50 text-purple-300' :
-                                                            'bg-yellow-900/50 text-yellow-300'
-                                                        }`}>
+                                                        <span className={`text-xs px-2 py-0.5 rounded ${carrera.formaPago === 'Efectivo' ? 'bg-green-900/50 text-green-300' :
+                                                                carrera.formaPago === 'Tarjeta' ? 'bg-blue-900/50 text-blue-300' :
+                                                                    carrera.formaPago === 'Bizum' ? 'bg-purple-900/50 text-purple-300' :
+                                                                        'bg-yellow-900/50 text-yellow-300'
+                                                            }`}>
                                                             {carrera.formaPago}
                                                         </span>
                                                         {carrera.emisora && (

@@ -1,32 +1,14 @@
 // Servicio para gestionar recordatorios
-// MIGRADO: Ahora utiliza Firebase a través de api.ts
+// MIGRADO: Ahora utiliza IndexedDB a través de api.ts
 
-import { addReminderFirebase, updateReminderFirebase, deleteReminderFirebase } from './api';
-
-export interface Reminder {
-    id: string;
-    titulo: string;
-    descripcion?: string;
-    tipo: 'mantenimiento' | 'pago' | 'documentacion' | 'personalizado';
-    fechaLimite: string; // ISO string
-    horaRecordatorio?: string; // HH:MM formato
-    fechaRecordatorio?: string; // ISO string - fecha para mostrar alerta antes
-    sonidoActivo: boolean; // Si debe reproducir sonido
-    completado: boolean;
-    fechaCompletado?: string; // ISO string
-    // Para mantenimiento por kilómetros
-    kilometrosLimite?: number;
-    kilometrosActuales?: number;
-    // Metadatos
-    createdAt: string;
-    lastNotified?: string; // Última vez que se mostró la notificación
-}
+import { addReminder, updateReminder as apiUpdateReminder, deleteReminder as apiDeleteReminder } from './api';
+import type { Reminder } from '../types';
 
 /**
- * @deprecated Use subscribeToReminders from api.ts instead
+ * @deprecated Use getReminders from api.ts instead (async)
  */
 export const getReminders = (): Reminder[] => {
-    return []; // Deprecated, component should use subscription
+    return []; // Deprecated
 };
 
 /**
@@ -70,7 +52,6 @@ export const filterRemindersForToday = (reminders: Reminder[]): Reminder[] => {
 
 /**
  * DEPRECATED: Usa filterRemindersForToday pasando la lista de suscripción.
- * Mantenido por compatibilidad temporal si es necesario, pero devolverá vacío.
  */
 export const getRemindersForToday = (): Reminder[] => {
     return [];
@@ -123,39 +104,42 @@ export const filterRemindersToSound = (reminders: Reminder[]): Reminder[] => {
 };
 
 /**
- * Guardar un recordatorio (Firebase)
+ * Guardar un recordatorio (IndexedDB)
  */
 export const saveReminder = async (reminder: Omit<Reminder, 'id' | 'createdAt' | 'completado' | 'sonidoActivo'> & { sonidoActivo?: boolean }): Promise<string> => {
-    const newReminder: any = {
+    // Generate temporary ID if needed, but addReminder will handle it
+    const newReminder: Reminder = {
+        id: crypto.randomUUID(),
         ...reminder,
         sonidoActivo: reminder.sonidoActivo ?? false,
         completado: false,
+        createdAt: new Date().toISOString(),
     };
-    return await addReminderFirebase(newReminder);
+    return await addReminder(newReminder);
 };
 
 /**
- * Actualizar un recordatorio (Firebase)
+ * Actualizar un recordatorio (IndexedDB)
  */
 export const updateReminder = async (id: string, updates: Partial<Reminder>): Promise<void> => {
-    await updateReminderFirebase(id, updates);
+    await apiUpdateReminder(id, updates);
 };
 
 /**
- * Marcar recordatorio como completado (Firebase)
+ * Marcar recordatorio como completado (IndexedDB)
  */
 export const completeReminder = async (id: string): Promise<void> => {
-    await updateReminderFirebase(id, {
+    await apiUpdateReminder(id, {
         completado: true,
         fechaCompletado: new Date().toISOString(),
     });
 };
 
 /**
- * Eliminar un recordatorio (Firebase)
+ * Eliminar un recordatorio (IndexedDB)
  */
 export const deleteReminder = async (id: string): Promise<void> => {
-    await deleteReminderFirebase(id);
+    await apiDeleteReminder(id);
 };
 
 /**
@@ -173,10 +157,10 @@ export const checkMaintenanceReminders = (kilometrosActuales: number, reminders:
 };
 
 /**
- * Marcar recordatorio como notificado (Firebase)
+ * Marcar recordatorio como notificado (IndexedDB)
  */
 export const markReminderAsNotified = async (id: string): Promise<void> => {
-    await updateReminderFirebase(id, { lastNotified: new Date().toISOString() });
+    await apiUpdateReminder(id, { lastNotified: new Date().toISOString() });
 };
 
 

@@ -16,7 +16,7 @@ import {
     restoreExcepcion,
     saveAjustes,
     saveBreakConfiguration,
-    getAllTurnos
+    getTurnos as getAllTurnos
 } from './api';
 import { uploadFileToDrive, createSpreadsheetWithSheets, writeSheetValues, readSheetValues } from './google';
 

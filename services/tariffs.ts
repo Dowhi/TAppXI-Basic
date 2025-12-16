@@ -1,4 +1,4 @@
-import { Ajustes } from "./api";
+import { Ajustes } from "../types";
 
 export interface TariffResult {
     amount: number;

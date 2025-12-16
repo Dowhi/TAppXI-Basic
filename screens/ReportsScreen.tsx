@@ -4,7 +4,7 @@ import ScreenTopBar from '../components/ScreenTopBar';
 import { useToast } from '../components/Toast';
 import { ErrorHandler } from '../services/errorHandler';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { getCarreras, getGastos, getAllTurnos } from '../services/api';
+import { getCarreras, getGastos, getTurnos } from '../services/api';
 import jsPDF from 'jspdf';
 
 // Importar jspdf-autotable - versión 5.x
@@ -62,7 +62,7 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigateTo }) => {
             const [carreras, gastos, turnos] = await Promise.all([
                 getCarreras(),
                 getGastos(),
-                getAllTurnos()
+                getTurnos()
             ]);
 
             // Filtrar por fechas

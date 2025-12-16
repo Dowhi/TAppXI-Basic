@@ -1,5 +1,5 @@
 {
-  "name": "tappxi-web-replica",
+  "name": "tappxi-basic",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -17,6 +17,7 @@
     "@tailwindcss/vite": "^4.1.16",
     "cheerio": "^1.1.2",
     "framer-motion": "^12.23.26",
+    "idb": "^7.1.1",
     "jspdf": "^3.0.3",
     "jspdf-autotable": "^5.0.2",
     "puppeteer": "^24.31.0",
@@ -25,7 +26,7 @@
     "tailwindcss": "^4.1.16",
     "tesseract.js": "^6.0.1",
     "xlsx": "^0.18.5",
-    "zod": "^4.1.13"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

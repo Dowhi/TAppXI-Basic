@@ -151,3 +151,22 @@ export interface Turno {
     kilometrosFin?: number;
     numero?: number;
 }
+
+export interface Reminder {
+    id: string;
+    titulo: string;
+    descripcion?: string;
+    tipo: 'mantenimiento' | 'pago' | 'documentacion' | 'personalizado';
+    fechaLimite: string; // ISO string
+    horaRecordatorio?: string; // HH:MM formato
+    fechaRecordatorio?: string; // ISO string - fecha para mostrar alerta antes
+    sonidoActivo: boolean; // Si debe reproducir sonido
+    completado: boolean;
+    fechaCompletado?: string; // ISO string
+    // Para mantenimiento por kilómetros
+    kilometrosLimite?: number;
+    kilometrosActuales?: number;
+    // Metadatos
+    createdAt: string;
+    lastNotified?: string; // Última vez que se mostró la notificación
+}

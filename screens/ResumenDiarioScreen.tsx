@@ -58,7 +58,7 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
     // Calcular estadísticas por turno
     const turnosConEstadisticas = useMemo(() => {
         // Ordenar turnos por fecha de inicio para calcular números correctos
-        const turnosOrdenados = [...turnos].sort((a, b) => 
+        const turnosOrdenados = [...turnos].sort((a, b) =>
             new Date(a.fechaInicio).getTime() - new Date(b.fechaInicio).getTime()
         );
 
@@ -151,7 +151,7 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
         const newDate = new Date(selectedDate);
         newDate.setDate(newDate.getDate() + days);
         setSelectedDate(newDate);
-        setIsDatePickerOpen(false);
+        setSelectedDate(newDate);
     };
 
     const formatTime = (date: Date | undefined): string => {

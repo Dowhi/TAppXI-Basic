@@ -241,11 +241,12 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ navigateTo }) => {
 
                 return (async () => {
                     try {
-                        const [carreras, totalGastos] = await Promise.all([
+                        const [carreras, gastosList] = await Promise.all([
                             getCarrerasByDate(date),
                             getGastosByDate(date)
                         ]);
                         const totalIngresos = carreras.reduce((sum, carrera) => sum + (carrera.cobrado || 0), 0);
+                        const totalGastos = gastosList.reduce((sum, gasto) => sum + (gasto.importe || 0), 0);
 
                         if (totalIngresos > 0 || totalGastos > 0 || isToday) {
                             return { dayKey, ingresos: totalIngresos, gastos: totalGastos };
