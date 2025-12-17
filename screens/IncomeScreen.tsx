@@ -16,25 +16,11 @@ const BizumIcon: React.FC<{ className?: string }> = ({ className }) => (
     </svg>
 );
 const ValesIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 25" fill="currentColor" className={className}><path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2h-2v2h2V4zM9 18H4v-2h5v2zm0-4H4v-2h5v2zm0-4H4V8h5v2zm7 8h-5v-2h5v2zm0-4h-5v-2h5v2zm0-4h-5V8h5v2z" /></svg>;
-// Icono de Emisora/Antena - Torre de Transmisión (Diseño Simplificado)
+// Icono de Emisora/Antena - Diseño proporcionado por usuario
 const CellTowerIcon: React.FC<{ className?: string }> = ({ className }) => {
     return (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
-            {/* Central Tower */}
-            <path d="M12 6c-0.55 0-1 0.45-1 1v2.17L7.64 16h8.72L13 9.17V7c0-0.55-0.45-1-1-1z" />
-            <path d="M5.8 18h12.4l-1-2H6.8l-1 2z" />
-            <circle cx="12" cy="7" r="1.5" />
-
-            {/* Cross bracing mimic (optional, keeping it simple like the icon usually is) */}
-            <path d="M12 11l-2 4h4l-2-4z" fill="none" stroke="currentColor" strokeWidth="0" />
-
-            {/* Left Waves */}
-            <path d="M7.8 7.2c-0.6 0.6-1 1.5-1 2.4s0.4 1.8 1 2.4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            <path d="M5 4.4c-1.3 1.3-2.1 3.1-2.1 5.1s0.8 3.8 2.1 5.1" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-
-            {/* Right Waves */}
-            <path d="M16.2 7.2c0.6 0.6 1 1.5 1 2.4s-0.4 1.8-1 2.4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            <path d="M19 4.4c1.3 1.3 2.1 3.1 2.1 5.1s-0.8 3.8-2.1 5.1" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor" className={className}>
+            <path d="M196-276q-57-60-86.5-133T80-560q0-78 29.5-151T196-844l48 48q-48 48-72 110.5T148-560q0 63 24 125.5T244-324l-48 48ZM280-80l135-405q-16-14-25.5-33t-9.5-42q0-42 29-71t71-29q42 0 71 29t29 71q0 23-9.5 42T545-485L680-80h-80l-26-80H387l-27 80h-80Zm133-160h134l-67-200-67 200Zm255-132-48-48q30-27 45-64t15-76q0-36-15-73t-45-67l48-48q39 39 58 88t22 100q0 51-20.5 100T668-372Zm96 96-48-48q48-48 72-110.5T812-560q0-63-24-125.5T716-796l48-48q57 60 86.5 133T880-560q0 78-28 151t-88 133Z" />
         </svg>
     );
 };
