@@ -11,6 +11,8 @@ import IncomeScreen from './screens/IncomeScreen';
 import AddEditRaceScreen from './screens/AddEditRaceScreen';
 import ExpensesScreen from './screens/ExpensesScreen';
 import { getCurrentMinimaRate, getCurrentAeropuertoRate } from './services/tariffs';
+import { getActiveTurno } from './services/api';
+import { useToast } from './components/Toast';
 import ShiftsScreen from './screens/ShiftsScreen';
 import CloseTurnScreen from './screens/CloseTurnScreen';
 import EditTurnScreen from './screens/EditTurnScreen';
@@ -87,7 +89,18 @@ const App: React.FC = () => {
         setCurrentPage(Seccion.EditarGasto);
     }, []);
 
-    const handleQuickAction = useCallback((action: string) => {
+    const { showToast } = useToast();
+
+    const handleQuickAction = useCallback(async (action: string) => {
+        // Verificar si hay turno activo antes de permitir acciones de carrera rápida
+        if (action === 'minima' || action === 'aeropuerto') {
+            const activeTurno = await getActiveTurno();
+            if (!activeTurno) {
+                showToast('⚠️ Debes iniciar un turno para poder registrar carreras.', 'warning');
+                return;
+            }
+        }
+
         if (action === 'minima') {
             const { amount, tariffName } = getCurrentMinimaRate();
             setInitialRaceData({
@@ -95,9 +108,8 @@ const App: React.FC = () => {
                 cobrado: amount,
                 formaPago: 'Efectivo',
                 tipoCarrera: 'Urbana',
-                suplementos: tariffName // Optional: store which tariff was applied? 
+                suplementos: tariffName
             });
-            // showToast(`Aplicada ${tariffName}: ${amount}€`, 'info'); // Requires using toast here if possible, but handleQuickAction is top level.
             navigateTo(Seccion.IntroducirCarrera);
         } else if (action === 'aeropuerto') {
             const { amount, tariffName, isNight } = getCurrentAeropuertoRate();
@@ -110,7 +122,7 @@ const App: React.FC = () => {
             });
             navigateTo(Seccion.IntroducirCarrera);
         }
-    }, [navigateTo]);
+    }, [navigateTo, showToast]);
 
     // Atajos de teclado globales
     useKeyboardShortcuts([
