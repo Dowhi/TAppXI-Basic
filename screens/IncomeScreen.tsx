@@ -16,13 +16,21 @@ const BizumIcon: React.FC<{ className?: string }> = ({ className }) => (
     </svg>
 );
 const ValesIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 25" fill="currentColor" className={className}><path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2h-2v2h2V4zM9 18H4v-2h5v2zm0-4H4v-2h5v2zm0-4H4V8h5v2zm7 8h-5v-2h5v2zm0-4h-5v-2h5v2zm0-4h-5V8h5v2z" /></svg>;
-// Icono de Emisora/Antena - SVG SVG original
+// Icono de Emisora/Antena - Mejorado (Ondas)
 const CellTowerIcon: React.FC<{ className?: string }> = ({ className }) => {
     return (
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 16h2v-6h-2v6zm0-8h2V7h-2v3z" />
-            <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-2.21 0-4.21.9-5.65 2.35L7.76 7.76C8.89 6.64 10.37 6 12 6s3.11.64 4.24 1.76l1.41-1.41z" />
-            <path d="M14.83 9.17C14.09 8.43 13.09 8 12 8s-2.09.43-2.83 1.17L10.59 10.59C10.96 10.21 11.46 10 12 10s1.04.21 1.41.59l1.42-1.42z" />
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z" opacity=".1" />
+            <path d="M12 3v2c4.97 0 9 4.03 9 9s-4.03 9-9 9V2c5.52 0 10 4.48 10 10S17.52 22 12 22 2 17.52 2 12 6.48 2 12 2z" opacity="0" />
+
+            {/* Base Dot */}
+            <circle cx="12" cy="12" r="2.5" />
+
+            {/* Inner Wave */}
+            <path d="M12 8c2.21 0 4 1.79 4 4s-1.79 4-4 4-4-1.79-4-4 1.79-4 4-4zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" opacity=".5" />
+
+            {/* Outer Waves */}
+            <path d="M12 5c3.87 0 7 3.13 7 7s-3.13 7-7 7-7-3.13-7-7 3.13-7 7-7zm0 2c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5z" />
         </svg>
     );
 };
@@ -43,22 +51,13 @@ const BroadcastIcon: React.FC<{ className?: string }> = ({ className }) => (
     </svg>
 );
 
-// Icono de Aeropuerto/Avión - imagen personalizada
+// Icono de Aeropuerto - SVG Avión
 const FlightTakeoffIcon: React.FC<{ className?: string; title?: string }> = ({ className, title }) => {
-    // Usar la ruta base correcta para GitHub Pages
-    const basePath = window.location.pathname.includes('/tappxi-web-replica/') ? '/tappxi-web-replica/' : '/';
     return (
-        <img
-            src={`${basePath}airport-icon.png`}
-            alt="Aeropuerto"
-            title={title}
-            className={className}
-            style={{
-                objectFit: 'contain',
-                width: '35px',
-                height: '36px'
-            }}
-        />
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className} role="img" aria-label={title}>
+            <title>{title}</title>
+            <path d="M2.5 19h19v2h-19zm19.57-9.36c-.21-.8-1.04-1.28-1.84-1.06L14.92 10l-6.9-6.43-1.93.51 4.14 7.17-4.97 1.33-1.97-1.54-1.45.39 1.82 3.16.77 1.33 1.6-.43 5.31-1.42 4.35-1.16L21 11.49c.81-.23 1.28-1.05 1.07-1.85z" />
+        </svg>
     );
 };
 // Icono de Estación/Tren
@@ -185,7 +184,13 @@ const IncomeScreen: React.FC<IncomeScreenProps> = ({ navigateTo, navigateToEditR
                 return fechaCarrera >= today && fechaCarrera < tomorrow;
             });
         }
-        return carrerasFiltradas;
+
+        // ORDENAR: Más reciente primero (descendente)
+        return carrerasFiltradas.sort((a, b) => {
+            const dateA = a.fechaHora instanceof Date ? a.fechaHora : new Date(a.fechaHora);
+            const dateB = b.fechaHora instanceof Date ? b.fechaHora : new Date(b.fechaHora);
+            return dateB.getTime() - dateA.getTime();
+        });
     }, [allCarreras, turnoActivo, loading]);
 
     // Real-time subscription to gastos - carga desde la base de datos
