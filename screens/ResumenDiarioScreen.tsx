@@ -44,7 +44,8 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
                 ]);
                 setTurnos(turnosData);
                 setCarreras(carrerasData);
-                setGastosTotal(gastosData);
+                const totalGastos = gastosData.reduce((sum: number, g: any) => sum + (Number(g.importe) || 0), 0);
+                setGastosTotal(totalGastos);
             } catch (error) {
                 console.error("Error loading daily summary:", error);
             } finally {
