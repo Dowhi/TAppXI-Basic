@@ -33,10 +33,14 @@ export async function deleteCarrera(id: string): Promise<void> {
 
 export async function getCarrerasByDate(date: Date): Promise<CarreraVista[]> {
     const all = await getCarreras();
-    const targetISO = date.toISOString().split('T')[0];
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
     return all.filter(c => {
         const cDate = c.fechaHora instanceof Date ? c.fechaHora : new Date(c.fechaHora);
-        return cDate.toISOString().split('T')[0] === targetISO;
+        return cDate >= startOfDay && cDate <= endOfDay;
     });
 }
 
@@ -67,10 +71,14 @@ export async function deleteGasto(id: string): Promise<void> {
 
 export async function getGastosByDate(date: Date): Promise<Gasto[]> {
     const all = await getGastos();
-    const targetISO = date.toISOString().split('T')[0];
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
     return all.filter(g => {
         const gDate = g.fecha instanceof Date ? g.fecha : new Date(g.fecha);
-        return gDate.toISOString().split('T')[0] === targetISO;
+        return gDate >= startOfDay && gDate <= endOfDay;
     });
 }
 

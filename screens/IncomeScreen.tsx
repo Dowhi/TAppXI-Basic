@@ -16,23 +16,32 @@ const BizumIcon: React.FC<{ className?: string }> = ({ className }) => (
     </svg>
 );
 const ValesIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 25" fill="currentColor" className={className}><path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2h-2v2h2V4zM9 18H4v-2h5v2zm0-4H4v-2h5v2zm0-4H4V8h5v2zm7 8h-5v-2h5v2zm0-4h-5v-2h5v2zm0-4h-5V8h5v2z" /></svg>;
-// Icono de Emisora/Antena - imagen personalizada
+// Icono de Emisora/Antena - SVG SVG original
 const CellTowerIcon: React.FC<{ className?: string }> = ({ className }) => {
-    // Usar la ruta base correcta para GitHub Pages
-    const basePath = window.location.pathname.includes('/tappxi-web-replica/') ? '/tappxi-web-replica/' : '/';
     return (
-        <img
-            src={`${basePath}radio-tower-icon.png`}
-            alt="Emisora"
-            className={className}
-            style={{
-                objectFit: 'contain',
-                width: '28px',
-                height: '28px'
-            }}
-        />
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 16h2v-6h-2v6zm0-8h2V7h-2v3z" />
+            <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-2.21 0-4.21.9-5.65 2.35L7.76 7.76C8.89 6.64 10.37 6 12 6s3.11.64 4.24 1.76l1.41-1.41z" />
+            <path d="M14.83 9.17C14.09 8.43 13.09 8 12 8s-2.09.43-2.83 1.17L10.59 10.59C10.96 10.21 11.46 10 12 10s1.04.21 1.41.59l1.42-1.42z" />
+        </svg>
     );
 };
+// Simpler Tower Icon for clarity
+const RadioIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 16h2v-6h-2v6zm0-8h2V7h-2v3z" />
+        <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-2.21 0-4.21.9-5.65 2.35L7.76 7.76C8.89 6.64 10.37 6 12 6s3.11.64 4.24 1.76l1.41-1.41z" />
+        <path d="M14.83 9.17C14.09 8.43 13.09 8 12 8s-2.09.43-2.83 1.17L10.59 10.59C10.96 10.21 11.46 10 12 10s1.04.21 1.41.59l1.42-1.42z" />
+    </svg>
+);
+
+// We will use the RadioIcon as the replacement for CellTowerIcon
+const BroadcastIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+        <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+        <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+    </svg>
+);
 
 // Icono de Aeropuerto/Avión - imagen personalizada
 const FlightTakeoffIcon: React.FC<{ className?: string; title?: string }> = ({ className, title }) => {
