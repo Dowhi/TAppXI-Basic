@@ -16,47 +16,25 @@ const BizumIcon: React.FC<{ className?: string }> = ({ className }) => (
     </svg>
 );
 const ValesIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 25" fill="currentColor" className={className}><path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2h-2v2h2V4zM9 18H4v-2h5v2zm0-4H4v-2h5v2zm0-4H4V8h5v2zm7 8h-5v-2h5v2zm0-4h-5v-2h5v2zm0-4h-5V8h5v2z" /></svg>;
-// Icono de Emisora/Antena - Radio Transmisor (Color detallado estilo foto)
+// Icono de Emisora/Antena - Torre de Transmisión (Diseño Simplificado)
 const CellTowerIcon: React.FC<{ className?: string }> = ({ className }) => {
-    // Nota: Este icono tiene colores propios para mejorar su visibilidad como pidió el usuario.
-    // Ignorará parcialmente el color del texto (currentColor) para los rellenos, pero usará currentColor para bordes si no se especifica.
     return (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className={className}>
-            {/* CABLE (Cord) - Black */}
-            <path d="M9 13 C 5 13, 2 15, 2 17 C 2 19, 5 19, 5 19" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+            {/* Central Tower */}
+            <path d="M12 6c-0.55 0-1 0.45-1 1v2.17L7.64 16h8.72L13 9.17V7c0-0.55-0.45-1-1-1z" />
+            <path d="M5.8 18h12.4l-1-2H6.8l-1 2z" />
+            <circle cx="12" cy="7" r="1.5" />
 
-            {/* BASE RADIO UNIT */}
-            {/* Body */}
-            <rect x="5" y="13" width="18" height="10" rx="1" fill="#9CA3AF" stroke="currentColor" strokeWidth="1.5" />
-            {/* Screen */}
-            <rect x="7" y="15" width="8" height="4" fill="#06B6D4" />
-            <path d="M8 17h6" stroke="white" strokeWidth="1" opacity="0.7" />
-            {/* Big Knob */}
-            <circle cx="19" cy="17" r="2.5" fill="#FCD34D" stroke="currentColor" strokeWidth="1" />
-            <circle cx="19" cy="17" r="0.5" fill="currentColor" />
-            {/* Small Buttons */}
-            <rect x="17" y="14" width="1.5" height="1.5" fill="#EF4444" />
-            <rect x="20" y="14" width="1.5" height="1.5" fill="#FCD34D" />
-            <rect x="17" y="20" width="1.5" height="1.5" fill="white" />
-            <rect x="20" y="20" width="1.5" height="1.5" fill="white" />
-            <rect x="7" y="20" width="2" height="1.5" fill="currentColor" opacity="0.5" />
-            <rect x="10" y="20" width="2" height="1.5" fill="currentColor" opacity="0.5" />
+            {/* Cross bracing mimic (optional, keeping it simple like the icon usually is) */}
+            <path d="M12 11l-2 4h4l-2-4z" fill="none" stroke="currentColor" strokeWidth="0" />
 
-            {/* MICROPHONE (Handheld) */}
-            {/* Main Mic Body */}
-            <rect x="7" y="1" width="8" height="10" rx="2" fill="#D1D5DB" stroke="currentColor" strokeWidth="1.5" />
-            {/* Speaker/Mic Grille Area - Black */}
-            <path d="M8 2h6v5h-6z" fill="#1F2937" />
-            <path d="M9 3h4M9 4.5h4M9 6h4" stroke="#9CA3AF" strokeWidth="1" />
-            {/* Lower Mic Area */}
-            <path d="M7 7h8v3a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2z" fill="#9CA3AF" />
-            {/* PTT Button (Yellow side) */}
-            <path d="M6 3h1v4H6z" fill="#FCD34D" stroke="currentColor" strokeWidth="0.5" />
+            {/* Left Waves */}
+            <path d="M7.8 7.2c-0.6 0.6-1 1.5-1 2.4s0.4 1.8 1 2.4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <path d="M5 4.4c-1.3 1.3-2.1 3.1-2.1 5.1s0.8 3.8 2.1 5.1" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
 
-            {/* WAVES (Signal) */}
-            <path d="M17 3 a 4 4 0 0 1 0 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            <path d="M19 1 a 7 7 0 0 1 0 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
-
+            {/* Right Waves */}
+            <path d="M16.2 7.2c0.6 0.6 1 1.5 1 2.4s-0.4 1.8-1 2.4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <path d="M19 4.4c1.3 1.3 2.1 3.1 2.1 5.1s-0.8 3.8-2.1 5.1" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
         </svg>
     );
 };
