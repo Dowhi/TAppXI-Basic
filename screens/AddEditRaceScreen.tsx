@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Seccion, CarreraVista } from '../types';
-import { getCarrera, addCarrera, updateCarrera, deleteCarrera, getValesDirectory, ValeDirectoryEntry } from '../services/api';
+import { getCarrera, addCarrera, updateCarrera, deleteCarrera, getValesDirectory, ValeDirectoryEntry, getActiveTurno } from '../services/api';
+
+
 import ScreenTopBar from '../components/ScreenTopBar';
 import { useToast } from '../components/Toast';
 import { ErrorHandler } from '../services/errorHandler';
@@ -495,6 +497,17 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
         }
 
         setIsSubmitting(true);
+
+        let turnoIdToUse = initialData?.turnoId;
+
+        // Si es una nueva carrera (no edición) o si no tiene turno asignado, intentamos asignar el turno activo
+        if (!raceId || !turnoIdToUse) {
+            const activeTurno = await getActiveTurno();
+            if (activeTurno) {
+                turnoIdToUse = activeTurno.id;
+            }
+        }
+
         const carreraData = {
             taximetro: taximetroValue,
             cobrado: cobradoValue || taximetroValue, // Si no hay cobrado, usar taximetro
@@ -505,6 +518,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
             estacion: esEstacion,
             valeInfo: isValePayment ? sanitizedValeInfo : null,
             notas: sanitizedNotas.length > 0 ? sanitizedNotas : null,
+            turnoId: turnoIdToUse,
         };
         try {
             if (isEditing && raceId) {
@@ -554,8 +568,8 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                         <button
                             onClick={isListening ? stopListening : startListening}
                             className={`p-1.5 transition-colors rounded-full ${isListening
-                                    ? 'bg-red-500/20 text-red-400 animate-pulse ring-2 ring-red-500'
-                                    : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800'
+                                ? 'bg-red-500/20 text-red-400 animate-pulse ring-2 ring-red-500'
+                                : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800'
                                 }`}
                             aria-label="Entrada de voz"
                         >
