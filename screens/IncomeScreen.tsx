@@ -16,21 +16,33 @@ const BizumIcon: React.FC<{ className?: string }> = ({ className }) => (
     </svg>
 );
 const ValesIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 25" fill="currentColor" className={className}><path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2h-2v2h2V4zM9 18H4v-2h5v2zm0-4H4v-2h5v2zm0-4H4V8h5v2zm7 8h-5v-2h5v2zm0-4h-5v-2h5v2zm0-4h-5V8h5v2z" /></svg>;
-// Icono de Emisora/Antena - Mejorado (Ondas)
+// Icono de Emisora/Antena - Radio Transmisor (Diseño Usuario)
 const CellTowerIcon: React.FC<{ className?: string }> = ({ className }) => {
     return (
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z" opacity=".1" />
-            <path d="M12 3v2c4.97 0 9 4.03 9 9s-4.03 9-9 9V2c5.52 0 10 4.48 10 10S17.52 22 12 22 2 17.52 2 12 6.48 2 12 2z" opacity="0" />
+            {/* Base Radio Unit */}
+            <path d="M4 14h16c1.1 0 2 .9 2 2v4c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2v-4c0-1.1.9-2 2-2zm0 2v4h16v-4H4z" />
+            {/* Screen with Pulse */}
+            <path d="M6 15.5h7v3H6z" fill="none" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M7 17l1.5-1 1.5 2 1.5-2 1.5 1" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            {/* Knob and Buttons */}
+            <circle cx="17.5" cy="17" r="1.5" fill="currentColor" />
+            <path d="M15.5 19.5h1M17.5 19.5h1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
 
-            {/* Base Dot */}
-            <circle cx="12" cy="12" r="2.5" />
+            {/* Microphone */}
+            <path d="M16 2h3c1.1 0 2 .9 2 2v5c0 1.1-.9 2-2 2h-3c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2zm0 2v5h3V4h-3z" />
+            {/* Mic Grille */}
+            <path d="M17 5h1M17 7h1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            {/* Side Switch */}
+            <path d="M21.5 4v3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
 
-            {/* Inner Wave */}
-            <path d="M12 8c2.21 0 4 1.79 4 4s-1.79 4-4 4-4-1.79-4-4 1.79-4 4-4zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" opacity=".5" />
+            {/* Coiled Cord */}
+            <path d="M18 11v3c0 0 0 2-2 2h-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
 
-            {/* Outer Waves */}
-            <path d="M12 5c3.87 0 7 3.13 7 7s-3.13 7-7 7-7-3.13-7-7 3.13-7 7-7zm0 2c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5z" />
+            {/* Radio Waves (Top Left) */}
+            <path d="M11 4.5A7 7 0 0 0 5 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <path d="M13 2A10 10 0 0 0 4 13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
+            <path d="M9 7a4 4 0 0 0-3 3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
         </svg>
     );
 };
