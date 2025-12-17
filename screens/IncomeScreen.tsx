@@ -16,33 +16,47 @@ const BizumIcon: React.FC<{ className?: string }> = ({ className }) => (
     </svg>
 );
 const ValesIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 25" fill="currentColor" className={className}><path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2h-2v2h2V4zM9 18H4v-2h5v2zm0-4H4v-2h5v2zm0-4H4V8h5v2zm7 8h-5v-2h5v2zm0-4h-5v-2h5v2zm0-4h-5V8h5v2z" /></svg>;
-// Icono de Emisora/Antena - Radio Transmisor (Diseño Usuario)
+// Icono de Emisora/Antena - Radio Transmisor (Color detallado estilo foto)
 const CellTowerIcon: React.FC<{ className?: string }> = ({ className }) => {
+    // Nota: Este icono tiene colores propios para mejorar su visibilidad como pidió el usuario.
+    // Ignorará parcialmente el color del texto (currentColor) para los rellenos, pero usará currentColor para bordes si no se especifica.
     return (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
-            {/* Base Radio Unit */}
-            <path d="M4 14h16c1.1 0 2 .9 2 2v4c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2v-4c0-1.1.9-2 2-2zm0 2v4h16v-4H4z" />
-            {/* Screen with Pulse */}
-            <path d="M6 15.5h7v3H6z" fill="none" stroke="currentColor" strokeWidth="1.5" />
-            <path d="M7 17l1.5-1 1.5 2 1.5-2 1.5 1" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            {/* Knob and Buttons */}
-            <circle cx="17.5" cy="17" r="1.5" fill="currentColor" />
-            <path d="M15.5 19.5h1M17.5 19.5h1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className={className}>
+            {/* CABLE (Cord) - Black */}
+            <path d="M9 13 C 5 13, 2 15, 2 17 C 2 19, 5 19, 5 19" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
 
-            {/* Microphone */}
-            <path d="M16 2h3c1.1 0 2 .9 2 2v5c0 1.1-.9 2-2 2h-3c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2zm0 2v5h3V4h-3z" />
-            {/* Mic Grille */}
-            <path d="M17 5h1M17 7h1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            {/* Side Switch */}
-            <path d="M21.5 4v3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            {/* BASE RADIO UNIT */}
+            {/* Body */}
+            <rect x="5" y="13" width="18" height="10" rx="1" fill="#9CA3AF" stroke="currentColor" strokeWidth="1.5" />
+            {/* Screen */}
+            <rect x="7" y="15" width="8" height="4" fill="#06B6D4" />
+            <path d="M8 17h6" stroke="white" strokeWidth="1" opacity="0.7" />
+            {/* Big Knob */}
+            <circle cx="19" cy="17" r="2.5" fill="#FCD34D" stroke="currentColor" strokeWidth="1" />
+            <circle cx="19" cy="17" r="0.5" fill="currentColor" />
+            {/* Small Buttons */}
+            <rect x="17" y="14" width="1.5" height="1.5" fill="#EF4444" />
+            <rect x="20" y="14" width="1.5" height="1.5" fill="#FCD34D" />
+            <rect x="17" y="20" width="1.5" height="1.5" fill="white" />
+            <rect x="20" y="20" width="1.5" height="1.5" fill="white" />
+            <rect x="7" y="20" width="2" height="1.5" fill="currentColor" opacity="0.5" />
+            <rect x="10" y="20" width="2" height="1.5" fill="currentColor" opacity="0.5" />
 
-            {/* Coiled Cord */}
-            <path d="M18 11v3c0 0 0 2-2 2h-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            {/* MICROPHONE (Handheld) */}
+            {/* Main Mic Body */}
+            <rect x="7" y="1" width="8" height="10" rx="2" fill="#D1D5DB" stroke="currentColor" strokeWidth="1.5" />
+            {/* Speaker/Mic Grille Area - Black */}
+            <path d="M8 2h6v5h-6z" fill="#1F2937" />
+            <path d="M9 3h4M9 4.5h4M9 6h4" stroke="#9CA3AF" strokeWidth="1" />
+            {/* Lower Mic Area */}
+            <path d="M7 7h8v3a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2z" fill="#9CA3AF" />
+            {/* PTT Button (Yellow side) */}
+            <path d="M6 3h1v4H6z" fill="#FCD34D" stroke="currentColor" strokeWidth="0.5" />
 
-            {/* Radio Waves (Top Left) */}
-            <path d="M11 4.5A7 7 0 0 0 5 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            <path d="M13 2A10 10 0 0 0 4 13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
-            <path d="M9 7a4 4 0 0 0-3 3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            {/* WAVES (Signal) */}
+            <path d="M17 3 a 4 4 0 0 1 0 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <path d="M19 1 a 7 7 0 0 1 0 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
+
         </svg>
     );
 };
