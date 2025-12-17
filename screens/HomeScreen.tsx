@@ -226,7 +226,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction }) =>
           getAjustes(),
         ]);
         setIngresos(ingresosData);
-        setGastos(gastosData);
+        // Ensure gastos is a number, handling potential array returns (legacy API behavior?)
+        const gastosValue = Array.isArray(gastosData)
+          ? gastosData.reduce((sum: number, g: any) => sum + (Number(g.importe) || 0), 0)
+          : (Number(gastosData) || 0);
+        setGastos(gastosValue);
 
         // Cargar objetivo diario
         const objetivo = ajustes?.objetivoDiario || parseFloat(localStorage.getItem('objetivoDiario') || '100');
@@ -334,7 +338,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction }) =>
     { label: 'Ajustes', icon: <SettingsIcon />, action: () => navigateTo(Seccion.AjustesGenerales) },
   ];
 
-  const formatCurrency = (value: number): string => `${value.toFixed(2).replace('.', ',')} €`;
+  const formatCurrency = (value: any): string => `${(Number(value) || 0).toFixed(2).replace('.', ',')} €`;
 
   const today = new Date();
   const formattedDate = today.toLocaleDateString('es-ES', {
