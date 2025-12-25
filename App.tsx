@@ -45,7 +45,7 @@ const App: React.FC = () => {
     const [refreshGastosKey, setRefreshGastosKey] = useState(0);
     const { isDark } = useTheme();
 
-    // Iniciar verificación de recordatorios con sonido
+    // Iniciar verificación de sonidos
     useEffect(() => {
         // Solicitar permiso para notificaciones al iniciar
         requestNotificationPermission();
@@ -58,6 +58,11 @@ const App: React.FC = () => {
             stopReminderSoundCheck();
         };
     }, []);
+
+    // Scroll to top whenever page changes
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, [currentPage]);
 
     const navigateTo = useCallback((page: Seccion, id?: string) => {
         if (page === Seccion.IntroducirCarrera) {
