@@ -629,7 +629,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                         {/* Propina Display */}
                         {propinaValue > 0 && (
                             <div className="mt-1 flex justify-end items-center px-1">
-                                <span className="text-xs font-medium text-emerald-400 bg-emerald-900/20 px-2 py-0.5 rounded-full border border-emerald-900/50">
+                                <span className="text-sm font-bold text-emerald-400 bg-emerald-900/20 px-3 py-1 rounded-full border border-emerald-900/50">
                                     Propina: {propinaValue.toFixed(2)} €
                                 </span>
                             </div>
