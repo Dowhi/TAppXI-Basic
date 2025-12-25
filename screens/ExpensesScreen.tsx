@@ -474,18 +474,66 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigateTo, gastoId }) 
         }
     };
 
-    const handleScanComplete = (data: { importe?: number; litros?: number; concepto?: string }) => {
+    const handleScanComplete = (data: {
+        importe?: number;
+        litros?: number;
+        concepto?: string;
+        fecha?: Date;
+        numeroFactura?: string;
+        nif?: string;
+        proveedor?: string;
+    }) => {
         setShowScanner(false);
+
         if (data.importe) setImporteTotal(data.importe.toString());
         if (data.litros) setLitros(data.litros.toString());
+
+        if (data.fecha) {
+            // Adjust for timezone to avoid off-by-one errors when converting to string
+            // actually toISOString().split('T')[0] uses UTC. 
+            // We constructed the date as local time components in scanner (new Date(y,m,d)).
+            // To set value for input type="date", we need YYYY-MM-DD.
+            // Since new Date(y, m, d) creates a local date at 00:00, 
+            // the safest way to get YYYY-MM-DD local string is:
+            const year = data.fecha.getFullYear();
+            const month = (data.fecha.getMonth() + 1).toString().padStart(2, '0');
+            const day = data.fecha.getDate().toString().padStart(2, '0');
+            setFecha(`${year}-${month}-${day}`);
+        }
+
+        if (data.numeroFactura) setNumeroFactura(data.numeroFactura);
+
         if (data.concepto) {
             setConceptoName(data.concepto);
-            // Logic to auto-select tab based on concept could go here if robust enough
+            // Logic to auto-select tab based on concept
             if (data.concepto === 'Combustible' || data.concepto === 'Mantenimiento') {
-                // Common defaults
+                // Could auto-switch tab, but let's respect user current choice or default?
+                // If it's maintenance, likely Vehicle tab
+                if (data.concepto === 'Mantenimiento' && activeTab !== 'vehiculo') {
+                    setActiveTab('vehiculo');
+                }
             }
         }
-        showToast('Datos escaneados aplicados', 'success');
+
+        if (data.proveedor) {
+            if (activeTab === 'vehiculo') {
+                setTallerName(data.proveedor);
+            } else {
+                setProveedorName(data.proveedor);
+            }
+        }
+
+        let toastMsg = 'Datos escaneados aplicados';
+        if (data.nif) {
+            // Append NIF to notes if found, as we don't have a direct field for it on the main form
+            setNotas(prev => {
+                const nifText = `NIF: ${data.nif}`;
+                return prev ? `${prev}\n${nifText}` : nifText;
+            });
+            toastMsg += ' (+NIF en notas)';
+        }
+
+        showToast(toastMsg, 'success');
     };
 
     const handleSaveExpense = async () => {
