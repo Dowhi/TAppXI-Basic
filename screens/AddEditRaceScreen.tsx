@@ -523,10 +523,8 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
         try {
             if (isEditing && raceId) {
                 await updateCarrera(raceId, { ...carreraData, fechaHora: new Date() });
-                showToast('Carrera actualizada correctamente', 'success');
             } else {
                 await addCarrera({ ...carreraData, fechaHora: new Date() });
-                showToast('Carrera guardada correctamente', 'success');
             }
             // Navegar de vuelta a la pantalla de carreras después de guardar
             navigateTo(Seccion.VistaCarreras);
