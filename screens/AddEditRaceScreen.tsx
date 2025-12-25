@@ -626,6 +626,14 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                         {isFieldTouched('cobrado') && getFieldError('cobrado') && (
                             <p className="text-xs text-red-400 mt-1">{getFieldError('cobrado')}</p>
                         )}
+                        {/* Propina Display */}
+                        {propinaValue > 0 && (
+                            <div className="mt-1 flex justify-end items-center px-1">
+                                <span className="text-xs font-medium text-emerald-400 bg-emerald-900/20 px-2 py-0.5 rounded-full border border-emerald-900/50">
+                                    Propina: {propinaValue.toFixed(2)} €
+                                </span>
+                            </div>
+                        )}
                         {/* Propina display logic needs variables in scope */}
 
                     </FormField>
