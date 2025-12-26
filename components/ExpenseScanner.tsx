@@ -59,15 +59,49 @@ export const ExpenseScanner: React.FC<ExpenseScannerProps> = ({ onScanComplete, 
         const lowerText = text.toLowerCase();
 
         // 1. Extract amounts (prices)
-        const priceRegex = /\b\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})\b/g;
-        const matches = text.match(priceRegex);
+        // Improved regex to capture amounts with context
+        const amountRegex = /\b\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})\b/g;
 
-        if (matches) {
-            const numbers = matches.map(m => parseFloat(m.replace(',', '.'))).filter(n => !isNaN(n));
-            if (numbers.length > 0) {
-                // Usually the Total is the largest number
-                const maxAmount = Math.max(...numbers);
-                data.importe = maxAmount;
+        let foundAmount = false;
+
+        // Strategy A: Explicit "Total" lines
+        for (const line of lines) {
+            const lowerLine = line.toLowerCase();
+            if ((lowerLine.includes('total') || lowerLine.includes('venta') || lowerLine.includes('importe')) && !lowerLine.includes('preautorizado') && !lowerLine.includes('subtotal')) {
+                const matches = line.match(amountRegex);
+                if (matches) {
+                    const vals = matches.map(m => parseFloat(m.replace(',', '.'))).filter(n => !isNaN(n));
+                    if (vals.length > 0) {
+                        data.importe = Math.max(...vals); // Take max on that line (e.g. "Total 35.26 EUR")
+                        foundAmount = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Strategy B: Fallback if no specific total found
+        if (!foundAmount) {
+            const matches = text.match(amountRegex);
+            if (matches) {
+                let numbers = matches.map(m => parseFloat(m.replace(',', '.'))).filter(n => !isNaN(n));
+
+                // Filter out likely pre-auth amounts
+                const preAuthLines = lines.filter(l => l.toLowerCase().includes('preautorizado'));
+                const preAuthNumbers: number[] = [];
+                preAuthLines.forEach(l => {
+                    const m = l.match(amountRegex);
+                    if (m) m.forEach(v => preAuthNumbers.push(parseFloat(v.replace(',', '.'))));
+                });
+
+                // Remove preAuthNumbers from detection
+                if (preAuthNumbers.length > 0) {
+                    numbers = numbers.filter(n => !preAuthNumbers.includes(n));
+                }
+
+                if (numbers.length > 0) {
+                    data.importe = Math.max(...numbers);
+                }
             }
         }
 
@@ -79,23 +113,43 @@ export const ExpenseScanner: React.FC<ExpenseScannerProps> = ({ onScanComplete, 
         }
 
         // 3. Extract Date
-        // Matches DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
+        let dateFound = false;
         const dateRegex = /\b(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})\b/;
-        const dateMatch = text.match(dateRegex);
-        if (dateMatch) {
-            const day = parseInt(dateMatch[1]);
-            const month = parseInt(dateMatch[2]) - 1; // Month is 0-indexed
-            let year = parseInt(dateMatch[3]);
-            if (year < 100) year += 2000; // Assume 21 -> 2021
 
-            const parsedDate = new Date(year, month, day);
-            if (!isNaN(parsedDate.getTime())) {
-                data.fecha = parsedDate;
+        // Try line by line for "Fecha" label first
+        const dateLabelRegex = /fecha\s*[:.]?\s*(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})/i;
+        for (const line of lines) {
+            const match = line.match(dateLabelRegex);
+            if (match) {
+                const day = parseInt(match[1]);
+                const month = parseInt(match[2]) - 1;
+                let year = parseInt(match[3]);
+                if (year < 100) year += 2000;
+                const parsed = new Date(year, month, day);
+                if (!isNaN(parsed.getTime())) {
+                    data.fecha = parsed;
+                    dateFound = true;
+                    break;
+                }
+            }
+        }
+
+        // Fallback: any date regex in text
+        if (!dateFound) {
+            const dateMatch = text.match(dateRegex);
+            if (dateMatch) {
+                const day = parseInt(dateMatch[1]);
+                const month = parseInt(dateMatch[2]) - 1;
+                let year = parseInt(dateMatch[3]);
+                if (year < 100) year += 2000;
+                const parsedDate = new Date(year, month, day);
+                if (!isNaN(parsedDate.getTime())) {
+                    data.fecha = parsedDate;
+                }
             }
         }
 
         // 4. Extract NIF/CIF
-        // Spanish NIF: 8 digits + Letter, or Letter + 8 digits/letters
         const nifRegex = /\b([0-9]{8}[A-Z]|[A-Z][0-9]{8}|[A-Z][0-9]{7}[A-Z])\b/i;
         const nifMatch = text.match(nifRegex);
         if (nifMatch) {
@@ -103,11 +157,17 @@ export const ExpenseScanner: React.FC<ExpenseScannerProps> = ({ onScanComplete, 
         }
 
         // 5. Extract Invoice Number
-        // Look for "Factura", "Ticket", "Nº" followed by something
-        const invoiceNumRegex = /(?:Factura|Ticket|Nº|Num)\s*[:.]?\s*([A-Z0-9-/]+)/i;
-        const invoiceMatch = text.match(invoiceNumRegex);
+        // Improved to handle "Factura N." or just "N." at start of line or after Factura
+        const invoiceNumRegex = /(?:Factura|Ticket)\s*(?:N[º.]?|Num)?\s*[:.]?\s*([A-Z0-9-/]+)/i;
+        const specificInvoiceRegex = /(?:Factura|N\.)\s+([0-9-]+\s+[A-Z0-9]+(?:\s+[0-9]+)?)/i;
+
+        let invoiceMatch = text.match(specificInvoiceRegex);
+        if (!invoiceMatch) {
+            invoiceMatch = text.match(invoiceNumRegex);
+        }
+
         if (invoiceMatch) {
-            data.numeroFactura = invoiceMatch[1];
+            data.numeroFactura = invoiceMatch[1].trim();
         }
 
         // 6. Identify Vendor & Concept
@@ -119,6 +179,10 @@ export const ExpenseScanner: React.FC<ExpenseScannerProps> = ({ onScanComplete, 
             { name: 'Shell', concept: 'Combustible' },
             { name: 'Carrefour', concept: 'Combustible' },
             { name: 'Mercadona', concept: 'Supermercado' },
+            { name: 'Costco', concept: 'Combustible' },
+            { name: 'Ballenoil', concept: 'Combustible' },
+            { name: 'Petroprix', concept: 'Combustible' },
+            { name: 'Plenoil', concept: 'Combustible' }
         ];
 
         let foundVendor = false;
@@ -133,27 +197,27 @@ export const ExpenseScanner: React.FC<ExpenseScannerProps> = ({ onScanComplete, 
 
         // Fallback for Concept
         if (!data.concepto) {
-            if (lowerText.includes('gasoleo') || lowerText.includes('gasolina') || lowerText.includes('diesel')) {
+            if (lowerText.includes('gasoleo') || lowerText.includes('gasolina') || lowerText.includes('diesel') || lowerText.includes('sp 95') || lowerText.includes('sp95')) {
                 data.concepto = 'Combustible';
-            } else if (lowerText.includes('talle') || lowerText.includes('reparacion')) {
+            } else if (lowerText.includes('talle') || lowerText.includes('reparacion') || lowerText.includes('aceite')) {
                 data.concepto = 'Mantenimiento';
             }
         }
 
-        // Fallback for Vendor: Try to guess first significant line (often the company name)
-        // Ignoring lines that trigger date, invoice, or generic terms
+        // Fallback for Vendor
         if (!data.proveedor && lines.length > 0) {
-            // Very naive heuristic: The first line that is NOT a date, not "Factura", etc.
-            // Often header
             const candidate = lines.find(l =>
                 l.length > 3 &&
                 !l.match(dateRegex) &&
                 !l.toLowerCase().includes('factura') &&
-                !l.toLowerCase().includes('ticket')
+                !l.toLowerCase().includes('ticket') &&
+                /^[A-Z\s]+$/.test(l)
             );
             if (candidate) {
-                // If it looks like a company name (S.L, S.A) better
                 data.proveedor = candidate;
+            } else {
+                const firstLine = lines.find(l => l.length > 4);
+                if (firstLine) data.proveedor = firstLine;
             }
         }
 
