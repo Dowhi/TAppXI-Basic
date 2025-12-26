@@ -60,17 +60,17 @@ export const getAirportInfo = async (): Promise<AirportInfo> => {
         return realData;
     }
 
-    // Si no hay datos reales, devolver arrays vacíos (NUNCA simulados)
-    console.warn('No se pudieron obtener datos reales de OpenSky. Mostrando pantalla vacía.');
+    // Si no hay datos reales (fallo de conexión al proxy), usar datos simulados como fallback
+    console.warn('No se pudieron obtener datos reales. Usando datos simulados.');
 
     const ahora = new Date();
     return {
         nombre: 'Aeropuerto de Sevilla',
         codigo: SEVILLA_AIRPORT_CODE,
         ultimaActualizacion: ahora,
-        llegadas: [],
-        salidas: [],
-        isRealData: true // Marcar como "real" para mostrar badge verde, aunque esté vacío
+        llegadas: generateSampleArrivals(ahora),
+        salidas: generateSampleDepartures(ahora),
+        isRealData: false // Marcar como simulado
     };
 };
 
