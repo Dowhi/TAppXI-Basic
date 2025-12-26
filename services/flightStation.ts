@@ -122,7 +122,7 @@ const fetchFlights = async (
         const apiKey = import.meta.env.VITE_AVIATIONSTACK_API_KEY || 'c5d73f4d32dd502acd03ead83b9d0130';
 
         // AviationStack Free solo permite HTTP, pero GitHub Pages es HTTPS.
-        // Usamos allorigins para hacer el puente HTTPS -> HTTP y CORS.
+        // Usamos corsproxy.io para hacer el puente HTTPS -> HTTP y CORS.
         const baseUrl = 'http://api.aviationstack.com/v1/flights';
         const params = new URLSearchParams({
             access_key: apiKey,
@@ -130,28 +130,30 @@ const fetchFlights = async (
             limit: '20'
         });
 
+        // NOTA: AviationStack a veces falla si no se le llama directamente, 
+        // pero corsproxy.io suele funcionar bien.
         const targetUrl = `${baseUrl}?${params.toString()}`;
-        // Usamos api.allorigins.win como proxy CORS/SSL
-        const corsProxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+
+        // Usamos corsproxy.io como proxy CORS/SSL (más fiable que allorigins)
+        // La URL es: https://corsproxy.io/?<url_objetivo>
+        const corsProxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+
+        console.log(`Fetching ${type} flights via proxy: ${corsProxyUrl}`);
 
         const response = await fetch(corsProxyUrl, {
             method: 'GET',
-            // No headers custom para evitar preflight issues con algunos proxies
         });
 
         if (!response.ok) {
-            console.error(`Error fetching flights via proxy: ${response.status}`);
+            console.error(`Error fetching flights via proxy: ${response.status} ${response.statusText}`);
             return null;
         }
 
-        const proxyData = await response.json();
-        // allorigins devuelve el contenido en .contents (string o json)
-        if (!proxyData.contents) return null;
-
-        const data = JSON.parse(proxyData.contents);
+        // corsproxy.io devuelve la respuesta directa de la API (no envuelta como allorigins)
+        const data = await response.json();
 
         if (!data.data || data.data.length === 0) {
-            console.warn(`No hay vuelos ${type} disponibles en AviationStack`);
+            console.warn(`No hay vuelos ${type} disponibles en AviationStack`, data);
             return [];
         }
 
