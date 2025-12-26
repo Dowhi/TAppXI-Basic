@@ -839,56 +839,58 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
         <div className="bg-zinc-950 min-h-screen text-zinc-100 px-3 pt-3 pb-24 space-y-2">
             <ScreenTopBar title="Ajustes" navigateTo={navigateTo} backTarget={Seccion.Home} />
 
-            {/* Admin Section */}
-            <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800 shadow-sm">
-                <h3 className="text-lg font-bold text-zinc-100 mb-4 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor" className="text-blue-500">
-                        <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
-                    </svg>
-                    Administración de Licencias
-                </h3>
+            {/* Admin Section - Only for Admin 'NQLY-PSY3' */}
+            {localStorage.getItem('tappxi_device_id') === 'NQLY-PSY3' && (
+                <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800 shadow-sm">
+                    <h3 className="text-lg font-bold text-zinc-100 mb-4 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor" className="text-blue-500">
+                            <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
+                        </svg>
+                        Administración de Licencias
+                    </h3>
 
-                <div className="space-y-4">
-                    <FormField label="Generar Código de Activación">
-                        <div className="flex gap-2">
-                            <input
-                                type="text"
-                                placeholder="ID del Terminal (ej: ABCD-1234)"
-                                className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-white font-mono uppercase"
-                                id="license-target-id"
-                            />
-                            <button
-                                onClick={() => {
-                                    const input = document.getElementById('license-target-id') as HTMLInputElement;
-                                    const targetId = input.value.trim().toUpperCase();
-                                    if (targetId.length < 4) {
-                                        showAlert("Introduce un ID válido");
-                                        return;
-                                    }
-                                    // Dynamic import to avoid circular dependency issues at top level if any
-                                    import('../services/activation').then(({ ActivationService }) => {
-                                        const code = ActivationService.generateValidCode(targetId);
-                                        showAlert(`Código para ${targetId}:\n\n${code}`);
-                                    });
-                                }}
-                                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold"
-                            >
-                                Generar
-                            </button>
-                        </div>
-                        <p className="text-xs text-zinc-500 mt-1">
-                            Introduce el ID que aparece en la pantalla de bloqueo de tu compañero.
-                        </p>
-                    </FormField>
+                    <div className="space-y-4">
+                        <FormField label="Generar Código de Activación">
+                            <div className="flex flex-col sm:flex-row gap-2">
+                                <input
+                                    type="text"
+                                    placeholder="ID Terminal"
+                                    className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-white font-mono uppercase w-full"
+                                    id="license-target-id"
+                                />
+                                <button
+                                    onClick={() => {
+                                        const input = document.getElementById('license-target-id') as HTMLInputElement;
+                                        const targetId = input.value.trim().toUpperCase();
+                                        if (targetId.length < 4) {
+                                            showAlert("Introduce un ID válido");
+                                            return;
+                                        }
+                                        import('../services/activation').then(({ ActivationService }) => {
+                                            const code = ActivationService.generateValidCode(targetId);
+                                            showAlert(`Código para ${targetId}:\n\n${code}`);
+                                        });
+                                    }}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold whitespace-nowrap"
+                                >
+                                    Generar
+                                </button>
+                            </div>
+                            <p className="text-xs text-zinc-500 mt-1">
+                                Introduce el ID del terminal bloqueado.
+                            </p>
+                        </FormField>
 
-                    <div className="pt-4 border-t border-zinc-800">
-                        <p className="text-xs text-zinc-500 mb-2">Tu ID de Dispositivo:</p>
-                        <div className="bg-zinc-950 p-2 rounded border border-zinc-800 font-mono text-center text-zinc-300 select-all">
-                            {localStorage.getItem('tappxi_device_id') || 'No disponible'}
+                        <div className="pt-4 border-t border-zinc-800">
+                            <p className="text-xs text-zinc-500 mb-2">Tu ID de Dispositivo:</p>
+                            <div className="bg-zinc-950 p-2 rounded border border-zinc-800 font-mono text-center text-zinc-300 select-all">
+                                {localStorage.getItem('tappxi_device_id') || 'No disponible'}
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
+
 
             <div className="bg-zinc-800 rounded-lg p-2.5 border border-zinc-700">
                 <div className="flex items-center justify-between">
@@ -1305,178 +1307,189 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
             </div>
 
             {/* Modal de Selección de Backup */}
-            {showRestoreModal && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-                    <div className="bg-zinc-800 rounded-xl w-full max-w-md max-h-[80vh] flex flex-col border border-zinc-700 shadow-2xl">
-                        <div className="p-4 border-b border-zinc-700 flex justify-between items-center">
-                            <h3 className="text-lg font-bold text-white">Seleccionar Copia de Seguridad</h3>
-                            <button
-                                onClick={() => setShowRestoreModal(false)}
-                                className="text-zinc-400 hover:text-white"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto p-4">
-                            {loadingBackups ? (
-                                <div className="flex flex-col items-center justify-center py-8 text-zinc-400">
-                                    <svg className="animate-spin h-8 w-8 mb-3 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            {
+                showRestoreModal && (
+                    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+                        <div className="bg-zinc-800 rounded-xl w-full max-w-md max-h-[80vh] flex flex-col border border-zinc-700 shadow-2xl">
+                            <div className="p-4 border-b border-zinc-700 flex justify-between items-center">
+                                <h3 className="text-lg font-bold text-white">Seleccionar Copia de Seguridad</h3>
+                                <button
+                                    onClick={() => setShowRestoreModal(false)}
+                                    className="text-zinc-400 hover:text-white"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                     </svg>
-                                    <p>Buscando backups en Drive...</p>
-                                </div>
-                            ) : backupsList.length === 0 ? (
-                                <div className="text-center py-8 text-zinc-400">
-                                    <p>No se encontraron copias de seguridad recientes.</p>
-                                    <p className="text-xs mt-2 opacity-70">Asegúrate de haber subido backups previamente.</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-2">
-                                    {backupsList.map((file) => (
-                                        <button
-                                            key={file.id}
-                                            onClick={() => handleRestoreBackup(file.id, file.name, file.mimeType)}
-                                            disabled={restoring}
-                                            className="w-full text-left p-3 rounded-lg bg-zinc-700/50 hover:bg-zinc-700 border border-zinc-600 transition-colors group"
-                                        >
-                                            <div className="font-medium text-zinc-200 group-hover:text-white truncate flex items-center gap-2">
-                                                <span>{file.mimeType === 'application/vnd.google-apps.spreadsheet' ? '📊' : '📄'}</span>
-                                                <span>{file.name}</span>
-                                            </div>
-                                            <div className="text-xs text-zinc-400 mt-1">
-                                                {new Date(file.createdTime).toLocaleString()}
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                                </button>
+                            </div>
 
-                        <div className="p-4 border-t border-zinc-700 bg-zinc-800/50 rounded-b-xl">
-                            <button
-                                onClick={() => setShowRestoreModal(false)}
-                                className="w-full py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg transition-colors font-medium"
-                            >
-                                Cancelar
-                            </button>
+                            <div className="flex-1 overflow-y-auto p-4">
+                                {loadingBackups ? (
+                                    <div className="flex flex-col items-center justify-center py-8 text-zinc-400">
+                                        <svg className="animate-spin h-8 w-8 mb-3 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <p>Buscando backups en Drive...</p>
+                                    </div>
+                                ) : backupsList.length === 0 ? (
+                                    <div className="text-center py-8 text-zinc-400">
+                                        <p>No se encontraron copias de seguridad recientes.</p>
+                                        <p className="text-xs mt-2 opacity-70">Asegúrate de haber subido backups previamente.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {backupsList.map((file) => (
+                                            <button
+                                                key={file.id}
+                                                onClick={() => handleRestoreBackup(file.id, file.name, file.mimeType)}
+                                                disabled={restoring}
+                                                className="w-full text-left p-3 rounded-lg bg-zinc-700/50 hover:bg-zinc-700 border border-zinc-600 transition-colors group"
+                                            >
+                                                <div className="font-medium text-zinc-200 group-hover:text-white truncate flex items-center gap-2">
+                                                    <span>{file.mimeType === 'application/vnd.google-apps.spreadsheet' ? '📊' : '📄'}</span>
+                                                    <span>{file.name}</span>
+                                                </div>
+                                                <div className="text-xs text-zinc-400 mt-1">
+                                                    {new Date(file.createdTime).toLocaleString()}
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="p-4 border-t border-zinc-700 bg-zinc-800/50 rounded-b-xl">
+                                <button
+                                    onClick={() => setShowRestoreModal(false)}
+                                    className="w-full py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg transition-colors font-medium"
+                                >
+                                    Cancelar
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )
+                )
             }
 
             {/* Modal de Carga para Google Drive */}
-            {uploadingToDrive && (
-                <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4">
-                    <div className="bg-zinc-800 rounded-xl w-full max-w-sm p-6 border border-zinc-700 shadow-2xl flex flex-col items-center text-center">
-                        <div className="w-16 h-16 mb-4 relative flex items-center justify-center">
-                            <svg className="animate-spin w-full h-full text-blue-500 absolute" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
+            {
+                uploadingToDrive && (
+                    <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4">
+                        <div className="bg-zinc-800 rounded-xl w-full max-w-sm p-6 border border-zinc-700 shadow-2xl flex flex-col items-center text-center">
+                            <div className="w-16 h-16 mb-4 relative flex items-center justify-center">
+                                <svg className="animate-spin w-full h-full text-blue-500 absolute" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            </div>
+                            <h3 className="text-xl font-bold text-white mb-2">Subiendo a Google Drive</h3>
+                            <p className="text-zinc-400 text-sm mb-4">Preparando y subiendo tu copia de seguridad...</p>
+                            <p className="text-xs text-zinc-500 mt-2">Por favor, no cierres la aplicación.</p>
                         </div>
-                        <h3 className="text-xl font-bold text-white mb-2">Subiendo a Google Drive</h3>
-                        <p className="text-zinc-400 text-sm mb-4">Preparando y subiendo tu copia de seguridad...</p>
-                        <p className="text-xs text-zinc-500 mt-2">Por favor, no cierres la aplicación.</p>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Modal de Carga para Google Sheets */}
-            {exportingToSheets && (
-                <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4">
-                    <div className="bg-zinc-800 rounded-xl w-full max-w-sm p-6 border border-zinc-700 shadow-2xl flex flex-col items-center text-center">
-                        <div className="w-16 h-16 mb-4 relative flex items-center justify-center">
-                            <svg className="animate-spin w-full h-full text-green-500 absolute" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
+            {
+                exportingToSheets && (
+                    <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4">
+                        <div className="bg-zinc-800 rounded-xl w-full max-w-sm p-6 border border-zinc-700 shadow-2xl flex flex-col items-center text-center">
+                            <div className="w-16 h-16 mb-4 relative flex items-center justify-center">
+                                <svg className="animate-spin w-full h-full text-green-500 absolute" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            </div>
+                            <h3 className="text-xl font-bold text-white mb-2">Exportando a Google Sheets</h3>
+                            <p className="text-zinc-400 text-sm mb-4">Creando hojas y exportando tus datos...</p>
+                            <p className="text-xs text-zinc-500 mt-2">Por favor, no cierres la aplicación.</p>
                         </div>
-                        <h3 className="text-xl font-bold text-white mb-2">Exportando a Google Sheets</h3>
-                        <p className="text-zinc-400 text-sm mb-4">Creando hojas y exportando tus datos...</p>
-                        <p className="text-xs text-zinc-500 mt-2">Por favor, no cierres la aplicación.</p>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Modal de Progreso de Restauración */}
-            {restoring && (
-                <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4">
-                    <div className="bg-zinc-800 rounded-xl w-full max-w-sm p-6 border border-zinc-700 shadow-2xl flex flex-col items-center text-center">
-                        <div className="w-16 h-16 mb-4 relative flex items-center justify-center">
-                            <svg className="animate-spin w-full h-full text-blue-500 absolute" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <span className="text-xs font-bold text-white relative z-10">{restoreProgress}%</span>
-                        </div>
-                        <h3 className="text-xl font-bold text-white mb-2">Restaurando Datos</h3>
-                        <p className="text-zinc-400 text-sm mb-4">{restoreMessage}</p>
+            {
+                restoring && (
+                    <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4">
+                        <div className="bg-zinc-800 rounded-xl w-full max-w-sm p-6 border border-zinc-700 shadow-2xl flex flex-col items-center text-center">
+                            <div className="w-16 h-16 mb-4 relative flex items-center justify-center">
+                                <svg className="animate-spin w-full h-full text-blue-500 absolute" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span className="text-xs font-bold text-white relative z-10">{restoreProgress}%</span>
+                            </div>
+                            <h3 className="text-xl font-bold text-white mb-2">Restaurando Datos</h3>
+                            <p className="text-zinc-400 text-sm mb-4">{restoreMessage}</p>
 
-                        <div className="w-full bg-zinc-700 rounded-full h-2.5 mb-1 overflow-hidden">
-                            <div
-                                className="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out"
-                                style={{ width: `${restoreProgress}%` }}
-                            ></div>
+                            <div className="w-full bg-zinc-700 rounded-full h-2.5 mb-1 overflow-hidden">
+                                <div
+                                    className="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out"
+                                    style={{ width: `${restoreProgress}%` }}
+                                ></div>
+                            </div>
+                            <p className="text-xs text-zinc-500 mt-2">Por favor, no cierres la aplicación.</p>
                         </div>
-                        <p className="text-xs text-zinc-500 mt-2">Por favor, no cierres la aplicación.</p>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Custom Alert Modal */}
-            {alertMessage && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4 animate-in fade-in duration-200">
-                    <div className="bg-zinc-800 rounded-xl w-full max-w-sm p-6 border border-zinc-700 shadow-2xl flex flex-col items-center text-center scale-100 animate-in zoom-in-95 duration-200">
-                        <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center mb-4 text-blue-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
+            {
+                alertMessage && (
+                    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4 animate-in fade-in duration-200">
+                        <div className="bg-zinc-800 rounded-xl w-full max-w-sm p-6 border border-zinc-700 shadow-2xl flex flex-col items-center text-center scale-100 animate-in zoom-in-95 duration-200">
+                            <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center mb-4 text-blue-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-lg font-bold text-white mb-2">Aviso</h3>
+                            <p className="text-zinc-300 text-sm mb-6 whitespace-pre-wrap">{alertMessage}</p>
+                            <button
+                                onClick={closeAlert}
+                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-lg transition-colors"
+                            >
+                                Aceptar
+                            </button>
                         </div>
-                        <h3 className="text-lg font-bold text-white mb-2">Aviso</h3>
-                        <p className="text-zinc-300 text-sm mb-6 whitespace-pre-wrap">{alertMessage}</p>
-                        <button
-                            onClick={closeAlert}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-lg transition-colors"
-                        >
-                            Aceptar
-                        </button>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Custom Confirm Modal */}
-            {confirmMessage && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4 animate-in fade-in duration-200">
-                    <div className="bg-zinc-800 rounded-xl w-full max-w-sm p-6 border border-zinc-700 shadow-2xl flex flex-col items-center text-center scale-100 animate-in zoom-in-95 duration-200">
-                        <div className="w-12 h-12 bg-yellow-500/20 rounded-full flex items-center justify-center mb-4 text-yellow-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                        </div>
-                        <h3 className="text-lg font-bold text-white mb-2">Confirmación</h3>
-                        <p className="text-zinc-300 text-sm mb-6 whitespace-pre-wrap">{confirmMessage}</p>
-                        <div className="flex gap-3 w-full">
-                            <button
-                                onClick={closeConfirm}
-                                className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors"
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                onClick={handleConfirm}
-                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-lg transition-colors"
-                            >
-                                Confirmar
-                            </button>
+            {
+                confirmMessage && (
+                    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4 animate-in fade-in duration-200">
+                        <div className="bg-zinc-800 rounded-xl w-full max-w-sm p-6 border border-zinc-700 shadow-2xl flex flex-col items-center text-center scale-100 animate-in zoom-in-95 duration-200">
+                            <div className="w-12 h-12 bg-yellow-500/20 rounded-full flex items-center justify-center mb-4 text-yellow-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-lg font-bold text-white mb-2">Confirmación</h3>
+                            <p className="text-zinc-300 text-sm mb-6 whitespace-pre-wrap">{confirmMessage}</p>
+                            <div className="flex gap-3 w-full">
+                                <button
+                                    onClick={closeConfirm}
+                                    className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={handleConfirm}
+                                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-lg transition-colors"
+                                >
+                                    Confirmar
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Exportación Avanzada de Datos */}
             <div className="bg-zinc-800 rounded-lg p-2.5 border border-zinc-700">
@@ -1713,35 +1726,37 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
             </div>
 
             {/* Modal de progreso de eliminación */}
-            {isDeleting && (
-                <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[80] px-4">
-                    <div className="bg-zinc-800 rounded-lg p-6 max-w-md w-full border border-red-500 shadow-2xl">
-                        <h3 className="text-xl font-bold text-red-400 mb-4 text-center">
-                            Eliminando Datos
-                        </h3>
+            {
+                isDeleting && (
+                    <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[80] px-4">
+                        <div className="bg-zinc-800 rounded-lg p-6 max-w-md w-full border border-red-500 shadow-2xl">
+                            <h3 className="text-xl font-bold text-red-400 mb-4 text-center">
+                                Eliminando Datos
+                            </h3>
 
-                        <div className="mb-4">
-                            <div className="bg-zinc-700 rounded-full h-4 overflow-hidden">
-                                <div
-                                    className="bg-red-500 h-full transition-all duration-300"
-                                    style={{ width: `${deletionProgress}%` }}
-                                />
+                            <div className="mb-4">
+                                <div className="bg-zinc-700 rounded-full h-4 overflow-hidden">
+                                    <div
+                                        className="bg-red-500 h-full transition-all duration-300"
+                                        style={{ width: `${deletionProgress}%` }}
+                                    />
+                                </div>
+                                <p className="text-center text-zinc-300 mt-2 text-sm">
+                                    {deletionProgress}%
+                                </p>
                             </div>
-                            <p className="text-center text-zinc-300 mt-2 text-sm">
-                                {deletionProgress}%
+
+                            <p className="text-zinc-300 text-center text-sm">
+                                {deletionMessage}
                             </p>
-                        </div>
 
-                        <p className="text-zinc-300 text-center text-sm">
-                            {deletionMessage}
-                        </p>
-
-                        <div className="mt-4 text-zinc-500 text-xs text-center">
-                            Por favor, no cierres esta ventana...
+                            <div className="mt-4 text-zinc-500 text-xs text-center">
+                                Por favor, no cierres esta ventana...
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
         </div >
     );
 };
