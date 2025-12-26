@@ -60,17 +60,17 @@ export const getAirportInfo = async (): Promise<AirportInfo> => {
         return realData;
     }
 
-    // Si no hay datos reales (fallo de conexión al proxy), usar datos simulados como fallback
-    console.warn('No se pudieron obtener datos reales. Usando datos simulados.');
+    // Si no hay datos reales, devolver arrays vacíos (NO simulados por petición del usuario)
+    console.warn('Datos reales no disponibles. Mostrando vacío según preferencia.');
 
     const ahora = new Date();
     return {
         nombre: 'Aeropuerto de Sevilla',
         codigo: SEVILLA_AIRPORT_CODE,
         ultimaActualizacion: ahora,
-        llegadas: generateSampleArrivals(ahora),
-        salidas: generateSampleDepartures(ahora),
-        isRealData: false // Marcar como simulado
+        llegadas: [],
+        salidas: [],
+        isRealData: true
     };
 };
 
@@ -81,17 +81,9 @@ const tryGetRealData = async (): Promise<AirportInfo | null> => {
     try {
         const proxyUrl = import.meta.env.VITE_FLIGHT_PROXY_URL || 'http://localhost:3003';
 
-        // Verificar que el proxy esté disponible
-        try {
-            const healthCheck = await fetch(`${proxyUrl}/health`);
-            if (!healthCheck.ok) {
-                console.warn('Proxy server no disponible');
-                return null;
-            }
-        } catch (err) {
-            console.warn('No se puede conectar al proxy server. Asegúrate de que esté corriendo en', proxyUrl);
-            return null;
-        }
+        // Proxy local ignorado, usamos CORS proxy público directamente.
+        // No verificamos health de localhost porque fallaría en producción.
+
 
         // Obtener llegadas y salidas en paralelo
         const [llegadasData, salidasData] = await Promise.all([
@@ -119,37 +111,47 @@ const tryGetRealData = async (): Promise<AirportInfo | null> => {
 };
 
 /**
- * Obtiene vuelos usando el servidor proxy local
+ * Obtiene vuelos usando AviationStack via CORS proxy para funcionar en cliente
  */
 const fetchFlights = async (
-    proxyUrl: string,
+    proxyUrl: string, // Ignorado, usamos public proxies
     type: 'arrival' | 'departure'
 ): Promise<FlightArrival[] | FlightDeparture[] | null> => {
     try {
         const isArrival = type === 'arrival';
-        const iataParam = isArrival ? 'arr_iata' : 'dep_iata';
+        const apiKey = import.meta.env.VITE_AVIATIONSTACK_API_KEY || 'c5d73f4d32dd502acd03ead83b9d0130';
 
+        // AviationStack Free solo permite HTTP, pero GitHub Pages es HTTPS.
+        // Usamos allorigins para hacer el puente HTTPS -> HTTP y CORS.
+        const baseUrl = 'http://api.aviationstack.com/v1/flights';
         const params = new URLSearchParams({
-            [iataParam]: SEVILLA_AIRPORT_CODE,
+            access_key: apiKey,
+            [isArrival ? 'arr_iata' : 'dep_iata']: SEVILLA_AIRPORT_CODE,
             limit: '20'
         });
 
-        const url = `${proxyUrl}/api/flights?${params.toString()}`;
+        const targetUrl = `${baseUrl}?${params.toString()}`;
+        // Usamos api.allorigins.win como proxy CORS/SSL
+        const corsProxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
 
-        const response = await fetch(url, {
+        const response = await fetch(corsProxyUrl, {
             method: 'GET',
-            headers: { 'Accept': 'application/json' },
+            // No headers custom para evitar preflight issues con algunos proxies
         });
 
         if (!response.ok) {
-            console.error(`Proxy server error: ${response.status} ${response.statusText}`);
+            console.error(`Error fetching flights via proxy: ${response.status}`);
             return null;
         }
 
-        const data = await response.json();
+        const proxyData = await response.json();
+        // allorigins devuelve el contenido en .contents (string o json)
+        if (!proxyData.contents) return null;
+
+        const data = JSON.parse(proxyData.contents);
 
         if (!data.data || data.data.length === 0) {
-            console.warn(`No hay vuelos ${type} disponibles`);
+            console.warn(`No hay vuelos ${type} disponibles en AviationStack`);
             return [];
         }
 
