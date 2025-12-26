@@ -839,6 +839,57 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
         <div className="bg-zinc-950 min-h-screen text-zinc-100 px-3 pt-3 pb-24 space-y-2">
             <ScreenTopBar title="Ajustes" navigateTo={navigateTo} backTarget={Seccion.Home} />
 
+            {/* Admin Section */}
+            <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800 shadow-sm">
+                <h3 className="text-lg font-bold text-zinc-100 mb-4 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor" className="text-blue-500">
+                        <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
+                    </svg>
+                    Administración de Licencias
+                </h3>
+
+                <div className="space-y-4">
+                    <FormField label="Generar Código de Activación">
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                placeholder="ID del Terminal (ej: ABCD-1234)"
+                                className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-white font-mono uppercase"
+                                id="license-target-id"
+                            />
+                            <button
+                                onClick={() => {
+                                    const input = document.getElementById('license-target-id') as HTMLInputElement;
+                                    const targetId = input.value.trim().toUpperCase();
+                                    if (targetId.length < 4) {
+                                        showAlert("Introduce un ID válido");
+                                        return;
+                                    }
+                                    // Dynamic import to avoid circular dependency issues at top level if any
+                                    import('../services/activation').then(({ ActivationService }) => {
+                                        const code = ActivationService.generateValidCode(targetId);
+                                        showAlert(`Código para ${targetId}:\n\n${code}`);
+                                    });
+                                }}
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold"
+                            >
+                                Generar
+                            </button>
+                        </div>
+                        <p className="text-xs text-zinc-500 mt-1">
+                            Introduce el ID que aparece en la pantalla de bloqueo de tu compañero.
+                        </p>
+                    </FormField>
+
+                    <div className="pt-4 border-t border-zinc-800">
+                        <p className="text-xs text-zinc-500 mb-2">Tu ID de Dispositivo:</p>
+                        <div className="bg-zinc-950 p-2 rounded border border-zinc-800 font-mono text-center text-zinc-300 select-all">
+                            {localStorage.getItem('tappxi_device_id') || 'No disponible'}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div className="bg-zinc-800 rounded-lg p-2.5 border border-zinc-700">
                 <div className="flex items-center justify-between">
                     <div className="flex-1">

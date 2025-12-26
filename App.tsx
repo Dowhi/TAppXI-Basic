@@ -33,6 +33,8 @@ import RemindersScreen from './screens/RemindersScreen';
 import TrainStationScreen from './screens/TrainStationScreen';
 import FlightStationScreen from './screens/FlightStationScreen';
 import BottomNavBar from './components/BottomNavBar';
+import { ActivationService } from './services/activation';
+import { LockScreen } from './screens/LockScreen';
 
 
 const App: React.FC = () => {
@@ -44,6 +46,11 @@ const App: React.FC = () => {
     const [editingGastoId, setEditingGastoId] = useState<string | null>(null);
     const [refreshGastosKey, setRefreshGastosKey] = useState(0);
     const { isDark } = useTheme();
+    const [isActivated, setIsActivated] = useState<boolean>(ActivationService.isActivated());
+
+    if (!isActivated) {
+        return <LockScreen onUnlock={() => setIsActivated(true)} />;
+    }
 
     // Iniciar verificación de sonidos
     useEffect(() => {
@@ -67,8 +74,8 @@ const App: React.FC = () => {
     const navigateTo = useCallback((page: Seccion, id?: string) => {
         if (page === Seccion.IntroducirCarrera) {
             setEditingRaceId(null);
-            // Don't reset initialRaceData here immediately if we just set it? 
-            // Actually, usually navigation clears transient state. 
+            // Don't reset initialRaceData here immediately if we just set it?
+            // Actually, usually navigation clears transient state.
             // I'll make a specific handleQuickAction function.
         }
         if (page !== Seccion.IntroducirCarrera) {
