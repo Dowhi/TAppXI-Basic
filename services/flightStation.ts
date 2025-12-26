@@ -158,9 +158,15 @@ const fetchFlights = async (
         }
 
         const flights = parseAviationStackFlights(data.data, isArrival);
-        return isArrival
-            ? (flights.filter((f): f is FlightArrival => 'destino' in f && f.destino === 'Sevilla') as FlightArrival[])
-            : (flights.filter((f): f is FlightDeparture => 'origen' in f && f.origen === 'Sevilla') as FlightDeparture[]);
+
+        // Ordenar por hora (más cercano a más lejano)
+        const sortedFlights = sortFlightsByTime(flights);
+
+        const filteredFlights = isArrival
+            ? (sortedFlights.filter((f): f is FlightArrival => 'destino' in f && f.destino === 'Sevilla') as FlightArrival[])
+            : (sortedFlights.filter((f): f is FlightDeparture => 'origen' in f && f.origen === 'Sevilla') as FlightDeparture[]);
+
+        return filteredFlights.slice(0, 10);
     } catch (error) {
         console.error(`Error fetching ${type} flights:`, error);
         return null;
@@ -254,7 +260,7 @@ const parseAviationStackFlights = (
             }
         })
         .filter((f): f is FlightArrival | FlightDeparture => f !== null)
-        .slice(0, 10); // Limitar a 10 vuelos
+        .filter((f): f is FlightArrival | FlightDeparture => f !== null);
 };
 
 /**
