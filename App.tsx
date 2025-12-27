@@ -32,12 +32,19 @@ import AnalisisAvanzadoScreen from './screens/AnalisisAvanzadoScreen';
 import RemindersScreen from './screens/RemindersScreen';
 import TrainStationScreen from './screens/TrainStationScreen';
 import FlightStationScreen from './screens/FlightStationScreen';
+import { WelcomeScreen } from './screens/WelcomeScreen';
 import BottomNavBar from './components/BottomNavBar';
 import { ActivationService } from './services/activation';
 import { LockScreen } from './screens/LockScreen';
 
 
 const App: React.FC = () => {
+    // Check if user has completed initial setup
+    const [setupComplete, setSetupComplete] = useState<boolean>(
+        localStorage.getItem('tappxi_setup_complete') === 'true'
+    );
+
+
     // Siempre iniciar en HomeScreen
     const [currentPage, setCurrentPage] = useState<Seccion>(Seccion.Home);
     const [editingRaceId, setEditingRaceId] = useState<string | null>(null);
@@ -48,9 +55,15 @@ const App: React.FC = () => {
     const { isDark } = useTheme();
     const [isActivated, setIsActivated] = useState<boolean>(ActivationService.isActivated());
 
+    // Show welcome screen for first-time users
+    if (!setupComplete) {
+        return <WelcomeScreen onComplete={() => setSetupComplete(true)} />;
+    }
+
     if (!isActivated) {
         return <LockScreen onUnlock={() => setIsActivated(true)} />;
     }
+
 
     // Iniciar verificación de sonidos
     useEffect(() => {
