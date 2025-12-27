@@ -121,22 +121,18 @@ const fetchFlights = async (
         const isArrival = type === 'arrival';
         const apiKey = import.meta.env.VITE_AVIATIONSTACK_API_KEY || 'c5d73f4d32dd502acd03ead83b9d0130';
 
-        // AviationStack Free solo permite HTTP, pero GitHub Pages es HTTPS.
-        // Usamos corsproxy.io para hacer el puente HTTPS -> HTTP y CORS.
+        // AviationStack Free solo permite HTTP
         const baseUrl = 'http://api.aviationstack.com/v1/flights';
         const params = new URLSearchParams({
             access_key: apiKey,
             [isArrival ? 'arr_iata' : 'dep_iata']: SEVILLA_AIRPORT_CODE,
-            limit: '20'
+            limit: '100' // Aumentamos límite para asegurar que capturamos los vuelos de la mañana
         });
 
-        // NOTA: AviationStack a veces falla si no se le llama directamente, 
-        // pero corsproxy.io suele funcionar bien.
         const targetUrl = `${baseUrl}?${params.toString()}`;
 
-        // Usamos corsproxy.io como proxy CORS/SSL (más fiable que allorigins)
-        // La URL es: https://corsproxy.io/?<url_objetivo>
-        const corsProxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+        // Usamos CodeTabs como proxy CORS/SSL (alternativa a corsproxy.io que fallaba DNS)
+        const corsProxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`;
 
         console.log(`Fetching ${type} flights via proxy: ${corsProxyUrl}`);
 
@@ -149,7 +145,7 @@ const fetchFlights = async (
             return null;
         }
 
-        // corsproxy.io devuelve la respuesta directa de la API (no envuelta como allorigins)
+        // CodeTabs devuelve la respuesta directa
         const data = await response.json();
 
         if (!data.data || data.data.length === 0) {
