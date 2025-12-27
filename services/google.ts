@@ -5,8 +5,8 @@ const GOOGLE_API_SRC = "https://apis.google.com/js/api.js";
 const GIS_API_SRC = "https://accounts.google.com/gsi/client";
 
 // Credenciales desde variables de entorno
-const CLIENT_ID = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || "";
-const API_KEY = (import.meta as any).env?.VITE_GOOGLE_API_KEY || "";
+const CLIENT_ID = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || "210845602880-tlfrf84ul0qov0sb9voiafktrqpdvrid.apps.googleusercontent.com";
+const API_KEY = (import.meta as any).env?.VITE_GOOGLE_API_KEY || "AIzaSyC89wFGqXeC5fwy7_9v-d8TQoguM2ZTI_E";
 
 const DISCOVERY_DOCS = [
     "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest",
@@ -153,21 +153,21 @@ export const ensureGoogleSignIn = async (): Promise<void> => {
     await initGoogleClient();
 
     const gapi = (window as any).gapi;
-    
+
     // Verificar si tenemos un token válido
     const token = gapi.client.getToken();
-    
+
     if (token) {
         const expiresAt = (token.created || 0) + (token.expires_in || 3600) * 1000;
         const now = Date.now();
-        
+
         // Si el token es válido y no ha expirado
         if (now < expiresAt) {
             // Verificar scopes
             const requiredScopes = SCOPES.split(' ');
             const grantedScopes = (token.scope || '').split(' ');
             const hasAllScopes = requiredScopes.every(s => grantedScopes.includes(s));
-            
+
             if (hasAllScopes) {
                 currentToken = token;
                 return; // Token válido
@@ -184,9 +184,9 @@ export const ensureGoogleSignIn = async (): Promise<void> => {
                     reject(resp);
                     return;
                 }
-                
+
                 console.log("Autenticación Google exitosa");
-                
+
                 // Actualizar token en gapi
                 if (resp.access_token) {
                     const tokenWithCreated = {
@@ -196,10 +196,10 @@ export const ensureGoogleSignIn = async (): Promise<void> => {
                     gapi.client.setToken(tokenWithCreated);
                     currentToken = tokenWithCreated;
                 }
-                
+
                 resolve(resp);
             };
-            
+
             tokenClient.requestAccessToken({ prompt: 'consent' });
         } catch (err) {
             reject(err);
