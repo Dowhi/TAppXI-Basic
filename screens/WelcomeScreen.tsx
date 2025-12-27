@@ -20,7 +20,14 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onComplete }) => {
             onComplete();
         } catch (err: any) {
             console.error('Error en autenticación:', err);
-            setError(err?.message || 'Error al conectar con Google Drive');
+
+            // Si el error es por falta de configuración, mostrar mensaje amigable
+            const errorMsg = err?.message || '';
+            if (errorMsg.includes('VITE_GOOGLE') || errorMsg.includes('archivo .env') || errorMsg.includes('faltante')) {
+                setError('La integración con Google Drive no está configurada en este despliegue. Usa el modo local (botón de abajo) para continuar sin conexión a Drive.');
+            } else {
+                setError('No se pudo conectar con Google Drive. Puedes continuar sin conectar usando el botón de abajo.');
+            }
             setIsAuthenticating(false);
         }
     };
