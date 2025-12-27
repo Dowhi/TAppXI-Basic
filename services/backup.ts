@@ -507,7 +507,26 @@ export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; u
 
         return { spreadsheetId, url };
     } catch (error: any) {
-        const errorMsg = error?.message || String(error);
+        let errorMsg = error?.message || String(error);
+
+        // Intento de extraer mensaje detallado de objetos de error de Google
+        if (error?.result?.error?.message) {
+            errorMsg = error.result.error.message;
+        } else if (error?.body && typeof error.body === 'string') {
+            try {
+                const bodyObj = JSON.parse(error.body);
+                if (bodyObj.error?.message) errorMsg = bodyObj.error.message;
+            } catch {
+                errorMsg = error.body;
+            }
+        } else if (typeof error === 'object' && error !== null && !error.message) {
+            try {
+                errorMsg = JSON.stringify(error);
+            } catch {
+                errorMsg = '[Error complejo no serializable]';
+            }
+        }
+
         console.error("Error detallado exportación Sheets:", error);
 
         let userFriendlyMsg = `Error al exportar a Google Sheets: ${errorMsg}\n\n`;
