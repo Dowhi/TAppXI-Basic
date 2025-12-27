@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap');
 
 html {
   font-family: 'Inter', sans-serif;
@@ -26,9 +25,9 @@ html {
 }
 
 .btn-ripple {
-    position: relative;
-    overflow: hidden;
-    transform: translateZ(0);
+  position: relative;
+  overflow: hidden;
+  transform: translateZ(0);
 }
 
 body {
@@ -114,6 +113,7 @@ body {
     opacity: 0;
     transform: translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -130,6 +130,7 @@ body {
     opacity: 0;
     transform: translateX(100%);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -142,6 +143,7 @@ body {
 
 /* Mejoras para móvil */
 @media (max-width: 640px) {
+
   /* Asegurar que los inputs no zoomen en iOS */
   input[type="text"],
   input[type="number"],
@@ -151,13 +153,14 @@ body {
   textarea {
     font-size: 16px !important;
   }
-  
+
   /* Mejorar área táctil */
-  button, a {
+  button,
+  a {
     min-height: 44px;
     min-width: 44px;
   }
-  
+
   /* Safe area para iPhone con notch */
   body {
     padding-top: env(safe-area-inset-top);
@@ -166,4 +169,3 @@ body {
     padding-right: env(safe-area-inset-right);
   }
 }
-

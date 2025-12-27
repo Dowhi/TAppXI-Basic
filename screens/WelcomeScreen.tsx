@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { authenticateGoogle } from '../services/google';
+import React, { useState } from 'react';
+import { ensureGoogleSignIn } from '../services/google';
 
 interface WelcomeScreenProps {
     onComplete: () => void;
@@ -14,7 +14,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onComplete }) => {
         setError(null);
 
         try {
-            await authenticateGoogle();
+            await ensureGoogleSignIn();
             // Guardar que el usuario ya completó el setup
             localStorage.setItem('tappxi_setup_complete', 'true');
             onComplete();
