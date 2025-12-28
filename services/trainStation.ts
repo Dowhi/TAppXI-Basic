@@ -52,41 +52,41 @@ const SANTA_JUSTA_CODE = '51003';
  */
 export const getStationInfo = async (): Promise<StationInfo> => {
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainStation.ts:53',message:'getStationInfo called',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'trainStation.ts:53', message: 'getStationInfo called', data: { timestamp: Date.now() }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
     // #endregion
     try {
         // Intentar obtener datos reales
         const realData = await tryGetRealData();
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainStation.ts:57',message:'tryGetRealData result',data:{hasData:!!realData,llegadasCount:realData?.llegadas?.length||0,salidasCount:realData?.salidas?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'trainStation.ts:57', message: 'tryGetRealData result', data: { hasData: !!realData, llegadasCount: realData?.llegadas?.length || 0, salidasCount: realData?.salidas?.length || 0 }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
         // #endregion
         if (realData) {
             return realData;
         }
-        
+
         // Si falla, devolver arrays vacíos (igual que en flightStation)
         console.warn('No se pudieron obtener datos reales de ADIF. Mostrando pantalla vacía.');
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainStation.ts:62',message:'Returning empty arrays - no real data',data:{reason:'tryGetRealData returned null'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'trainStation.ts:62', message: 'Returning empty arrays - no real data', data: { reason: 'tryGetRealData returned null' }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'C' }) }).catch(() => { });
         // #endregion
         const ahora = new Date();
-        
+
         return {
             nombre: 'Sevilla Santa Justa',
             codigo: SANTA_JUSTA_CODE,
             ultimaActualizacion: ahora,
             llegadas: [],
             salidas: [],
-            isRealData: true, // Marcar como "real" para mostrar badge verde, aunque esté vacío
+            isRealData: false // Sin datos reales disponibles
         };
     } catch (error) {
         console.error('Error obteniendo información de la estación:', error);
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainStation.ts:74',message:'Error in getStationInfo',data:{error:error instanceof Error?error.message:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'trainStation.ts:74', message: 'Error in getStationInfo', data: { error: error instanceof Error ? error.message : String(error) }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E' }) }).catch(() => { });
         // #endregion
         // En caso de error, devolver arrays vacíos
         const ahora = new Date();
-        
+
         return {
             nombre: 'Sevilla Santa Justa',
             codigo: SANTA_JUSTA_CODE,
@@ -99,245 +99,262 @@ export const getStationInfo = async (): Promise<StationInfo> => {
 };
 
 /**
- * Intenta obtener datos reales de ADIF/Renfe usando el proxy local
+ * Intenta obtener datos reales de Renfe Open Data API
  * NUNCA devuelve datos simulados - solo datos reales o null
  */
 const tryGetRealData = async (): Promise<StationInfo | null> => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainStation.ts:93',message:'tryGetRealData called',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     try {
-        // Usar el servicio proxy configurado (por defecto localhost:3001)
-        const proxyUrl = import.meta.env.VITE_TRAIN_PROXY_URL || 'http://localhost:3001';
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainStation.ts:96',message:'Proxy URL configured',data:{proxyUrl,hasEnvVar:!!import.meta.env.VITE_TRAIN_PROXY_URL},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-        // #endregion
-        
-        // Primero verificar que el proxy esté disponible con health check
-        try {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainStation.ts:100',message:'Starting health check',data:{healthCheckUrl:`${proxyUrl}/health`},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-            // #endregion
-            const healthCheck = await fetch(`${proxyUrl}/health`, {
-                method: 'GET',
-                headers: { 'Accept': 'application/json' },
-                signal: AbortSignal.timeout(5000) // 5 segundos timeout
-            });
-            
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainStation.ts:106',message:'Health check response',data:{ok:healthCheck.ok,status:healthCheck.status,statusText:healthCheck.statusText},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-            // #endregion
-            
-            if (!healthCheck.ok) {
-                console.warn('⚠️ Proxy server no disponible (health check falló)');
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainStation.ts:108',message:'Health check failed',data:{status:healthCheck.status},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                // #endregion
-                return null;
-            }
-            
-            console.log('✅ Proxy server disponible');
-        } catch (err) {
-            console.warn('⚠️ No se puede conectar al proxy server. Asegúrate de ejecutar: npm run train-proxy');
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainStation.ts:113',message:'Health check error',data:{error:err instanceof Error?err.message:String(err)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-            // #endregion
+        // Renfe Open Data API - No requiere API key pero necesita proxy CORS
+        const renfeApiUrl = 'https://gtfsrt.renfe.com/trip_updates_LD.json';
+
+        // Usar proxy CORS para evitar bloqueo del navegador
+        const corsProxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(renfeApiUrl)}`;
+
+        console.log(`📡 Fetching train data from Renfe Open Data (via proxy)...`);
+
+        const response = await fetch(corsProxyUrl, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+            },
+            signal: AbortSignal.timeout(15000) // 15 segundos timeout
+        });
+
+        if (!response.ok) {
+            console.warn(`⚠️ Renfe API error: ${response.status}`);
             return null;
         }
-        
-        // Obtener datos reales del proxy
+
+        let data;
         try {
-            const stationUrl = `${proxyUrl}/station/${SANTA_JUSTA_CODE}`;
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainStation.ts:119',message:'Fetching station data',data:{stationUrl,stationCode:SANTA_JUSTA_CODE},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-            // #endregion
-            const response = await fetch(stationUrl, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                },
-                signal: AbortSignal.timeout(30000) // 30 segundos timeout
-            });
-            
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainStation.ts:128',message:'Station data response',data:{ok:response.ok,status:response.status,statusText:response.statusText},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-            // #endregion
-            
-            if (response.ok) {
-                const data = await response.json();
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainStation.ts:129',message:'Raw data received from proxy',data:{hasLlegadas:Array.isArray(data.llegadas),llegadasCount:data.llegadas?.length||0,hasSalidas:Array.isArray(data.salidas),salidasCount:data.salidas?.length||0,dataKeys:Object.keys(data)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                // #endregion
-                const parsed = parseAdifData(data);
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainStation.ts:130',message:'Parsed data result',data:{parsed:!!parsed,parsedLlegadasCount:parsed?.llegadas?.length||0,parsedSalidasCount:parsed?.salidas?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-                // #endregion
-                
-                // Validar que tenemos datos reales (aunque estén vacíos)
-                if (parsed) {
-                    console.log(`✅ Datos reales obtenidos: ${parsed.llegadas.length} llegadas, ${parsed.salidas.length} salidas`);
-                    // #region agent log
-                    fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainStation.ts:133',message:'Returning parsed data',data:{llegadasCount:parsed.llegadas.length,salidasCount:parsed.salidas.length,isRealData:parsed.isRealData},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-                    // #endregion
-                    return parsed;
-                } else {
-                    // #region agent log
-                    fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainStation.ts:136',message:'Parsing returned null',data:{rawDataKeys:Object.keys(data)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-                    // #endregion
-                }
-            } else {
-                console.error(`❌ Error del proxy: ${response.status} ${response.statusText}`);
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainStation.ts:137',message:'Proxy returned error status',data:{status:response.status,statusText:response.statusText},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                // #endregion
-            }
-        } catch (err: any) {
-            console.error('❌ Error obteniendo datos del proxy:', err.message);
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainStation.ts:140',message:'Error fetching station data',data:{error:err.message,errorName:err.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-            // #endregion
+            data = await response.json();
+        } catch (e) {
+            console.error('Error parsing Renfe JSON:', e);
             return null;
         }
-        
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainStation.ts:144',message:'tryGetRealData returning null',data:{reason:'No data obtained'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
+
+        if (!data || !data.entity || !Array.isArray(data.entity)) {
+            console.warn('⚠️ Invalid data format from Renfe API');
+            return null;
+        }
+
+        console.log(`✅ Renfe data received: ${data.entity.length} trip updates`);
+
+        // Parsear datos GTFS-RT de Renfe
+        const parsed = parseRenfeGTFSData(data);
+
+        if (parsed) {
+            console.log(`✅ Parsed: ${parsed.llegadas.length} arrivals, ${parsed.salidas.length} departures`);
+            return parsed;
+        }
+
         return null;
     } catch (error: any) {
-        console.warn('⚠️ Error intentando obtener datos reales:', error.message);
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainStation.ts:146',message:'tryGetRealData catch error',data:{error:error.message,errorName:error.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-        // #endregion
+        console.warn('⚠️ Error fetching Renfe data:', error.message);
         return null;
     }
 };
 
 /**
- * Parsea datos de ADIF al formato interno
- * Valida y limpia los datos antes de devolverlos
+ * Parsea datos GTFS-RT de Renfe al formato interno
+ * Filtra solo trenes que llegan o salen de Santa Justa
  */
-const parseAdifData = (data: any): StationInfo | null => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainStation.ts:155',message:'parseAdifData called',data:{hasData:!!data,dataType:typeof data,dataKeys:data?Object.keys(data):[]},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
+const parseRenfeGTFSData = (data: any): StationInfo | null => {
     try {
-        if (!data || (typeof data !== 'object')) {
-            console.warn('⚠️ Datos inválidos del proxy');
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainStation.ts:158',message:'Invalid data format',data:{hasData:!!data,dataType:typeof data},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-            // #endregion
+        if (!data || !data.entity || !Array.isArray(data.entity)) {
+            console.warn('⚠️ Invalid GTFS data format');
             return null;
         }
-        
-        // Validar que tenemos arrays (aunque estén vacíos)
-        const llegadasRaw = Array.isArray(data.llegadas) ? data.llegadas : [];
-        const salidasRaw = Array.isArray(data.salidas) ? data.salidas : [];
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainStation.ts:164',message:'Raw arrays extracted',data:{llegadasRawCount:llegadasRaw.length,salidasRawCount:salidasRaw.length,isLlegadasArray:Array.isArray(data.llegadas),isSalidasArray:Array.isArray(data.salidas)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
-        
-        // #region agent log
-        if (llegadasRaw.length > 0) {
-            fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainStation.ts:239',message:'Sample llegada raw data',data:{sampleItem:JSON.stringify(llegadasRaw[0]),itemKeys:llegadasRaw[0]?Object.keys(llegadasRaw[0]):[]},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        }
-        // #endregion
-        
-        // Parsear llegadas - validar que tengan hora programada
-        const llegadas: TrainArrival[] = llegadasRaw
-            .filter((item: any) => item && (item.horaProgramada || item.hora))
-            .map((item: any, index: number) => {
-                const horaProg = formatTime(item.horaProgramada || item.hora);
-                
-                // Validar que la hora sea válida
-                if (horaProg === '--:--') {
-                    return null;
+
+        const ahora = new Date();
+        const treintaMinutosAtras = new Date(ahora.getTime() - 30 * 60 * 1000);
+        const doceHorasDespues = new Date(ahora.getTime() + 12 * 60 * 60 * 1000);
+
+        const llegadas: TrainArrival[] = [];
+        const salidas: TrainDeparture[] = [];
+
+        // GTFS-RT usa códigos de estación ADIF
+        // Santa Justa = código "71401" en GTFS
+        const SANTA_JUSTA_GTFS_CODE = '71401';
+
+        data.entity.forEach((tripUpdate: any, idx: number) => {
+            try {
+                if (!tripUpdate.trip_update || !tripUpdate.trip_update.stop_time_update) {
+                    return;
                 }
-                
-                const retraso = Math.max(0, parseInt(item.retraso) || parseInt(item.delay) || 0);
-                const horaEst = item.horaEstimada ? formatTime(item.horaEstimada) : null;
-                
-                return {
-                    id: `arr-${Date.now()}-${index}-${item.numeroTren || index}`,
-                    numeroTren: item.numeroTren || item.tren || 'N/A',
-                    origen: (item.origen || 'N/A').trim(),
-                    destino: 'Sevilla Santa Justa',
-                    horaProgramada: horaProg,
-                    horaEstimada: horaEst,
-                    retraso: retraso,
-                    estado: getEstado(item.estado, retraso),
-                    via: item.via || item.plataforma || null,
-                    tipoTren: (item.tipoTren || item.tipo || 'N/A').trim(),
-                };
-            })
-            .filter((item): item is TrainArrival => item !== null);
-        
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainStation.ts:266',message:'Llegadas parsed',data:{rawCount:llegadasRaw.length,parsedCount:llegadas.length,filteredOut:llegadasRaw.length-llegadas.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
-        
-        // #region agent log
-        if (salidasRaw.length > 0) {
-            fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainStation.ts:268',message:'Sample salida raw data',data:{sampleItem:JSON.stringify(salidasRaw[0]),itemKeys:salidasRaw[0]?Object.keys(salidasRaw[0]):[]},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        }
-        // #endregion
-        
-        // Parsear salidas - validar que tengan hora programada
-        const salidas: TrainDeparture[] = salidasRaw
-            .filter((item: any) => item && (item.horaProgramada || item.hora))
-            .map((item: any, index: number) => {
-                const horaProg = formatTime(item.horaProgramada || item.hora);
-                
-                // Validar que la hora sea válida
-                if (horaProg === '--:--') {
-                    return null;
-                }
-                
-                const retraso = Math.max(0, parseInt(item.retraso) || parseInt(item.delay) || 0);
-                const horaEst = item.horaEstimada ? formatTime(item.horaEstimada) : null;
-                
-                return {
-                    id: `dep-${Date.now()}-${index}-${item.numeroTren || index}`,
-                    numeroTren: item.numeroTren || item.tren || 'N/A',
-                    origen: 'Sevilla Santa Justa',
-                    destino: (item.destino || 'N/A').trim(),
-                    horaProgramada: horaProg,
-                    horaEstimada: horaEst,
-                    retraso: retraso,
-                    estado: getEstado(item.estado, retraso),
-                    via: item.via || item.plataforma || null,
-                    tipoTren: (item.tipoTren || item.tipo || 'N/A').trim(),
-                };
-            })
-            .filter((item): item is TrainDeparture => item !== null);
-        
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainStation.ts:295',message:'Salidas parsed',data:{rawCount:salidasRaw.length,parsedCount:salidas.length,filteredOut:salidasRaw.length-salidas.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
-        
-        // Ordenar por hora programada (más próximo primero, considerando cambio de día)
+
+                const trip = tripUpdate.trip_update.trip;
+                const stopUpdates = tripUpdate.trip_update.stop_time_update;
+
+                //ループ through all stops to find Santa Justa
+                stopUpdates.forEach((stopUpdate: any) => {
+                    const stopId = stopUpdate.stop_id;
+
+                    // Verificar si esta parada es Santa Justa
+                    if (!stopId || !stopId.includes(SANTA_JUSTA_GTFS_CODE)) {
+                        return;
+                    }
+
+                    const arrival = stopUpdate.arrival;
+                    const departure = stopUpdate.departure;
+
+                    // Parsear número de tren y tipo
+                    const trainNumber = trip?.trip_id || `TRAIN-${idx}`;
+                    const routeId = trip?.route_id || '';
+                    const trainType = getTrainType(routeId, trainNumber);
+
+                    // Procesar llegada si existe
+                    if (arrival && arrival.time) {
+                        const scheduledTime = new Date(arrival.time * 1000);
+
+                        // Filtrar por tiempo
+                        if (scheduledTime >= treintaMinutosAtras && scheduledTime <= doceHorasDespues) {
+                            const delay = arrival.delay || 0;
+                            const estimatedTime = delay > 0 ? new Date(scheduledTime.getTime() + delay * 1000) : null;
+
+                            llegadas.push({
+                                id: `gtfs-arr-${trainNumber}-${arrival.time}`,
+                                numeroTren: trainNumber,
+                                origen: getOriginFromTrip(trip, stopUpdates, stopId) || 'N/A',
+                                destino: 'Sevilla Santa Justa',
+                                horaProgramada: formatGTFSTime(scheduledTime),
+                                horaEstimada: estimatedTime ? formatGTFSTime(estimatedTime) : null,
+                                retraso: Math.max(0, Math.floor(delay / 60)), // Convertir segundos a minutos
+                                estado: getTrainEstado(delay, false) as any,
+                                via: null,
+                                tipoTren: trainType
+                            });
+                        }
+                    }
+
+                    // Procesar salida si existe
+                    if (departure && departure.time) {
+                        const scheduledTime = new Date(departure.time * 1000);
+
+                        // Filtrar por tiempo
+                        if (scheduledTime >= treintaMinutosAtras && scheduledTime <= doceHorasDespues) {
+                            const delay = departure.delay || 0;
+                            const estimatedTime = delay > 0 ? new Date(scheduledTime.getTime() + delay * 1000) : null;
+
+                            salidas.push({
+                                id: `gtfs-dep-${trainNumber}-${departure.time}`,
+                                numeroTren: trainNumber,
+                                origen: 'Sevilla Santa Justa',
+                                destino: getDestinationFromTrip(trip, stopUpdates, stopId) || 'N/A',
+                                horaProgramada: formatGTFSTime(scheduledTime),
+                                horaEstimada: estimatedTime ? formatGTFSTime(estimatedTime) : null,
+                                retraso: Math.max(0, Math.floor(delay / 60)), // Convertir segundos a minutos
+                                estado: getTrainEstado(delay, true) as any,
+                                via: null,
+                                tipoTren: trainType
+                            });
+                        }
+                    }
+                });
+            } catch (err) {
+                console.warn('Error parsing trip update:', err);
+            }
+        });
+
+        // Ordenar por hora
         const llegadasOrdenadas = sortTrainsByTime(llegadas);
         const salidasOrdenadas = sortTrainsByTime(salidas);
-        
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainStation.ts:280',message:'Parsing complete',data:{llegadasCount:llegadas.length,llegadasOrdenadasCount:llegadasOrdenadas.length,salidasCount:salidas.length,salidasOrdenadasCount:salidasOrdenadas.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
-        
-        // Aunque estén vacíos, son datos REALES (el proxy intentó obtenerlos de ADIF)
+
         return {
             nombre: 'Sevilla Santa Justa',
             codigo: SANTA_JUSTA_CODE,
             ultimaActualizacion: new Date(),
             llegadas: llegadasOrdenadas,
             salidas: salidasOrdenadas,
-            isRealData: true, // Siempre true porque vienen del proxy de ADIF
+            isRealData: true
         };
     } catch (error) {
-        console.error('❌ Error parseando datos de ADIF:', error);
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/16a55f43-70e7-4375-9248-a649a1c4fc05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'trainStation.ts:293',message:'Error in parseAdifData',data:{error:error instanceof Error?error.message:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
+        console.error('❌ Error parsing Renfe GTFS data:', error);
         return null;
     }
+};
+
+/**
+ * Formatea tiempo GTFS a HH:mm
+ */
+const formatGTFSTime = (date: Date): string => {
+    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+};
+
+/**
+ * Obtiene el tipo de tren basándose en route_id o trip_id
+ */
+const getTrainType = (routeId: string, trainNumber: string): string => {
+    const id = (routeId || trainNumber).toUpperCase();
+
+    if (id.includes('AVE') || id.includes('AV-')) return 'AVE';
+    if (id.includes('ALVIA') || id.includes('ALV')) return 'ALVIA';
+    if (id.includes('MD') || id.includes('MEDIA')) return 'MD';
+    if (id.includes('LD') || id.includes('LARGA')) return 'LD';
+    if (id.includes('AVANT')) return 'AVANT';
+
+    return 'LD'; // Por defecto Larga Distancia
+};
+
+/**
+ * Obtiene el origen del viaje (primera parada antes de Santa Justa)
+ */
+const getOriginFromTrip = (trip: any, stops: any[], currentStopId: string): string | null => {
+    // Buscar la primera parada del viaje
+    if (stops && stops.length > 0) {
+        const firstStop = stops[0];
+        if (firstStop.stop_id && firstStop.stop_id !== currentStopId) {
+            return getStationName(firstStop.stop_id);
+        }
+    }
+    return trip?.trip_headsign || null;
+};
+
+/**
+ * Obtiene el destino del viaje (última parada después de Santa Justa)
+ */
+const getDestinationFromTrip = (trip: any, stops: any[], currentStopId: string): string | null => {
+    // Buscar la última parada del viaje
+    if (stops && stops.length > 0) {
+        const lastStop = stops[stops.length - 1];
+        if (lastStop.stop_id && lastStop.stop_id !== currentStopId) {
+            return getStationName(lastStop.stop_id);
+        }
+    }
+    return trip?.trip_headsign || null;
+};
+
+/**
+ * Convierte código de estación GTFS a nombre legible
+ */
+const getStationName = (stopId: string): string => {
+    // Map común de códigos GTFS a nombres de estación
+    const stationMap: Record<string, string> = {
+        '71401': 'Sevilla Santa Justa',
+        '60000': 'Madrid Puerta de Atocha',
+        '71801': 'Córdoba',
+        '72200': 'Málaga María Zambrano',
+        '79600': 'Barcelona Sants',
+        '73401': 'Cádiz',
+        // Añadir más según necesidad
+    };
+
+    // Extraer código base (primeros 5 dígitos)
+    const baseCode = stopId.substring(0, 5);
+    return stationMap[baseCode] || stopId;
+};
+
+/**
+ * Determina estado del tren basado en retraso
+ */
+const getTrainEstado = (delaySeconds: number, isDeparture: boolean): string => {
+    const delayMinutes = Math.floor(delaySeconds / 60);
+
+    if (delayMinutes > 5) return 'retrasado';
+    if (delayMinutes < -5) { // Salió/llegó antes
+        return isDeparture ? 'salido' : 'llegado';
+    }
+    return 'a_tiempo';
 };
 
 /**
@@ -367,9 +384,9 @@ const getEstado = (estado: string | null, retraso: number): 'a_tiempo' | 'retras
     if (!estado || typeof estado !== 'string') {
         return retraso > 0 ? 'retrasado' : 'a_tiempo';
     }
-    
+
     const estadoLower = estado.toLowerCase().trim();
-    
+
     // Estados finales primero (prioridad)
     if (estadoLower.includes('cancelado') || estadoLower.includes('cancel') || estadoLower === 'cancelado') {
         return 'cancelado';
@@ -380,12 +397,12 @@ const getEstado = (estado: string | null, retraso: number): 'a_tiempo' | 'retras
     if (estadoLower.includes('salido') || estadoLower.includes('departed') || estadoLower === 'salido') {
         return 'salido';
     }
-    
+
     // Estado de retraso
     if (retraso > 0 || estadoLower.includes('retrasado') || estadoLower.includes('delay') || estadoLower.includes('atraso')) {
         return 'retrasado';
     }
-    
+
     // Por defecto, a tiempo
     return 'a_tiempo';
 };
@@ -413,7 +430,7 @@ const generateSampleArrivals = (ahora: Date): TrainArrival[] => {
     const llegadas: TrainArrival[] = [];
     const horaActual = ahora.getHours();
     const minutosActuales = ahora.getMinutes();
-    
+
     // Horarios típicos de llegadas a Santa Justa (ejemplos reales)
     const horariosTipicos = [
         { hora: horaActual, min: minutosActuales + 15, origen: 'Madrid-Puerta de Atocha', tipo: 'AVE', num: '1120' },
@@ -427,22 +444,22 @@ const generateSampleArrivals = (ahora: Date): TrainArrival[] => {
         { hora: horaActual + 3, min: 5, origen: 'Málaga-María Zambrano', tipo: 'AVE', num: '8817' },
         { hora: horaActual + 3, min: 25, origen: 'Madrid-Puerta de Atocha', tipo: 'ALV', num: '5316' },
     ];
-    
+
     horariosTipicos.forEach((horario, i) => {
         const horaProgramada = new Date(ahora);
         horaProgramada.setHours(horario.hora, horario.min, 0, 0);
-        
+
         // Algunos trenes con retraso (30% de probabilidad)
         const tieneRetraso = Math.random() > 0.7;
         const retraso = tieneRetraso ? Math.floor(Math.random() * 25) + 3 : 0;
-        
-        const horaEstimada = retraso > 0 
+
+        const horaEstimada = retraso > 0
             ? new Date(horaProgramada.getTime() + retraso * 60000)
             : null;
-        
+
         const numeroTren = `${horario.tipo}-${horario.num}`;
         const via = Math.random() > 0.4 ? `Vía ${Math.floor(Math.random() * 8) + 1}` : null;
-        
+
         llegadas.push({
             id: `arr-${i}`,
             numeroTren,
@@ -456,7 +473,7 @@ const generateSampleArrivals = (ahora: Date): TrainArrival[] => {
             tipoTren: horario.tipo,
         });
     });
-    
+
     // Ordenar por hora programada (más próximo primero, considerando cambio de día)
     return sortTrainsByTime(llegadas);
 };
@@ -468,7 +485,7 @@ const generateSampleDepartures = (ahora: Date): TrainDeparture[] => {
     const salidas: TrainDeparture[] = [];
     const horaActual = ahora.getHours();
     const minutosActuales = ahora.getMinutes();
-    
+
     // Horarios típicos de salidas desde Santa Justa
     const horariosTipicos = [
         { hora: horaActual, min: minutosActuales + 12, destino: 'Madrid-Puerta de Atocha', tipo: 'AVE', num: '1122' },
@@ -482,22 +499,22 @@ const generateSampleDepartures = (ahora: Date): TrainDeparture[] => {
         { hora: horaActual + 2, min: 35, destino: 'Málaga-María Zambrano', tipo: 'AVE', num: '8819' },
         { hora: horaActual + 2, min: 48, destino: 'Cádiz', tipo: 'MD', num: '4458' },
     ];
-    
+
     horariosTipicos.forEach((horario, i) => {
         const horaProgramada = new Date(ahora);
         horaProgramada.setHours(horario.hora, horario.min, 0, 0);
-        
+
         // Algunos trenes con retraso (25% de probabilidad)
         const tieneRetraso = Math.random() > 0.75;
         const retraso = tieneRetraso ? Math.floor(Math.random() * 20) + 2 : 0;
-        
-        const horaEstimada = retraso > 0 
+
+        const horaEstimada = retraso > 0
             ? new Date(horaProgramada.getTime() + retraso * 60000)
             : null;
-        
+
         const numeroTren = `${horario.tipo}-${horario.num}`;
         const via = Math.random() > 0.4 ? `Vía ${Math.floor(Math.random() * 8) + 1}` : null;
-        
+
         salidas.push({
             id: `dep-${i}`,
             numeroTren,
@@ -511,7 +528,7 @@ const generateSampleDepartures = (ahora: Date): TrainDeparture[] => {
             tipoTren: horario.tipo,
         });
     });
-    
+
     // Ordenar por hora programada (más próximo primero, considerando cambio de día)
     return sortTrainsByTime(salidas);
 };
@@ -539,26 +556,26 @@ const sortTrainsByTime = <T extends { horaProgramada: string }>(trains: T[]): T[
     const horaActual = ahora.getHours();
     const minutosActuales = ahora.getMinutes();
     const minutosActualesTotal = horaActual * 60 + minutosActuales;
-    
+
     return trains.sort((a, b) => {
         const minutosA = parseTime(a.horaProgramada);
         const minutosB = parseTime(b.horaProgramada);
-        
+
         // Si ambos trenes son del mismo día (después de la hora actual)
         if (minutosA >= minutosActualesTotal && minutosB >= minutosActualesTotal) {
             return minutosA - minutosB;
         }
-        
+
         // Si ambos trenes son del día anterior (antes de la hora actual)
         if (minutosA < minutosActualesTotal && minutosB < minutosActualesTotal) {
             return minutosA - minutosB;
         }
-        
+
         // Si uno es del día siguiente y otro del día actual
         // Los del día siguiente van después
         if (minutosA < minutosActualesTotal) return 1; // A es del día siguiente
         if (minutosB < minutosActualesTotal) return -1; // B es del día siguiente
-        
+
         return minutosA - minutosB;
     });
 };
@@ -572,7 +589,7 @@ export const startStationUpdates = (
 ): (() => void) => {
     let intervalId: NodeJS.Timeout;
     let isRunning = true;
-    
+
     const update = async () => {
         if (!isRunning) return;
         try {
@@ -582,13 +599,13 @@ export const startStationUpdates = (
             console.error('Error actualizando información de estación:', error);
         }
     };
-    
+
     // Primera actualización inmediata
     update();
-    
+
     // Actualizaciones periódicas
     intervalId = setInterval(update, intervalMs);
-    
+
     // Retornar función para detener
     return () => {
         isRunning = false;

@@ -192,8 +192,8 @@ const FlightStationScreen: React.FC<FlightStationScreenProps> = ({ navigateTo })
                                             ✅ Datos Reales
                                         </div>
                                     ) : (
-                                        <div className={`text-xs px-3 py-1 rounded-full ${isDark ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>
-                                            📋 Horarios Aproximados
+                                        <div className={`text-xs px-3 py-1 rounded-full ${isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-700'}`}>
+                                            ❌ Sin Datos
                                         </div>
                                     )}
                                     <div className={`text-xs px-3 py-1 rounded-full ${isDark ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>
@@ -244,7 +244,7 @@ const FlightStationScreen: React.FC<FlightStationScreenProps> = ({ navigateTo })
                                     </h3>
                                     {airportInfo.llegadas.length === 0 ? (
                                         <div className={`${secondaryTextColor} text-center py-8`}>
-                                            No hay llegadas programadas
+                                            {airportInfo.isRealData ? 'No se encontraron vuelos recientes.' : 'No se pudo conectar con el servidor de vuelos.'}
                                         </div>
                                     ) : (
                                         airportInfo.llegadas.map(flight => renderFlightRow(flight, true))
@@ -257,7 +257,7 @@ const FlightStationScreen: React.FC<FlightStationScreenProps> = ({ navigateTo })
                                     </h3>
                                     {airportInfo.salidas.length === 0 ? (
                                         <div className={`${secondaryTextColor} text-center py-8`}>
-                                            No hay salidas programadas
+                                            {airportInfo.isRealData ? 'No se encontraron vuelos recientes.' : 'No se pudo conectar con el servidor de vuelos.'}
                                         </div>
                                     ) : (
                                         airportInfo.salidas.map(flight => renderFlightRow(flight, false))
@@ -271,11 +271,10 @@ const FlightStationScreen: React.FC<FlightStationScreenProps> = ({ navigateTo })
                             <div className={`text-xs ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>
                                 <p className="font-semibold mb-1">ℹ️ Información</p>
                                 <p className="mb-2">
-                                    Los datos se actualizan automáticamente cada minuto.
-                                    Los horarios mostrados son aproximados basados en vuelos típicos del aeropuerto.
+                                    Los datos se obtienen en tiempo real de fuentes oficiales (AviationStack / OpenSky).
                                 </p>
                                 <p>
-                                    <strong>Para información oficial en tiempo real:</strong> Consulta la web de
+                                    <strong>Para información oficial:</strong> Consulta la web de
                                     <a href="https://www.aena.es/es/sevilla/sevilla.html" target="_blank" rel="noopener noreferrer" className="underline ml-1">
                                         AENA
                                     </a>.

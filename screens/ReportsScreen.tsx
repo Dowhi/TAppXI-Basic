@@ -380,7 +380,7 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigateTo }) => {
                     datos.carrerasVales++;
                     datos.importeVales += (c.cobrado || 0);
                 }
-                if (c.emisora) {
+                if (c.emisora === true) {
                     datos.carrerasEmisora++;
                     datos.importeEmisora += (c.cobrado || 0);
                 }

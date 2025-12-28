@@ -30,8 +30,13 @@ import BreakConfigurationScreen from './screens/BreakConfigurationScreen';
 import ReportsScreen from './screens/ReportsScreen';
 import AnalisisAvanzadoScreen from './screens/AnalisisAvanzadoScreen';
 import RemindersScreen from './screens/RemindersScreen';
-import TrainStationScreen from './screens/TrainStationScreen';
-import FlightStationScreen from './screens/FlightStationScreen';
+// DESHABILITADO TEMPORALMENTE: APIs públicas de transporte (Renfe/AviationStack) tienen limitaciones
+// Para reactivar en el futuro cuando mejoren las APIs:
+// 1. Descomentar estas líneas
+// 2. Descomentar los casos del switch abajo (líneas ~257-260)
+// 3. Verificar que las APIs funcionan correctamente
+// import TrainStationScreen from './screens/TrainStationScreen';
+// import FlightStationScreen from './screens/FlightStationScreen';
 import { LoginScreen } from './screens/LoginScreen';
 import BottomNavBar from './components/BottomNavBar';
 import { ActivationService } from './services/activation';
@@ -60,19 +65,7 @@ const App: React.FC = () => {
         localStorage.setItem('tappxi_setup_complete', 'true');
     };
 
-    // Show login screen for first-time users or until they login/skip
-    if (!setupComplete) {
-        return (
-            <LoginScreen
-                onLoginSuccess={handleLoginComplete}
-                onSkip={handleLoginComplete}
-            />
-        );
-    }
 
-    if (!isActivated) {
-        return <LockScreen onUnlock={() => setIsActivated(true)} />;
-    }
 
 
     // Iniciar verificación de sonidos
@@ -203,6 +196,21 @@ const App: React.FC = () => {
         },
     ]);
 
+
+    // Show login screen for first-time users or until they login/skip
+    if (!setupComplete) {
+        return (
+            <LoginScreen
+                onLoginSuccess={handleLoginComplete}
+                onSkip={handleLoginComplete}
+            />
+        );
+    }
+
+    if (!isActivated) {
+        return <LockScreen onUnlock={() => setIsActivated(true)} />;
+    }
+
     const renderPage = () => {
         switch (currentPage) {
             case Seccion.Home:
@@ -251,10 +259,11 @@ const App: React.FC = () => {
                 return <AnalisisAvanzadoScreen navigateTo={navigateTo} />;
             case Seccion.Recordatorios:
                 return <RemindersScreen navigateTo={navigateTo} />;
-            case Seccion.EstacionTren:
-                return <TrainStationScreen navigateTo={navigateTo} />;
-            case Seccion.Aeropuerto:
-                return <FlightStationScreen navigateTo={navigateTo} />;
+            // DESHABILITADO: Santa Justa y Aeropuerto (APIs con problemas CORS/límites)
+            // case Seccion.EstacionTren:
+            //     return <TrainStationScreen navigateTo={navigateTo} />;
+            // case Seccion.Aeropuerto:
+            //     return <FlightStationScreen navigateTo={navigateTo} />;
             default:
                 return <HomeScreen navigateTo={navigateTo} />;
         }

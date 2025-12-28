@@ -1,0 +1,2998 @@
+﻿{
+  "header": {
+    "gtfsRealtimeVersion": "2.0",
+    "timestamp": "1766948301"
+  },
+  "entity": [{
+    "id": "TUUPDATE_0318312025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0318312025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -120
+    }
+  }, {
+    "id": "TUUPDATE_0918212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0918212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 660
+    }
+  }, {
+    "id": "TUUPDATE_0918312025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0918312025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1800
+    }
+  }, {
+    "id": "TUUPDATE_0919212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0919212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 120
+    }
+  }, {
+    "id": "TUUPDATE_0319112025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0319112025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_0319122025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0319122025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_0319132025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0319132025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_0959012025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0959012025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_3419112025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3419112025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_0319222025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0319222025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_0319212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0319212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_0972512025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0972512025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 120
+    }
+  }, {
+    "id": "TUUPDATE_0972522025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0972522025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 120
+    }
+  }, {
+    "id": "TUUPDATE_0972532025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0972532025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 120
+    }
+  }, {
+    "id": "TUUPDATE_3419212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3419212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_3412512025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3412512025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 120
+    }
+  }, {
+    "id": "TUUPDATE_0416212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0416212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -300
+    }
+  }, {
+    "id": "TUUPDATE_0069412025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0069412025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 600
+    }
+  }, {
+    "id": "TUUPDATE_3429212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3429212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_0069712025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0069712025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1380
+    }
+  }, {
+    "id": "TUUPDATE_0061312025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0061312025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1260
+    }
+  }, {
+    "id": "TUUPDATE_0075722025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0075722025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1260
+    }
+  }, {
+    "id": "TUUPDATE_0075712025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0075712025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1260
+    }
+  }, {
+    "id": "TUUPDATE_0062542025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0062542025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 4680
+    }
+  }, {
+    "id": "TUUPDATE_0414012025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0414012025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_0062532025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0062532025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 4680
+    }
+  }, {
+    "id": "TUUPDATE_0062512025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0062512025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 4680
+    }
+  }, {
+    "id": "TUUPDATE_0062522025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0062522025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 4680
+    }
+  }, {
+    "id": "TUUPDATE_0414022025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0414022025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_0414032025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0414032025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_3714012025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3714012025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_0063112025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0063112025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 4680
+    }
+  }, {
+    "id": "TUUPDATE_0063132025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0063132025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 4680
+    }
+  }, {
+    "id": "TUUPDATE_0063142025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0063142025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 4680
+    }
+  }, {
+    "id": "TUUPDATE_0416112025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0416112025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 120
+    }
+  }, {
+    "id": "TUUPDATE_3462512025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3462512025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 4680
+    }
+  }, {
+    "id": "TUUPDATE_3463112025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3463112025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 4680
+    }
+  }, {
+    "id": "TUUPDATE_0417622025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0417622025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 960
+    }
+  }, {
+    "id": "TUUPDATE_0417612025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0417612025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 960
+    }
+  }, {
+    "id": "TUUPDATE_0436622025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0436622025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 960
+    }
+  }, {
+    "id": "TUUPDATE_0436612025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0436612025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 960
+    }
+  }, {
+    "id": "TUUPDATE_3417612025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3417612025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 960
+    }
+  }, {
+    "id": "TUUPDATE_1244112025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1244112025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_1245712025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1245712025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -60
+    }
+  }, {
+    "id": "TUUPDATE_3436612025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3436612025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 960
+    }
+  }, {
+    "id": "TUUPDATE_1269012025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1269012025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 540
+    }
+  }, {
+    "id": "TUUPDATE_0416712025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0416712025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_0416722025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0416722025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_0416732025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0416732025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_1296712025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1296712025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 480
+    }
+  }, {
+    "id": "TUUPDATE_1308312025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1308312025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 480
+    }
+  }, {
+    "id": "TUUPDATE_0426712025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0426712025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_0426722025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0426722025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_0426732025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0426732025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_1339412025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1339412025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_3716712025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3716712025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_1301912025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1301912025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 120
+    }
+  }, {
+    "id": "TUUPDATE_1303112025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1303112025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 240
+    }
+  }, {
+    "id": "TUUPDATE_1301722025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1301722025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 480
+    }
+  }, {
+    "id": "TUUPDATE_1301712025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1301712025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 480
+    }
+  }, {
+    "id": "TUUPDATE_3726712025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3726712025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_3801712025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3801712025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 480
+    }
+  }, {
+    "id": "TUUPDATE_0417922025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0417922025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 240
+    }
+  }, {
+    "id": "TUUPDATE_0417912025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0417912025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 240
+    }
+  }, {
+    "id": "TUUPDATE_1303512025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1303512025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1320
+    }
+  }, {
+    "id": "TUUPDATE_3717912025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3717912025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 240
+    }
+  }, {
+    "id": "TUUPDATE_3803512025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3803512025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1320
+    }
+  }, {
+    "id": "TUUPDATE_0418112025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0418112025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -300
+    }
+  }, {
+    "id": "TUUPDATE_1304912025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1304912025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_1307612025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1307612025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -60
+    }
+  }, {
+    "id": "TUUPDATE_0419022025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0419022025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -60
+    }
+  }, {
+    "id": "TUUPDATE_0419012025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0419012025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -60
+    }
+  }, {
+    "id": "TUUPDATE_1307332025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1307332025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1740
+    }
+  }, {
+    "id": "TUUPDATE_1307312025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1307312025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1740
+    }
+  }, {
+    "id": "TUUPDATE_3719012025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3719012025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -60
+    }
+  }, {
+    "id": "TUUPDATE_3807312025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3807312025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1740
+    }
+  }, {
+    "id": "TUUPDATE_0419212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0419212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 540
+    }
+  }, {
+    "id": "TUUPDATE_1308932025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1308932025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_1308912025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1308912025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_0419322025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0419322025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 360
+    }
+  }, {
+    "id": "TUUPDATE_0419312025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0419312025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 360
+    }
+  }, {
+    "id": "TUUPDATE_1394412025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1394412025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_3719312025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3719312025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 360
+    }
+  }, {
+    "id": "TUUPDATE_1322112025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1322112025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -240
+    }
+  }, {
+    "id": "TUUPDATE_0456512025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0456512025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 360
+    }
+  }, {
+    "id": "TUUPDATE_1323012025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1323012025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 480
+    }
+  }, {
+    "id": "TUUPDATE_0437512025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0437512025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 840
+    }
+  }, {
+    "id": "TUUPDATE_0497512025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0497512025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 540
+    }
+  }, {
+    "id": "TUUPDATE_3890912025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3890912025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_0439522025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0439522025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_0439512025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0439512025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_3830212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3830212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1440
+    }
+  }, {
+    "id": "TUUPDATE_3562332025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3562332025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1260
+    }
+  }, {
+    "id": "TUUPDATE_3562322025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3562322025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1260
+    }
+  }, {
+    "id": "TUUPDATE_3439512025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3439512025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_3862312025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3862312025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1260
+    }
+  }, {
+    "id": "TUUPDATE_1452112025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1452112025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -8520
+    }
+  }, {
+    "id": "TUUPDATE_0433422025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0433422025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 2220
+    }
+  }, {
+    "id": "TUUPDATE_0433412025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0433412025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 2220
+    }
+  }, {
+    "id": "TUUPDATE_1507412025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1507412025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 180
+    }
+  }, {
+    "id": "TUUPDATE_3433412025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3433412025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 2220
+    }
+  }, {
+    "id": "TUUPDATE_0438412025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0438412025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 660
+    }
+  }, {
+    "id": "TUUPDATE_1562812025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1562812025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_1562912025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1562912025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 480
+    }
+  }, {
+    "id": "TUUPDATE_0440422025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0440422025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -120
+    }
+  }, {
+    "id": "TUUPDATE_0440412025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0440412025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -120
+    }
+  }, {
+    "id": "TUUPDATE_1564222025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1564222025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_1564212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1564212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_3440412025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3440412025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -120
+    }
+  }, {
+    "id": "TUUPDATE_1575612025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1575612025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_0498822025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0498822025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -60
+    }
+  }, {
+    "id": "TUUPDATE_0498812025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0498812025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -60
+    }
+  }, {
+    "id": "TUUPDATE_1584112025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1584112025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 600
+    }
+  }, {
+    "id": "TUUPDATE_3498812025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3498812025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -60
+    }
+  }, {
+    "id": "TUUPDATE_1584812025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1584812025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 240
+    }
+  }, {
+    "id": "TUUPDATE_0518122025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0518122025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 420
+    }
+  }, {
+    "id": "TUUPDATE_0518112025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0518112025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 420
+    }
+  }, {
+    "id": "TUUPDATE_3418112025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3418112025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 420
+    }
+  }, {
+    "id": "TUUPDATE_1602412025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1602412025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -60
+    }
+  }, {
+    "id": "TUUPDATE_0518212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0518212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -180
+    }
+  }, {
+    "id": "TUUPDATE_1602712025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1602712025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 480
+    }
+  }, {
+    "id": "TUUPDATE_1701822025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1701822025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 240
+    }
+  }, {
+    "id": "TUUPDATE_1701812025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1701812025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 240
+    }
+  }, {
+    "id": "TUUPDATE_0518312025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0518312025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_0518322025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0518322025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_0518332025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0518332025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_3800012025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3800012025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 240
+    }
+  }, {
+    "id": "TUUPDATE_3418312025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3418312025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_1780322025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1780322025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -60
+    }
+  }, {
+    "id": "TUUPDATE_1780312025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1780312025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -60
+    }
+  }, {
+    "id": "TUUPDATE_0518412025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0518412025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_3880712025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3880712025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 420
+    }
+  }, {
+    "id": "TUUPDATE_0520012025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0520012025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_0520032025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0520032025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_0520042025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0520042025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_3431012025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3431012025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_3721012025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3721012025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_1800522025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1800522025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 120
+    }
+  }, {
+    "id": "TUUPDATE_1800512025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1800512025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 120
+    }
+  }, {
+    "id": "TUUPDATE_0517112025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0517112025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 120
+    }
+  }, {
+    "id": "TUUPDATE_0517122025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0517122025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 120
+    }
+  }, {
+    "id": "TUUPDATE_0517132025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0517132025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 120
+    }
+  }, {
+    "id": "TUUPDATE_3800522025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3800522025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 120
+    }
+  }, {
+    "id": "TUUPDATE_3800512025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3800512025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 120
+    }
+  }, {
+    "id": "TUUPDATE_3417112025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3417112025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 120
+    }
+  }, {
+    "id": "TUUPDATE_0538222025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0538222025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_0538212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0538212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_1802212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1802212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 420
+    }
+  }, {
+    "id": "TUUPDATE_1802722025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1802722025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 600
+    }
+  }, {
+    "id": "TUUPDATE_1802712025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1802712025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 600
+    }
+  }, {
+    "id": "TUUPDATE_0579212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0579212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -120
+    }
+  }, {
+    "id": "TUUPDATE_0579222025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0579222025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -120
+    }
+  }, {
+    "id": "TUUPDATE_0579232025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0579232025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -120
+    }
+  }, {
+    "id": "TUUPDATE_1803412025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1803412025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 180
+    }
+  }, {
+    "id": "TUUPDATE_3479212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3479212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -120
+    }
+  }, {
+    "id": "TUUPDATE_1803622025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1803622025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1020
+    }
+  }, {
+    "id": "TUUPDATE_1803612025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1803612025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1020
+    }
+  }, {
+    "id": "TUUPDATE_1803712025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1803712025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 660
+    }
+  }, {
+    "id": "TUUPDATE_0586242025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0586242025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -60
+    }
+  }, {
+    "id": "TUUPDATE_0586232025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0586232025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -60
+    }
+  }, {
+    "id": "TUUPDATE_0586212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0586212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -60
+    }
+  }, {
+    "id": "TUUPDATE_0586222025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0586222025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -60
+    }
+  }, {
+    "id": "TUUPDATE_1804212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1804212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 480
+    }
+  }, {
+    "id": "TUUPDATE_3486312025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3486312025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -60
+    }
+  }, {
+    "id": "TUUPDATE_1804322025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1804322025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_1804312025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1804312025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_1807512025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1807512025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 780
+    }
+  }, {
+    "id": "TUUPDATE_1807712025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1807712025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_1810512025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1810512025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 240
+    }
+  }, {
+    "id": "TUUPDATE_0819012025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0819012025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 660
+    }
+  }, {
+    "id": "TUUPDATE_3810512025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3810512025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 240
+    }
+  }, {
+    "id": "TUUPDATE_0819112025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0819112025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1440
+    }
+  }, {
+    "id": "TUUPDATE_0819212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0819212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_3810412025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3810412025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 120
+    }
+  }, {
+    "id": "TUUPDATE_0819312025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0819312025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 120
+    }
+  }, {
+    "id": "TUUPDATE_1800612025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1800612025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_3800612025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3800612025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_0839512025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0839512025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_1831812025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1831812025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 120
+    }
+  }, {
+    "id": "TUUPDATE_0839612025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0839612025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 120
+    }
+  }, {
+    "id": "TUUPDATE_3831812025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3831812025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 120
+    }
+  }, {
+    "id": "TUUPDATE_0850512025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0850512025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_1832212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1832212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1020
+    }
+  }, {
+    "id": "TUUPDATE_0878412025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0878412025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -120
+    }
+  }, {
+    "id": "TUUPDATE_3832212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3832212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1020
+    }
+  }, {
+    "id": "TUUPDATE_0394112025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0394112025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -540
+    }
+  }, {
+    "id": "TUUPDATE_1833022025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1833022025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 420
+    }
+  }, {
+    "id": "TUUPDATE_1833012025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1833012025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 420
+    }
+  }, {
+    "id": "TUUPDATE_0399112025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0399112025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -540
+    }
+  }, {
+    "id": "TUUPDATE_0394212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0394212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 120
+    }
+  }, {
+    "id": "TUUPDATE_1801412025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1801412025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_1801422025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1801422025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_1801432025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1801432025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_0399212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0399212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 120
+    }
+  }, {
+    "id": "TUUPDATE_3811412025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3811412025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_0393112025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0393112025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 420
+    }
+  }, {
+    "id": "TUUPDATE_0398112025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0398112025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -240
+    }
+  }, {
+    "id": "TUUPDATE_0933112025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0933112025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_0019222025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0019222025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_0019212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0019212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_1806362025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1806362025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_1806342025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1806342025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_1806352025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1806352025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_1806312025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1806312025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_1806332025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1806332025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_1806322025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1806322025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_3739212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3739212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_3806312025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3806312025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_3749222025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3749222025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_3749212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3749212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_1806512025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1806512025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -120
+    }
+  }, {
+    "id": "TUUPDATE_1806522025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1806522025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -120
+    }
+  }, {
+    "id": "TUUPDATE_1806532025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1806532025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -120
+    }
+  }, {
+    "id": "TUUPDATE_0019422025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0019422025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 540
+    }
+  }, {
+    "id": "TUUPDATE_0019412025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0019412025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 540
+    }
+  }, {
+    "id": "TUUPDATE_3806512025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3806512025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -120
+    }
+  }, {
+    "id": "TUUPDATE_1808332025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1808332025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_1818132025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1818132025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -120
+    }
+  }, {
+    "id": "TUUPDATE_1890812025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1890812025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 240
+    }
+  }, {
+    "id": "TUUPDATE_3709422025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3709422025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 540
+    }
+  }, {
+    "id": "TUUPDATE_3709412025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3709412025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 540
+    }
+  }, {
+    "id": "TUUPDATE_1890912025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1890912025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 240
+    }
+  }, {
+    "id": "TUUPDATE_3739412025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3739412025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 540
+    }
+  }, {
+    "id": "TUUPDATE_1890412025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1890412025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 540
+    }
+  }, {
+    "id": "TUUPDATE_0029522025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0029522025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1080
+    }
+  }, {
+    "id": "TUUPDATE_0029512025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0029512025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1080
+    }
+  }, {
+    "id": "TUUPDATE_3596812025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3596812025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 180
+    }
+  }, {
+    "id": "TUUPDATE_3709522025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3709522025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1080
+    }
+  }, {
+    "id": "TUUPDATE_3709512025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3709512025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1080
+    }
+  }, {
+    "id": "TUUPDATE_1501712025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1501712025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_3739512025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3739512025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1080
+    }
+  }, {
+    "id": "TUUPDATE_1502012025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1502012025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 420
+    }
+  }, {
+    "id": "TUUPDATE_0042012025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0042012025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 600
+    }
+  }, {
+    "id": "TUUPDATE_1505212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1505212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_0042212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0042212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 120
+    }
+  }, {
+    "id": "TUUPDATE_1503612025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1503612025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 840
+    }
+  }, {
+    "id": "TUUPDATE_0046012025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0046012025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_1556512025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1556512025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -120
+    }
+  }, {
+    "id": "TUUPDATE_1556612025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1556612025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 480
+    }
+  }, {
+    "id": "TUUPDATE_0146312025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0146312025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -120
+    }
+  }, {
+    "id": "TUUPDATE_0146322025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0146322025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -120
+    }
+  }, {
+    "id": "TUUPDATE_0146332025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0146332025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -120
+    }
+  }, {
+    "id": "TUUPDATE_1556712025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1556712025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -60
+    }
+  }, {
+    "id": "TUUPDATE_0146312025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0146312025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -120
+    }
+  }, {
+    "id": "TUUPDATE_0146322025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0146322025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -120
+    }
+  }, {
+    "id": "TUUPDATE_0146332025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0146332025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -120
+    }
+  }, {
+    "id": "TUUPDATE_1430412025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1430412025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_1447812025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1447812025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_3746312025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3746312025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -120
+    }
+  }, {
+    "id": "TUUPDATE_3746312025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3746312025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -120
+    }
+  }, {
+    "id": "TUUPDATE_1805612025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1805612025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 360
+    }
+  }, {
+    "id": "TUUPDATE_0053022025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0053022025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -300
+    }
+  }, {
+    "id": "TUUPDATE_0053012025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0053012025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -300
+    }
+  }, {
+    "id": "TUUPDATE_1809612025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1809612025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 660
+    }
+  }, {
+    "id": "TUUPDATE_3809612025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3809612025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 660
+    }
+  }, {
+    "id": "TUUPDATE_1526012025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1526012025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_1501612025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1501612025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1140
+    }
+  }, {
+    "id": "TUUPDATE_0043812025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0043812025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -360
+    }
+  }, {
+    "id": "TUUPDATE_0043822025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0043822025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -360
+    }
+  }, {
+    "id": "TUUPDATE_0043832025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0043832025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -360
+    }
+  }, {
+    "id": "TUUPDATE_3743812025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3743812025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -360
+    }
+  }, {
+    "id": "TUUPDATE_0043712025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0043712025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 660
+    }
+  }, {
+    "id": "TUUPDATE_0043722025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0043722025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 660
+    }
+  }, {
+    "id": "TUUPDATE_0043732025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0043732025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 660
+    }
+  }, {
+    "id": "TUUPDATE_3743712025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3743712025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 660
+    }
+  }, {
+    "id": "TUUPDATE_0061012025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0061012025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 120
+    }
+  }, {
+    "id": "TUUPDATE_0062262025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0062262025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1860
+    }
+  }, {
+    "id": "TUUPDATE_0062242025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0062242025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1860
+    }
+  }, {
+    "id": "TUUPDATE_0062252025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0062252025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1860
+    }
+  }, {
+    "id": "TUUPDATE_0062212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0062212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1860
+    }
+  }, {
+    "id": "TUUPDATE_0062232025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0062232025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1860
+    }
+  }, {
+    "id": "TUUPDATE_0062222025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0062222025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1860
+    }
+  }, {
+    "id": "TUUPDATE_0063242025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0063242025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1860
+    }
+  }, {
+    "id": "TUUPDATE_0063232025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0063232025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1860
+    }
+  }, {
+    "id": "TUUPDATE_0063212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0063212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1860
+    }
+  }, {
+    "id": "TUUPDATE_0063222025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0063222025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1860
+    }
+  }, {
+    "id": "TUUPDATE_3463212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3463212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1860
+    }
+  }, {
+    "id": "TUUPDATE_3762212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3762212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1860
+    }
+  }, {
+    "id": "TUUPDATE_3772222025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3772222025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1860
+    }
+  }, {
+    "id": "TUUPDATE_3772212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3772212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1860
+    }
+  }, {
+    "id": "TUUPDATE_0056312025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0056312025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 960
+    }
+  }, {
+    "id": "TUUPDATE_0080812025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0080812025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -60
+    }
+  }, {
+    "id": "TUUPDATE_0116112025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0116112025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 600
+    }
+  }, {
+    "id": "TUUPDATE_0118112025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0118112025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 240
+    }
+  }, {
+    "id": "TUUPDATE_3418212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3418212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 240
+    }
+  }, {
+    "id": "TUUPDATE_0118212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0118212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 900
+    }
+  }, {
+    "id": "TUUPDATE_0119212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0119212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 480
+    }
+  }, {
+    "id": "TUUPDATE_0140212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0140212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -240
+    }
+  }, {
+    "id": "TUUPDATE_0216412025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0216412025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -780
+    }
+  }, {
+    "id": "TUUPDATE_0216512025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0216512025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_0217612025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0217612025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 540
+    }
+  }, {
+    "id": "TUUPDATE_0217112025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0217112025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_0217212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0217212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -120
+    }
+  }, {
+    "id": "TUUPDATE_0217512025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0217512025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 540
+    }
+  }, {
+    "id": "TUUPDATE_0218012025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0218012025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 180
+    }
+  }, {
+    "id": "TUUPDATE_0218712025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0218712025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -60
+    }
+  }, {
+    "id": "TUUPDATE_0218812025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0218812025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_0219012025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0219012025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 300
+    }
+  }, {
+    "id": "TUUPDATE_0219112025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0219112025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 360
+    }
+  }, {
+    "id": "TUUPDATE_0219312025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0219312025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -180
+    }
+  }, {
+    "id": "TUUPDATE_0219712025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0219712025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -180
+    }
+  }, {
+    "id": "TUUPDATE_0236522025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0236522025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 720
+    }
+  }, {
+    "id": "TUUPDATE_0236512025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0236512025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 720
+    }
+  }, {
+    "id": "TUUPDATE_0236622025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0236622025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_0236612025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0236612025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_3736612025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3736612025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 60
+    }
+  }, {
+    "id": "TUUPDATE_0237112025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0237112025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -300
+    }
+  }, {
+    "id": "TUUPDATE_0238422025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0238422025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1200
+    }
+  }, {
+    "id": "TUUPDATE_0238412025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0238412025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1200
+    }
+  }, {
+    "id": "TUUPDATE_0237522025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0237522025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1200
+    }
+  }, {
+    "id": "TUUPDATE_0237512025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0237512025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 1200
+    }
+  }, {
+    "id": "TUUPDATE_0286142025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0286142025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 780
+    }
+  }, {
+    "id": "TUUPDATE_0286132025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0286132025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 780
+    }
+  }, {
+    "id": "TUUPDATE_0286112025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0286112025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 780
+    }
+  }, {
+    "id": "TUUPDATE_0286122025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0286122025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 780
+    }
+  }, {
+    "id": "TUUPDATE_1039322025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1039322025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 780
+    }
+  }, {
+    "id": "TUUPDATE_1039312025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1039312025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 780
+    }
+  }, {
+    "id": "TUUPDATE_3499312025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3499312025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 780
+    }
+  }, {
+    "id": "TUUPDATE_0288312025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0288312025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": -60
+    }
+  }, {
+    "id": "TUUPDATE_0317212025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0317212025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 4980
+    }
+  }, {
+    "id": "TUUPDATE_0387412025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0387412025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 4980
+    }
+  }, {
+    "id": "TUUPDATE_0317312025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0317312025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 120
+    }
+  }, {
+    "id": "TUUPDATE_0337312025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "0337312025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "delay": 120
+    }
+  }, {
+    "id": "TUUPDATE_1264612025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1264612025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "stopTimeUpdate": [{
+        "stopId": "20309",
+        "scheduleRelationship": "SKIPPED"
+      }]
+    }
+  }, {
+    "id": "TUUPDATE_3890812025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3890812025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "stopTimeUpdate": [{
+        "stopId": "51003",
+        "scheduleRelationship": "SKIPPED"
+      }]
+    }
+  }, {
+    "id": "TUUPDATE_1268412025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1268412025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "stopTimeUpdate": [{
+        "stopId": "31412",
+        "scheduleRelationship": "SKIPPED"
+      }]
+    }
+  }, {
+    "id": "TUUPDATE_3890512025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "3890512025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "stopTimeUpdate": [{
+        "stopId": "54413",
+        "scheduleRelationship": "SKIPPED"
+      }]
+    }
+  }, {
+    "id": "TUUPDATE_1306512025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1306512025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "stopTimeUpdate": [{
+        "stopId": "55007",
+        "scheduleRelationship": "SKIPPED"
+      }]
+    }
+  }, {
+    "id": "TUUPDATE_1260412025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1260412025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "stopTimeUpdate": [{
+        "stopId": "20200",
+        "scheduleRelationship": "SKIPPED"
+      }]
+    }
+  }, {
+    "id": "TUUPDATE_1705012025-12-27",
+    "tripUpdate": {
+      "trip": {
+        "tripId": "1705012025-12-27",
+        "scheduleRelationship": "SCHEDULED"
+      },
+      "stopTimeUpdate": [{
+        "stopId": "71300",
+        "scheduleRelationship": "SKIPPED"
+      }]
+    }
+  }]
+}

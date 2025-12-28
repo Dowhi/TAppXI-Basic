@@ -20,7 +20,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onSkip
             await ensureGoogleSignIn();
             // El token se guarda en memoria en el servicio google.ts
             // Consideramos el login exitoso
-            onLoginSuccess();
+
+            // Pequeño delay para asegurar que el popup de Google se ha cerrado completamente
+            // y evitar race conditions al desmontar el componente
+            setTimeout(() => {
+                onLoginSuccess();
+            }, 500);
         } catch (err: any) {
             console.error('Error en autenticación:', err);
 

@@ -55,13 +55,22 @@ const SEVILLA_AIRPORT_CODE = 'SVQ';
  * Intenta obtener datos reales de AENA primero, si falla usa datos simulados
  */
 export const getAirportInfo = async (): Promise<AirportInfo> => {
-    const realData = await tryGetRealData();
+    // Intentar AviationStack (Plan A)
+    let realData = await tryGetRealData();
     if (realData) {
         return realData;
     }
 
-    // Si no hay datos reales, devolver arrays vacíos (NO simulados por petición del usuario)
-    console.warn('Datos reales no disponibles. Mostrando vacío según preferencia.');
+    // Intentar OpenSky (Plan B)
+    console.log('AviationStack falló o sin cupo. Intentando OpenSky...');
+    realData = await tryGetOpenSkyData();
+
+    if (realData) {
+        return realData;
+    }
+
+    // SI todo falla, devolver vacío pero NO inventar datos
+    console.warn('No se pudieron obtener datos reales de ninguna fuente.');
 
     const ahora = new Date();
     return {
@@ -70,20 +79,16 @@ export const getAirportInfo = async (): Promise<AirportInfo> => {
         ultimaActualizacion: ahora,
         llegadas: [],
         salidas: [],
-        isRealData: true
+        isRealData: false // Marcamos false para indicar que NO tenemos datos (error)
     };
 };
 
 /**
- * Intenta obtener datos reales del aeropuerto usando el servidor proxy
+ * Intenta obtener datos reales del aeropuerto usando AviationStack
  */
 const tryGetRealData = async (): Promise<AirportInfo | null> => {
     try {
         const proxyUrl = import.meta.env.VITE_FLIGHT_PROXY_URL || 'http://localhost:3003';
-
-        // Proxy local ignorado, usamos CORS proxy público directamente.
-        // No verificamos health de localhost porque fallaría en producción.
-
 
         // Obtener llegadas y salidas en paralelo
         const [llegadasData, salidasData] = await Promise.all([
@@ -101,11 +106,45 @@ const tryGetRealData = async (): Promise<AirportInfo | null> => {
             codigo: SEVILLA_AIRPORT_CODE,
             ultimaActualizacion: ahora,
             isRealData: true,
-            llegadas: (llegadasData || []) as FlightArrival[],
-            salidas: (salidasData || []) as FlightDeparture[]
+            llegadas: (llegadasData || []) as unknown as FlightArrival[],
+            salidas: (salidasData || []) as unknown as FlightDeparture[]
         };
     } catch (error) {
-        console.error('Error obteniendo datos del proxy:', error);
+        console.error('Error obteniendo datos de AviationStack:', error);
+        return null; // Dejar que el fallback actúe
+    }
+};
+
+/**
+ * Intenta obtener datos de OpenSky
+ */
+const tryGetOpenSkyData = async (): Promise<AirportInfo | null> => {
+    try {
+        const [llegadasData, salidasData] = await Promise.all([
+            fetchOpenSkyFlights('arrival'),
+            fetchOpenSkyFlights('departure')
+        ]);
+
+        if (!llegadasData && !salidasData) {
+            return null;
+        }
+
+        // Si ambos arrays estan vacios es sospechoso, pero valido
+        if ((!llegadasData || llegadasData.length === 0) && (!salidasData || salidasData.length === 0)) {
+            return null;
+        }
+
+        const ahora = new Date();
+        return {
+            nombre: 'Aeropuerto de Sevilla',
+            codigo: SEVILLA_AIRPORT_CODE,
+            ultimaActualizacion: ahora,
+            isRealData: true,
+            llegadas: (llegadasData || []) as unknown as FlightArrival[],
+            salidas: (salidasData || []) as unknown as FlightDeparture[]
+        };
+    } catch (error) {
+        console.error('Error obteniendo datos de OpenSky:', error);
         return null;
     }
 };
@@ -147,6 +186,11 @@ const fetchFlights = async (
 
         // CodeTabs devuelve la respuesta directa
         const data = await response.json();
+
+        if (data.error) {
+            console.warn(`AviationStack Error:`, data.error);
+            return null; // Retornar null para activar fallback
+        }
 
         if (!data.data || data.data.length === 0) {
             console.warn(`No hay vuelos ${type} disponibles en AviationStack`, data);
@@ -196,8 +240,10 @@ const parseAviationStackFlights = (
                 const scheduledDate = new Date(scheduledTime);
                 const estimatedDate = estimatedTime ? new Date(estimatedTime) : null;
 
-                // Filtrar vuelos fuera del rango de 12 horas
-                if (scheduledDate > doceHorasDespues) return null;
+                // Filtrar vuelos que ya pasaron (más de 30 min atrás) o muy lejanos (más de 12h)
+                const treintaMinutosAtras = new Date(ahora.getTime() - 30 * 60 * 1000);
+                if (scheduledDate < treintaMinutosAtras) return null; // Vuelo ya pasó hace más de 30 min
+                if (scheduledDate > doceHorasDespues) return null; // Vuelo demasiado lejano
 
                 // Calcular retraso en minutos
                 const retraso = estimatedDate && scheduledDate
@@ -302,127 +348,104 @@ const parseAenaData = (data: any): AirportInfo => {
 };
 
 /**
- * Genera datos de ejemplo realistas basados en vuelos típicos del aeropuerto de Sevilla
+ * Intenta obtener datos de OpenSky Network (Filtro por aeropuerto LEZL)
  */
-const generateSampleArrivals = (ahora: Date): FlightArrival[] => {
-    const llegadas: FlightArrival[] = [];
-    const horaActual = ahora.getHours();
-    const minutosActuales = ahora.getMinutes();
+const fetchOpenSkyFlights = async (
+    type: 'arrival' | 'departure'
+): Promise<FlightArrival[] | FlightDeparture[] | null> => {
+    try {
+        const isArrival = type === 'arrival';
+        // OpenSky usa ICAO (LEZL) no IATA (SVQ)
+        const airportCode = 'LEZL';
 
-    // Vuelos típicos de llegada a Sevilla (ejemplos reales)
-    // Asegurar que todos los vuelos sean en el futuro
-    const vuelosTipicos = [
-        { offsetMin: 20, origen: 'Madrid', aerolinea: 'Iberia', num: 'IB-8842', tipo: 'Nacional', terminal: 'T1', puerta: 'A12' },
-        { offsetMin: 45, origen: 'Barcelona', aerolinea: 'Vueling', num: 'VY-1234', tipo: 'Nacional', terminal: 'T1', puerta: 'A15' },
-        { offsetMin: 70, origen: 'París', aerolinea: 'Air France', num: 'AF-5678', tipo: 'Internacional', terminal: 'T1', puerta: 'B03' },
-        { offsetMin: 95, origen: 'Londres', aerolinea: 'Ryanair', num: 'FR-9012', tipo: 'Internacional', terminal: 'T1', puerta: 'B08' },
-        { offsetMin: 115, origen: 'Málaga', aerolinea: 'Iberia', num: 'IB-8843', tipo: 'Nacional', terminal: 'T1', puerta: 'A10' },
-        { offsetMin: 135, origen: 'Berlín', aerolinea: 'Eurowings', num: 'EW-3456', tipo: 'Internacional', terminal: 'T1', puerta: 'B12' },
-        { offsetMin: 160, origen: 'Roma', aerolinea: 'Alitalia', num: 'AZ-7890', tipo: 'Internacional', terminal: 'T1', puerta: 'B15' },
-        { offsetMin: 185, origen: 'Lisboa', aerolinea: 'TAP', num: 'TP-2345', tipo: 'Internacional', terminal: 'T1', puerta: 'B18' },
-        { offsetMin: 205, origen: 'Milán', aerolinea: 'Ryanair', num: 'FR-6789', tipo: 'Internacional', terminal: 'T1', puerta: 'B20' },
-        { offsetMin: 230, origen: 'Valencia', aerolinea: 'Iberia', num: 'IB-8844', tipo: 'Nacional', terminal: 'T1', puerta: 'A18' },
-    ];
+        const end = Math.floor(Date.now() / 1000); // Ahora
+        // Buscar ultimas 12 horas (OpenSky free version tiene limitaciones de tiempo hacia atras)
+        const begin = end - (6 * 60 * 60);
 
-    vuelosTipicos.forEach((vuelo, i) => {
-        const horaProgramada = new Date(ahora);
-        const totalMinutos = minutosActuales + vuelo.offsetMin;
-        const horasAdicionales = Math.floor(totalMinutos / 60);
-        const minutosFinales = totalMinutos % 60;
-        horaProgramada.setHours(horaActual + horasAdicionales, minutosFinales, 0, 0);
-
-        // Algunos vuelos con retraso (25% de probabilidad)
-        const tieneRetraso = Math.random() > 0.75;
-        const retraso = tieneRetraso ? Math.floor(Math.random() * 30) + 5 : 0;
-
-        const horaEstimada = retraso > 0
-            ? new Date(horaProgramada.getTime() + retraso * 60000)
-            : null;
-
-        // Formatear hora de forma segura
-        const horaProgStr = `${String(horaProgramada.getHours()).padStart(2, '0')}:${String(horaProgramada.getMinutes()).padStart(2, '0')}`;
-        const horaEstStr = horaEstimada ? `${String(horaEstimada.getHours()).padStart(2, '0')}:${String(horaEstimada.getMinutes()).padStart(2, '0')}` : null;
-
-        llegadas.push({
-            id: `arr-${i}`,
-            numeroVuelo: vuelo.num,
-            aerolinea: vuelo.aerolinea,
-            origen: vuelo.origen,
-            destino: 'Sevilla',
-            horaProgramada: horaProgStr,
-            horaEstimada: horaEstStr,
-            retraso,
-            estado: retraso > 0 ? 'retrasado' : 'a_tiempo',
-            terminal: vuelo.terminal,
-            puerta: vuelo.puerta,
-            tipoVuelo: vuelo.tipo,
+        const baseUrl = `https://opensky-network.org/api/flights/${type}`;
+        const params = new URLSearchParams({
+            airport: airportCode,
+            begin: begin.toString(),
+            end: end.toString()
         });
-    });
 
-    // Ordenar por hora programada (más próximo primero, considerando cambio de día)
-    return sortFlightsByTime(llegadas);
+        const targetUrl = `${baseUrl}?${params.toString()}`;
+
+        console.log(`Fetching OpenSky ${type} directly: ${targetUrl}`);
+
+        const response = await fetch(targetUrl);
+
+        if (!response.ok) {
+            console.warn(`OpenSky API error: ${response.status}`);
+            return null;
+        }
+
+        const data = await response.json();
+
+        if (!Array.isArray(data)) {
+            return [];
+        }
+
+        return parseOpenSkyFlights(data, isArrival);
+    } catch (error) {
+        console.error(`Error fetching OpenSky ${type}:`, error);
+        return null;
+    }
 };
 
 /**
- * Genera datos de ejemplo realistas de salidas
+ * Parsea vuelos de OpenSky
  */
-const generateSampleDepartures = (ahora: Date): FlightDeparture[] => {
-    const salidas: FlightDeparture[] = [];
-    const horaActual = ahora.getHours();
-    const minutosActuales = ahora.getMinutes();
+const parseOpenSkyFlights = (flights: any[], isArrival: boolean): (FlightArrival | FlightDeparture)[] => {
+    return flights.map((flight, idx) => {
+        const tiempo = isArrival ? flight.lastSeen : flight.firstSeen;
+        const date = new Date(tiempo * 1000);
+        const formatHora = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
-    // Vuelos típicos de salida desde Sevilla
-    const vuelosTipicos = [
-        { offsetMin: 15, destino: 'Madrid', aerolinea: 'Iberia', num: 'IB-8845', tipo: 'Nacional', terminal: 'T1', puerta: 'A11' },
-        { offsetMin: 38, destino: 'Barcelona', aerolinea: 'Vueling', num: 'VY-1235', tipo: 'Nacional', terminal: 'T1', puerta: 'A14' },
-        { offsetMin: 65, destino: 'París', aerolinea: 'Air France', num: 'AF-5679', tipo: 'Internacional', terminal: 'T1', puerta: 'B02' },
-        { offsetMin: 88, destino: 'Londres', aerolinea: 'Ryanair', num: 'FR-9013', tipo: 'Internacional', terminal: 'T1', puerta: 'B07' },
-        { offsetMin: 108, destino: 'Málaga', aerolinea: 'Iberia', num: 'IB-8846', tipo: 'Nacional', terminal: 'T1', puerta: 'A09' },
-        { offsetMin: 128, destino: 'Berlín', aerolinea: 'Eurowings', num: 'EW-3457', tipo: 'Internacional', terminal: 'T1', puerta: 'B11' },
-        { offsetMin: 152, destino: 'Roma', aerolinea: 'Alitalia', num: 'AZ-7891', tipo: 'Internacional', terminal: 'T1', puerta: 'B14' },
-        { offsetMin: 175, destino: 'Lisboa', aerolinea: 'TAP', num: 'TP-2346', tipo: 'Internacional', terminal: 'T1', puerta: 'B17' },
-        { offsetMin: 198, destino: 'Milán', aerolinea: 'Ryanair', num: 'FR-6790', tipo: 'Internacional', terminal: 'T1', puerta: 'B19' },
-        { offsetMin: 222, destino: 'Valencia', aerolinea: 'Iberia', num: 'IB-8847', tipo: 'Nacional', terminal: 'T1', puerta: 'A17' },
-    ];
+        const baseData = {
+            id: `os-${isArrival ? 'arr' : 'dep'}-${flight.icao24}-${flight.firstSeen}`,
+            numeroVuelo: flight.callsign ? flight.callsign.trim() : `VUELO-${idx}`,
+            aerolinea: getAirlineFromCallsign(flight.callsign),
+            horaProgramada: formatHora(date), // OpenSky da tiempos reales, asi que usamos eso como programada tb
+            horaEstimada: formatHora(date),
+            retraso: 0, // No tenemos dato de retraso explicito facilmente
+            estado: 'a_tiempo' as const, // Asumimos a tiempo si no sabemos
+            terminal: null,
+            puerta: null,
+            tipoVuelo: 'N/A' // No distinguimos facilmente
+        };
 
-    vuelosTipicos.forEach((vuelo, i) => {
-        const horaProgramada = new Date(ahora);
-        const totalMinutos = minutosActuales + vuelo.offsetMin;
-        const horasAdicionales = Math.floor(totalMinutos / 60);
-        const minutosFinales = totalMinutos % 60;
-        horaProgramada.setHours(horaActual + horasAdicionales, minutosFinales, 0, 0);
-
-        // Algunos vuelos con retraso (20% de probabilidad)
-        const tieneRetraso = Math.random() > 0.8;
-        const retraso = tieneRetraso ? Math.floor(Math.random() * 25) + 3 : 0;
-
-        const horaEstimada = retraso > 0
-            ? new Date(horaProgramada.getTime() + retraso * 60000)
-            : null;
-
-        // Formatear hora de forma segura
-        const horaProgStr = `${String(horaProgramada.getHours()).padStart(2, '0')}:${String(horaProgramada.getMinutes()).padStart(2, '0')}`;
-        const horaEstStr = horaEstimada ? `${String(horaEstimada.getHours()).padStart(2, '0')}:${String(horaEstimada.getMinutes()).padStart(2, '0')}` : null;
-
-        salidas.push({
-            id: `dep-${i}`,
-            numeroVuelo: vuelo.num,
-            aerolinea: vuelo.aerolinea,
-            origen: 'Sevilla',
-            destino: vuelo.destino,
-            horaProgramada: horaProgStr,
-            horaEstimada: horaEstStr,
-            retraso,
-            estado: retraso > 0 ? 'retrasado' : 'a_tiempo',
-            terminal: vuelo.terminal,
-            puerta: vuelo.puerta,
-            tipoVuelo: vuelo.tipo,
-        });
+        if (isArrival) {
+            return {
+                ...baseData,
+                origen: flight.estDepartureAirport || 'Desconocido',
+                destino: 'Sevilla'
+            } as FlightArrival;
+        } else {
+            return {
+                ...baseData,
+                origen: 'Sevilla',
+                destino: flight.estArrivalAirport || 'Desconocido'
+            } as FlightDeparture;
+        }
     });
-
-    // Ordenar por hora programada (más próximo primero, considerando cambio de día)
-    return sortFlightsByTime(salidas);
 };
+
+/**
+ * Intenta deducir aerolinea por el callsign (muy basico)
+ */
+const getAirlineFromCallsign = (callsign: string | null): string => {
+    if (!callsign) return 'N/A';
+    const trimmed = callsign.trim();
+    if (trimmed.startsWith('RYR')) return 'Ryanair';
+    if (trimmed.startsWith('VLG')) return 'Vueling';
+    if (trimmed.startsWith('IBE')) return 'Iberia';
+    if (trimmed.startsWith('EJU')) return 'EasyJet';
+    if (trimmed.startsWith('TRA')) return 'Transavia';
+    if (trimmed.startsWith('TAP')) return 'TAP Portugal';
+    return trimmed.substring(0, 3);
+};
+
 
 /**
  * Parsea una hora en formato HH:mm a minutos desde medianoche

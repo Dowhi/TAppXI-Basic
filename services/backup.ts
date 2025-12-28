@@ -619,7 +619,20 @@ const parseDate = (val: any): Date | null => {
         if (!isNaN(date.getTime())) return date;
         return null;
     }
+    if (typeof val === 'number') {
+        // Timestamp
+        const date = new Date(val);
+        if (!isNaN(date.getTime())) return date;
+        return null;
+    }
     return null;
+};
+
+// Función auxiliar para parsear booleanos
+const parseBoolean = (val: any): boolean => {
+    if (val === true || val === 'TRUE' || val === 'true' || val === 'VERDADERO') return true;
+    if (val === false || val === 'FALSE' || val === 'false' || val === 'FALSO') return false;
+    return Boolean(val);
 };
 
 export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?: (progress: number, message: string) => void): Promise<{ carreras: number; gastos: number; turnos: number }> => {
@@ -670,6 +683,9 @@ export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?
                 taximetro: parseNumber(c.taximetro),
                 cobrado: parseNumber(c.cobrado),
                 fechaHora: fechaHora || new Date(), // Si no se puede parsear, usar fecha actual
+                emisora: parseBoolean(c.emisora),
+                aeropuerto: parseBoolean(c.aeropuerto),
+                estacion: parseBoolean(c.estacion),
             };
         });
 
