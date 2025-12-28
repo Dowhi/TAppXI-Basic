@@ -32,7 +32,7 @@ import AnalisisAvanzadoScreen from './screens/AnalisisAvanzadoScreen';
 import RemindersScreen from './screens/RemindersScreen';
 import TrainStationScreen from './screens/TrainStationScreen';
 import FlightStationScreen from './screens/FlightStationScreen';
-import { WelcomeScreen } from './screens/WelcomeScreen';
+import { LoginScreen } from './screens/LoginScreen';
 import BottomNavBar from './components/BottomNavBar';
 import { ActivationService } from './services/activation';
 import { LockScreen } from './screens/LockScreen';
@@ -55,9 +55,19 @@ const App: React.FC = () => {
     const { isDark } = useTheme();
     const [isActivated, setIsActivated] = useState<boolean>(ActivationService.isActivated());
 
-    // Show welcome screen for first-time users
+    const handleLoginComplete = () => {
+        setSetupComplete(true);
+        localStorage.setItem('tappxi_setup_complete', 'true');
+    };
+
+    // Show login screen for first-time users or until they login/skip
     if (!setupComplete) {
-        return <WelcomeScreen onComplete={() => setSetupComplete(true)} />;
+        return (
+            <LoginScreen
+                onLoginSuccess={handleLoginComplete}
+                onSkip={handleLoginComplete}
+            />
+        );
     }
 
     if (!isActivated) {
