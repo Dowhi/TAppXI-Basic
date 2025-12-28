@@ -4,6 +4,7 @@ import PageTransition from './components/PageTransition';
 import { useTheme } from './contexts/ThemeContext';
 import { Seccion, CarreraVista } from './types';
 import { startReminderSoundCheck, stopReminderSoundCheck, requestNotificationPermission } from './services/reminderSound';
+import { initGoogleClient } from './services/google';
 import { ErrorHandlerSetup } from './components/ErrorHandlerSetup';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import HomeScreen from './screens/HomeScreen';
@@ -67,6 +68,12 @@ const App: React.FC = () => {
 
 
 
+
+
+    // Preload Google Scripts (Critical for iOS popup handling)
+    useEffect(() => {
+        initGoogleClient().catch(console.error);
+    }, []);
 
     // Iniciar verificación de sonidos
     useEffect(() => {

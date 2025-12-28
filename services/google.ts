@@ -178,6 +178,12 @@ export const ensureGoogleSignIn = async (): Promise<void> => {
     // Necesitamos un nuevo token
     return new Promise((resolve, reject) => {
         try {
+            // Verificar si tokenClient está inicializado
+            if (!tokenClient) {
+                reject(new Error("Google Identity Services no inicializado."));
+                return;
+            }
+
             tokenClient.callback = (resp: any) => {
                 if (resp.error !== undefined) {
                     console.error("Error en autenticación Google:", resp);
@@ -200,8 +206,14 @@ export const ensureGoogleSignIn = async (): Promise<void> => {
                 resolve(resp);
             };
 
+            // Intentar abrir popup
+            // NOTA: En iOS esto DEBE ser resultado directo de un click.
+            // Si 'initGoogleClient' tardó mucho, se perdió el contexto.
+            // Por eso precargamos en App.tsx.
             tokenClient.requestAccessToken({ prompt: 'consent' });
+
         } catch (err) {
+            console.error("Excepción al solicitar token:", err);
             reject(err);
         }
     });
