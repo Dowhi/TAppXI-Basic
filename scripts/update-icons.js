@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Using the latest uploaded image
-const SOURCE_IMAGE = 'C:/Users/DOWHI/.gemini/antigravity/brain/861ed052-7b28-46ff-97aa-e8208d06ca7b/uploaded_image_1767122367010.jpg';
+const SOURCE_IMAGE = 'C:/Users/DOWHI/.gemini/antigravity/brain/861ed052-7b28-46ff-97aa-e8208d06ca7b/uploaded_image_1767126079675.jpg';
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
 const TARGETS = [
