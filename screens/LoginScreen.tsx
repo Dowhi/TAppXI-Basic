@@ -47,7 +47,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onSkip
                 {/* Header / Logo Area */}
                 <div className="text-center space-y-2">
                     <div className="mx-auto w-24 h-24 bg-transparent rounded-2xl shadow-xl flex items-center justify-center transform rotate-3 hover:rotate-0 transition-transform duration-300 overflow-hidden">
-                        <img src="/icon-192.png" alt="TAppXI Logo" className="w-full h-full object-cover" />
+                        <img src={`${import.meta.env.BASE_URL}icon-192.png`} alt="TAppXI Logo" className="w-full h-full object-cover" />
                     </div>
                     <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white mt-6">
                         TAppXI
