@@ -15,6 +15,15 @@ const CloseTurnScreen: React.FC<CloseTurnScreenProps> = ({ navigateTo }) => {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
+    const parseSafeDate = (dateAny: any): Date => {
+        if (!dateAny) return new Date();
+        if (dateAny instanceof Date) {
+            return isNaN(dateAny.getTime()) ? new Date() : dateAny;
+        }
+        const parsed = new Date(dateAny);
+        return isNaN(parsed.getTime()) ? new Date() : parsed;
+    };
+
     useEffect(() => {
         // Cargar turno activo
         const loadTurno = async () => {
@@ -90,7 +99,7 @@ const CloseTurnScreen: React.FC<CloseTurnScreenProps> = ({ navigateTo }) => {
             );
         }
 
-        const fechaInicio = turnoActivo.fechaInicio;
+        const fechaInicio = parseSafeDate(turnoActivo.fechaInicio);
         const fechaInicioStr = fechaInicio.toLocaleDateString('es-ES', {
             day: '2-digit',
             month: '2-digit',

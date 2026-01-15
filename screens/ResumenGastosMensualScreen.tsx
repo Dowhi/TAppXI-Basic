@@ -6,13 +6,13 @@ import { getGastosByMonth, subscribeToGastosByMonth } from '../services/api';
 // Icons
 const ArrowLeftIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-        <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+        <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
     </svg>
 );
 
 const ArrowRightIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-        <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+        <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
     </svg>
 );
 
@@ -75,7 +75,7 @@ const ResumenGastosMensualScreen: React.FC<ResumenGastosMensualScreenProps> = ({
     const changeMonth = (months: number) => {
         let newMonth = selectedMonth + months;
         let newYear = selectedYear;
-        
+
         if (newMonth < 0) {
             newMonth = 11;
             newYear--;
@@ -83,7 +83,7 @@ const ResumenGastosMensualScreen: React.FC<ResumenGastosMensualScreenProps> = ({
             newMonth = 0;
             newYear++;
         }
-        
+
         setSelectedMonth(newMonth);
         setSelectedYear(newYear);
     };
@@ -92,16 +92,28 @@ const ResumenGastosMensualScreen: React.FC<ResumenGastosMensualScreenProps> = ({
         return value.toFixed(2).replace('.', ',');
     };
 
-    const formatDate = (date: Date): string => {
-        const day = date.getDate().toString().padStart(2, '0');
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const parseSafeDate = (dateAny: any): Date => {
+        if (!dateAny) return new Date();
+        if (dateAny instanceof Date) {
+            return isNaN(dateAny.getTime()) ? new Date() : dateAny;
+        }
+        const parsed = new Date(dateAny);
+        return isNaN(parsed.getTime()) ? new Date() : parsed;
+    };
+
+    const formatDate = (date: any): string => {
+        const d = parseSafeDate(date);
+        const day = d.getDate().toString().padStart(2, '0');
+        const month = (d.getMonth() + 1).toString().padStart(2, '0');
         return `${day}/${month}`;
     };
 
     // Ordenar gastos por fecha (más recientes primero)
     const gastosOrdenados = useMemo(() => {
         return [...gastos].sort((a, b) => {
-            return b.fecha.getTime() - a.fecha.getTime();
+            const dateA = parseSafeDate(a.fecha);
+            const dateB = parseSafeDate(b.fecha);
+            return dateB.getTime() - dateA.getTime();
         });
     }, [gastos]);
 
@@ -116,7 +128,7 @@ const ResumenGastosMensualScreen: React.FC<ResumenGastosMensualScreenProps> = ({
 
             {/* Navegación de Fecha */}
             <div className="bg-zinc-900 py-1 px-4 flex items-center justify-between border border-zinc-800 rounded-xl">
-                <button 
+                <button
                     onClick={() => changeMonth(-1)}
                     className="text-cyan-300 hover:bg-zinc-800 rounded p-1 transition-colors"
                 >
@@ -125,7 +137,7 @@ const ResumenGastosMensualScreen: React.FC<ResumenGastosMensualScreenProps> = ({
                 <span className="text-zinc-100 font-semibold text-base tracking-wide">
                     {meses[selectedMonth]} {selectedYear}
                 </span>
-                <button 
+                <button
                     onClick={() => changeMonth(1)}
                     className="text-cyan-300 hover:bg-zinc-800 rounded p-1 transition-colors"
                 >
@@ -150,16 +162,15 @@ const ResumenGastosMensualScreen: React.FC<ResumenGastosMensualScreenProps> = ({
                 ) : (
                     <>
                         {gastosOrdenados.map((gasto, index) => (
-                            <div 
+                            <div
                                 key={gasto.id}
                                 onClick={() => {
                                     if (navigateToEditGasto) {
                                         navigateToEditGasto(gasto.id);
                                     }
                                 }}
-                                className={`grid grid-cols-12 py-1.5 px-4 text-sm border-b border-zinc-800 cursor-pointer hover:bg-zinc-800 transition-colors ${
-                                    index % 2 === 0 ? 'bg-zinc-900' : 'bg-zinc-950'
-                                }`}
+                                className={`grid grid-cols-12 py-1.5 px-4 text-sm border-b border-zinc-800 cursor-pointer hover:bg-zinc-800 transition-colors ${index % 2 === 0 ? 'bg-zinc-900' : 'bg-zinc-950'
+                                    }`}
                             >
                                 <div className="col-span-2 text-zinc-100 text-center">{formatDate(gasto.fecha)}</div>
                                 <div className="col-span-2 text-red-400 font-medium text-center">{formatCurrency(gasto.importe || 0)}</div>

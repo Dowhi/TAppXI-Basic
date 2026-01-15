@@ -26,6 +26,15 @@ const EditTurnScreen: React.FC<EditTurnScreenProps> = ({ navigateTo, turnoId }) 
     const [error, setError] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
 
+    const parseSafeDate = (dateAny: any): Date => {
+        if (!dateAny) return new Date();
+        if (dateAny instanceof Date) {
+            return isNaN(dateAny.getTime()) ? new Date() : dateAny;
+        }
+        const parsed = new Date(dateAny);
+        return isNaN(parsed.getTime()) ? new Date() : parsed;
+    };
+
     // Estados del formulario
     const [fechaInicio, setFechaInicio] = useState('');
     const [horaInicio, setHoraInicio] = useState('');
@@ -35,7 +44,8 @@ const EditTurnScreen: React.FC<EditTurnScreenProps> = ({ navigateTo, turnoId }) 
     const [kilometrosFin, setKilometrosFin] = useState('');
 
     // Función helper para convertir Date a formato YYYY-MM-DD (para input type="date")
-    const dateToInputFormat = (date: Date): string => {
+    const dateToInputFormat = (dateAny: any): string => {
+        const date = parseSafeDate(dateAny);
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
@@ -43,7 +53,8 @@ const EditTurnScreen: React.FC<EditTurnScreenProps> = ({ navigateTo, turnoId }) 
     };
 
     // Función helper para formatear fecha y hora para mostrar (DD/MM/YYYY HH:MM)
-    const formatDateTime = (date: Date): string => {
+    const formatDateTime = (dateAny: any): string => {
+        const date = parseSafeDate(dateAny);
         const day = String(date.getDate()).padStart(2, '0');
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const year = date.getFullYear();
@@ -61,28 +72,28 @@ const EditTurnScreen: React.FC<EditTurnScreenProps> = ({ navigateTo, turnoId }) 
                     setError("Turno no encontrado");
                     return;
                 }
-                
+
                 setTurno(turnoData);
-                
+
                 // Formatear fecha y hora de inicio (usar formato local para evitar problemas de zona horaria)
-                const fechaInicioDate = turnoData.fechaInicio;
+                const fechaInicioDate = parseSafeDate(turnoData.fechaInicio);
                 const fechaInicioStr = dateToInputFormat(fechaInicioDate);
                 const horaInicioStr = `${String(fechaInicioDate.getHours()).padStart(2, '0')}:${String(fechaInicioDate.getMinutes()).padStart(2, '0')}`;
-                
+
                 setFechaInicio(fechaInicioStr);
                 setHoraInicio(horaInicioStr);
                 setKilometrosInicio(turnoData.kilometrosInicio.toString());
-                
+
                 // Formatear fecha y hora de fin si existe
                 if (turnoData.fechaFin) {
-                    const fechaFinDate = turnoData.fechaFin;
+                    const fechaFinDate = parseSafeDate(turnoData.fechaFin);
                     const fechaFinStr = dateToInputFormat(fechaFinDate);
                     const horaFinStr = `${String(fechaFinDate.getHours()).padStart(2, '0')}:${String(fechaFinDate.getMinutes()).padStart(2, '0')}`;
-                    
+
                     setFechaFin(fechaFinStr);
                     setHoraFin(horaFinStr);
                 }
-                
+
                 if (turnoData.kilometrosFin !== undefined) {
                     setKilometrosFin(turnoData.kilometrosFin.toString());
                 }
@@ -93,7 +104,7 @@ const EditTurnScreen: React.FC<EditTurnScreenProps> = ({ navigateTo, turnoId }) 
                 setLoading(false);
             }
         };
-        
+
         loadTurno();
     }, [turnoId]);
 
@@ -152,7 +163,7 @@ const EditTurnScreen: React.FC<EditTurnScreenProps> = ({ navigateTo, turnoId }) 
                 fechaFin: fechaFinDate,
                 kilometrosFin: kmsFin
             });
-            
+
             // Volver a la pantalla de turnos
             navigateTo(Seccion.Turnos);
         } catch (err) {

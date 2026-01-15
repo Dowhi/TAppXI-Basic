@@ -27,6 +27,7 @@ export enum Seccion {
     AnalisisAvanzado = "Análisis Avanzado",
     EstacionTren = "Estación Tren",
     Aeropuerto = "Aeropuerto",
+    GestionDatos = "Gestión de Datos",
 }
 
 export interface Ajustes {
@@ -119,6 +120,7 @@ export interface Gasto {
         descripcion?: string;
     }>;
     notas?: string;
+    nif?: string | null;
 }
 
 export interface Taller {
@@ -126,6 +128,7 @@ export interface Taller {
     nombre: string;
     direccion?: string | null;
     telefono?: string | null;
+    nif?: string | null;
 }
 
 export interface Proveedor {

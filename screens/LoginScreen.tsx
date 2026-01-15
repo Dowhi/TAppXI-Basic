@@ -60,7 +60,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onSkip
                 {/* Login Card */}
                 <div className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border border-slate-200 dark:border-zinc-800 rounded-3xl p-8 shadow-2xl shadow-blue-900/5">
 
-                    <div className="space-y-6">
+                    <div className="space-y-2">
                         <div className="space-y-2 text-center">
                             <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
                                 Iniciar Sesión

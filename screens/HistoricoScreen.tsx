@@ -17,8 +17,19 @@ type TabType = 'turnos' | 'carreras' | 'gastos';
 const HistoricoScreen: React.FC<HistoricoScreenProps> = ({ navigateTo }) => {
     const [activeTab, setActiveTab] = useState<TabType>('turnos');
 
+    // Función helper para convertir a Date de forma segura
+    const parseSafeDate = (dateAny: any): Date => {
+        if (!dateAny) return new Date();
+        if (dateAny instanceof Date) {
+            return isNaN(dateAny.getTime()) ? new Date() : dateAny;
+        }
+        const parsed = new Date(dateAny);
+        return isNaN(parsed.getTime()) ? new Date() : parsed;
+    };
+
     // Función helper para formatear fecha y hora de forma consistente (DD/MM/YYYY HH:MM)
-    const formatDateTime = (date: Date): string => {
+    const formatDateTime = (dateAny: any): string => {
+        const date = parseSafeDate(dateAny);
         const day = String(date.getDate()).padStart(2, '0');
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const year = date.getFullYear();
@@ -91,8 +102,8 @@ const HistoricoScreen: React.FC<HistoricoScreenProps> = ({ navigateTo }) => {
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
                         className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${activeTab === tab.id
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
                             }`}
                     >
                         <span className="w-4 h-4">{tab.icon}</span>
@@ -172,7 +183,7 @@ const HistoricoScreen: React.FC<HistoricoScreenProps> = ({ navigateTo }) => {
                                 </Card>
                             ) : (
                                 carreras.slice(0, 100).map(carrera => {
-                                    const fechaHora = carrera.fechaHora.toLocaleDateString('es-ES', {
+                                    const fechaHora = parseSafeDate(carrera.fechaHora).toLocaleDateString('es-ES', {
                                         day: '2-digit',
                                         month: '2-digit',
                                         year: 'numeric',
@@ -212,9 +223,9 @@ const HistoricoScreen: React.FC<HistoricoScreenProps> = ({ navigateTo }) => {
                                                     </div>
                                                     <div className="flex gap-2 mt-2">
                                                         <span className={`text-xs px-2 py-0.5 rounded ${carrera.formaPago === 'Efectivo' ? 'bg-green-900/50 text-green-300' :
-                                                                carrera.formaPago === 'Tarjeta' ? 'bg-blue-900/50 text-blue-300' :
-                                                                    carrera.formaPago === 'Bizum' ? 'bg-purple-900/50 text-purple-300' :
-                                                                        'bg-yellow-900/50 text-yellow-300'
+                                                            carrera.formaPago === 'Tarjeta' ? 'bg-blue-900/50 text-blue-300' :
+                                                                carrera.formaPago === 'Bizum' ? 'bg-purple-900/50 text-purple-300' :
+                                                                    'bg-yellow-900/50 text-yellow-300'
                                                             }`}>
                                                             {carrera.formaPago}
                                                         </span>
@@ -246,7 +257,7 @@ const HistoricoScreen: React.FC<HistoricoScreenProps> = ({ navigateTo }) => {
                                 </Card>
                             ) : (
                                 gastos.slice(0, 100).map(gasto => {
-                                    const fecha = gasto.fecha.toLocaleDateString('es-ES', {
+                                    const fecha = parseSafeDate(gasto.fecha).toLocaleDateString('es-ES', {
                                         day: '2-digit',
                                         month: '2-digit',
                                         year: 'numeric'

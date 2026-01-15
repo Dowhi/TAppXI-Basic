@@ -144,6 +144,12 @@ export async function addProveedor(proveedor: Omit<Proveedor, 'id'> & { id?: str
     return key;
 }
 
+export async function updateProveedor(id: string, updates: Partial<Proveedor>): Promise<void> {
+    const existing = await getItem<Proveedor>('proveedores', id);
+    if (!existing) throw new Error('Proveedor not found');
+    await addItem('proveedores', id, { ...existing, ...updates });
+}
+
 export async function deleteProveedor(id: string): Promise<void> {
     await deleteItem('proveedores', id);
 }
@@ -159,7 +165,15 @@ export async function addConcepto(concepto: Omit<Concepto, 'id'> & { id?: string
     return key;
 }
 
-/** Talleres */
+export async function updateConcepto(id: string, updates: Partial<Concepto>): Promise<void> {
+    const existing = await getItem<Concepto>('conceptos', id);
+    if (!existing) throw new Error('Concepto not found');
+    await addItem('conceptos', id, { ...existing, ...updates });
+}
+
+export async function deleteConcepto(id: string): Promise<void> {
+    await deleteItem('conceptos', id);
+}
 export async function getTalleres(): Promise<Taller[]> {
     return getAllItems('talleres');
 }
@@ -170,6 +184,15 @@ export async function addTaller(taller: Omit<Taller, 'id'> & { id?: string }): P
     return key;
 }
 
+export async function updateTaller(id: string, updates: Partial<Taller>): Promise<void> {
+    const existing = await getItem<Taller>('talleres', id);
+    if (!existing) throw new Error('Taller not found');
+    await addItem('talleres', id, { ...existing, ...updates });
+}
+
+export async function deleteTaller(id: string): Promise<void> {
+    await deleteItem('talleres', id);
+}
 export async function closeTurno(id: string, kilometrosFin: number): Promise<void> {
     const turno = await getItem<Turno>('turnos', id);
     if (!turno) throw new Error('Turno no encontrado');
@@ -429,6 +452,12 @@ export async function restoreConcepto(concepto: any): Promise<void> {
 export async function restoreTaller(taller: any): Promise<void> {
     await addItem('talleres', taller.id, taller);
 }
+export async function restoreValeDirectoryEntry(entry: any): Promise<void> {
+    await addItem('vales', entry.id, entry);
+}
+export async function restoreReminder(reminder: any): Promise<void> {
+    await addItem('reminders', reminder.id, reminder);
+}
 
 /** Statistics Helpers */
 export async function getIngresosForCurrentMonth(): Promise<number> {
@@ -588,4 +617,51 @@ export async function getTotalIngresosByYear(year: number): Promise<number> {
 export async function getTotalGastosByYear(year: number): Promise<number> {
     const monthly = await getGastosByYear(year);
     return monthly.reduce((sum, val) => sum + val, 0);
+}
+export async function removeDuplicates(): Promise<{ gastosRemoved: number, carrerasRemoved: number }> {
+    // Gastos
+    const allGastos = await getGastos();
+    const uniqueGastosMap = new Map<string, string>(); // hash -> id to keep
+    const gastosToDelete: string[] = [];
+
+    for (const g of allGastos) {
+        const d = g.fecha instanceof Date ? g.fecha : new Date(g.fecha);
+        // Create a unique hash for the content
+        const hash = `${d.toISOString()}_${g.importe}_${(g.concepto || '').trim()}_${(g.proveedor || '').trim()}_${(g.taller || '').trim()}`;
+
+        if (uniqueGastosMap.has(hash)) {
+            // Found a duplicate, mark for deletion
+            gastosToDelete.push(g.id);
+        } else {
+            // First time seeing this content, keep it
+            uniqueGastosMap.set(hash, g.id);
+        }
+    }
+
+    for (const id of gastosToDelete) {
+        await deleteGasto(id);
+    }
+
+    // Carreras
+    const allCarreras = await getCarreras();
+    const uniqueCarrerasMap = new Map<string, string>();
+    const carrerasToDelete: string[] = [];
+
+    for (const c of allCarreras) {
+        const d = c.fechaHora instanceof Date ? c.fechaHora : new Date(c.fechaHora);
+        // Create a unique hash for the content
+        const hash = `${d.toISOString()}_${c.cobrado}_${c.taximetro}_${c.formaPago}_${c.emisora}_${c.aeropuerto}`;
+
+        if (uniqueCarrerasMap.has(hash)) {
+            carrerasToDelete.push(c.id);
+        } else {
+            uniqueCarrerasMap.set(hash, c.id);
+        }
+    }
+
+    for (const id of carrerasToDelete) {
+        await deleteCarrera(id);
+    }
+
+    return { gastosRemoved: gastosToDelete.length, carrerasRemoved: carrerasToDelete.length };
 }

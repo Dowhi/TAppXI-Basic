@@ -54,7 +54,7 @@ export const exportToExcel = (
 
         // Ajustar anchos de columna
         wsCarreras['!cols'] = [
-            { wch: 12 }, { wch: 8 }, { wch: 12 }, { wch: 12 },
+            { wch: 12 }, { wch: 8 }, { wch: 10 }, { wch: 10 },
             { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 10 },
             { wch: 10 }, { wch: 30 }
         ];
@@ -691,5 +691,3 @@ export const exportToHacienda = (
     const finalFilename = filename || `TAppXI_Hacienda_${year}_${dateStr}.xlsx`;
     XLSX.writeFile(workbook, finalFilename);
 };
-
-

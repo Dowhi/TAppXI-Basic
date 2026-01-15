@@ -6,13 +6,13 @@ import { getCarrerasByMonth, getGastosByMonth } from '../services/api';
 // Icons
 const ArrowLeftIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-        <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+        <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
     </svg>
 );
 
 const ArrowRightIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-        <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+        <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
     </svg>
 );
 
@@ -55,12 +55,20 @@ const ResumenMensualIngresosScreen: React.FC<ResumenMensualIngresosScreenProps> 
     const datosPorDia = useMemo(() => {
         const datos: { [key: string]: { fecha: Date, ingresos: number, gastos: number } } = {};
 
+        const parseSafeDate = (d: any): Date => {
+            if (d instanceof Date) return d;
+            if (!d) return new Date(0);
+            const parsed = new Date(d);
+            return isNaN(parsed.getTime()) ? new Date(0) : parsed;
+        };
+
         // Procesar carreras (ingresos)
         carreras.forEach(carrera => {
-            const fechaKey = carrera.fechaHora.toISOString().split('T')[0];
+            const dateObj = parseSafeDate(carrera.fechaHora);
+            const fechaKey = dateObj.toISOString().split('T')[0];
             if (!datos[fechaKey]) {
                 datos[fechaKey] = {
-                    fecha: new Date(carrera.fechaHora.getFullYear(), carrera.fechaHora.getMonth(), carrera.fechaHora.getDate()),
+                    fecha: new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()),
                     ingresos: 0,
                     gastos: 0
                 };
@@ -70,10 +78,11 @@ const ResumenMensualIngresosScreen: React.FC<ResumenMensualIngresosScreenProps> 
 
         // Procesar gastos
         gastos.forEach(gasto => {
-            const fechaKey = gasto.fecha.toISOString().split('T')[0];
+            const dateObj = parseSafeDate(gasto.fecha);
+            const fechaKey = dateObj.toISOString().split('T')[0];
             if (!datos[fechaKey]) {
                 datos[fechaKey] = {
-                    fecha: new Date(gasto.fecha.getFullYear(), gasto.fecha.getMonth(), gasto.fecha.getDate()),
+                    fecha: new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()),
                     ingresos: 0,
                     gastos: 0
                 };
@@ -97,7 +106,7 @@ const ResumenMensualIngresosScreen: React.FC<ResumenMensualIngresosScreenProps> 
     const changeMonth = (months: number) => {
         let newMonth = selectedMonth + months;
         let newYear = selectedYear;
-        
+
         if (newMonth < 0) {
             newMonth = 11;
             newYear--;
@@ -105,7 +114,7 @@ const ResumenMensualIngresosScreen: React.FC<ResumenMensualIngresosScreenProps> 
             newMonth = 0;
             newYear++;
         }
-        
+
         setSelectedMonth(newMonth);
         setSelectedYear(newYear);
     };
@@ -132,7 +141,7 @@ const ResumenMensualIngresosScreen: React.FC<ResumenMensualIngresosScreenProps> 
 
             {/* Navegación de Fecha */}
             <div className="bg-zinc-900 py-1 px-4 flex items-center justify-between border border-zinc-800 rounded-xl">
-                <button 
+                <button
                     onClick={() => changeMonth(-1)}
                     className="text-cyan-300 hover:bg-zinc-800 rounded p-1 transition-colors"
                 >
@@ -141,7 +150,7 @@ const ResumenMensualIngresosScreen: React.FC<ResumenMensualIngresosScreenProps> 
                 <span className="text-zinc-100 font-semibold text-base tracking-wide">
                     {meses[selectedMonth]} {selectedYear}
                 </span>
-                <button 
+                <button
                     onClick={() => changeMonth(1)}
                     className="text-cyan-300 hover:bg-zinc-800 rounded p-1 transition-colors"
                 >
@@ -168,11 +177,10 @@ const ResumenMensualIngresosScreen: React.FC<ResumenMensualIngresosScreenProps> 
                         {datosPorDia.map((dato, index) => {
                             const total = dato.ingresos - dato.gastos;
                             return (
-                                <div 
+                                <div
                                     key={index}
-                                    className={`grid grid-cols-12 py-1.5 px-4 text-sm border-b border-zinc-800 ${
-                                        index % 2 === 0 ? 'bg-zinc-900' : 'bg-zinc-950'
-                                    }`}
+                                    className={`grid grid-cols-12 py-1.5 px-4 text-sm border-b border-zinc-800 ${index % 2 === 0 ? 'bg-zinc-900' : 'bg-zinc-950'
+                                        }`}
                                 >
                                     <div className="col-span-2 text-zinc-100">{formatDate(dato.fecha)}</div>
                                     <div className="col-span-2 text-right text-cyan-400 font-medium">{formatCurrency(dato.ingresos)}</div>

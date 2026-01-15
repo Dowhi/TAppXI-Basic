@@ -35,12 +35,19 @@ const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
     const [error, setError] = useState<string | null>(null);
     const [isCreating, setIsCreating] = useState(false);
 
+    const parseSafeDate = (dateAny: any): Date => {
+        if (!dateAny) return new Date();
+        if (dateAny instanceof Date) {
+            return isNaN(dateAny.getTime()) ? new Date() : dateAny;
+        }
+        const parsed = new Date(dateAny);
+        return isNaN(parsed.getTime()) ? new Date() : parsed;
+    };
+
     // Función helper para formatear fecha y hora de forma consistente (DD/MM/YYYY HH:MM)
     // Usa métodos locales explícitos para garantizar formato DD/MM/YYYY
-    const formatDateTime = (date: Date): string => {
-        if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
-            return 'Fecha inválida';
-        }
+    const formatDateTime = (dateAny: any): string => {
+        const date = parseSafeDate(dateAny);
         // getDate(), getMonth(), getFullYear() ya devuelven valores en zona horaria local
         const day = String(date.getDate()).padStart(2, '0');
         const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -52,10 +59,8 @@ const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
     };
 
     // Función helper para formatear solo la fecha (DD/MM/YYYY)
-    const formatDate = (date: Date): string => {
-        if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
-            return 'Fecha inválida';
-        }
+    const formatDate = (dateAny: any): string => {
+        const date = parseSafeDate(dateAny);
         const day = String(date.getDate()).padStart(2, '0');
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const year = date.getFullYear();
@@ -64,10 +69,8 @@ const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
     };
 
     // Función helper para formatear solo la hora (HH:MM)
-    const formatTime = (date: Date): string => {
-        if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
-            return 'Hora inválida';
-        }
+    const formatTime = (dateAny: any): string => {
+        const date = parseSafeDate(dateAny);
         const hours = String(date.getHours()).padStart(2, '0');
         const minutes = String(date.getMinutes()).padStart(2, '0');
         // Formato explícito: HH:MM

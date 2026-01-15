@@ -16,8 +16,13 @@ import {
     restoreExcepcion,
     saveAjustes,
     saveBreakConfiguration,
-    getTurnos as getAllTurnos
+    getTurnos as getAllTurnos,
+    getValesDirectory,
+    getReminders,
+    restoreValeDirectoryEntry,
+    restoreReminder
 } from './api';
+import { getCustomReports, restoreCustomReport } from './customReports';
 import { uploadFileToDrive, createSpreadsheetWithSheets, writeSheetValues, readSheetValues } from './google';
 
 interface BackupPayload {
@@ -35,6 +40,9 @@ interface BackupPayload {
     proveedores: any[];
     conceptos: any[];
     talleres: any[];
+    vales: any[];
+    reminders: any[];
+    customReports: any[];
 }
 
 const safeSerializeDate = (value: any): any => {
@@ -79,6 +87,9 @@ export const buildBackupPayload = async (): Promise<BackupPayload> => {
         proveedores,
         conceptos,
         talleres,
+        vales,
+        reminders,
+        customReports,
     ] = await Promise.all([
         safeGet(() => getAjustes(), null),
         safeGet(() => getBreakConfiguration(), null),
@@ -89,6 +100,9 @@ export const buildBackupPayload = async (): Promise<BackupPayload> => {
         safeGet(() => getProveedores(), []),
         safeGet(() => getConceptos(), []),
         safeGet(() => getTalleres(), []),
+        safeGet(() => getValesDirectory(), []),
+        safeGet(() => getReminders(), []),
+        safeGet(() => getCustomReports(), []),
     ]);
 
     const payload: BackupPayload = {
@@ -106,6 +120,9 @@ export const buildBackupPayload = async (): Promise<BackupPayload> => {
         proveedores: proveedores ? safeSerializeDate(proveedores) : [],
         conceptos: conceptos ? safeSerializeDate(conceptos) : [],
         talleres: talleres ? safeSerializeDate(talleres) : [],
+        vales: vales ? safeSerializeDate(vales) : [],
+        reminders: reminders ? safeSerializeDate(reminders) : [],
+        customReports: customReports ? safeSerializeDate(customReports) : [],
     };
 
     return payload;
@@ -181,7 +198,7 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
         turnos: 0
     };
 
-    const totalSteps = 9; // Ajustes, Config, Carreras, Gastos, Turnos, Proveedores, Conceptos, Talleres, Excepciones
+    const totalSteps = 12; // Ajustes, Config, Carreras, Gastos, Turnos, Proveedores, Conceptos, Talleres, Excepciones, Vales, Reminders, Reports
     let currentStep = 0;
 
     const reportProgress = (msg: string) => {
@@ -308,6 +325,45 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
     }
     currentStep++;
 
+    // Restaurar Vales
+    reportProgress("Restaurando directorio de vales...");
+    if (jsonData.vales && Array.isArray(jsonData.vales)) {
+        const total = jsonData.vales.length;
+        for (let i = 0; i < total; i++) {
+            await restoreValeDirectoryEntry(jsonData.vales[i]);
+            if (i % 10 === 0 && onProgress) {
+                onProgress(Math.round((9 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando vales (${i + 1}/${total})...`);
+            }
+        }
+    }
+    currentStep++;
+
+    // Restaurar Recordatorios
+    reportProgress("Restaurando recordatorios...");
+    if (jsonData.reminders && Array.isArray(jsonData.reminders)) {
+        const total = jsonData.reminders.length;
+        for (let i = 0; i < total; i++) {
+            await restoreReminder(jsonData.reminders[i]);
+            if (i % 10 === 0 && onProgress) {
+                onProgress(Math.round((10 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando recordatorios (${i + 1}/${total})...`);
+            }
+        }
+    }
+    currentStep++;
+
+    // Restaurar Reportes Personalizados
+    reportProgress("Restaurando reportes personalizados...");
+    if (jsonData.customReports && Array.isArray(jsonData.customReports)) {
+        const total = jsonData.customReports.length;
+        for (let i = 0; i < total; i++) {
+            await restoreCustomReport(jsonData.customReports[i]);
+            if (i % 10 === 0 && onProgress) {
+                onProgress(Math.round((11 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando reportes (${i + 1}/${total})...`);
+            }
+        }
+    }
+    currentStep++;
+
     if (onProgress) onProgress(100, "Restauración completada.");
 
     return stats;
@@ -375,7 +431,10 @@ export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; u
             'Ajustes',
             'BreakConfiguration',
             'Excepciones',
-            'Servicios'
+            'Servicios',
+            'Vales',
+            'Reminders',
+            'CustomReports'
         ];
 
         const { spreadsheetId } = await createSpreadsheetWithSheets(`TAppXI Export ${dateStr}`, sheetTitles);
@@ -386,13 +445,16 @@ export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; u
 
         // Definir columnas para cada tipo de dato
         const carrerasCols = ['id', 'taximetro', 'cobrado', 'formaPago', 'tipoCarrera', 'emisora', 'aeropuerto', 'estacion', 'fechaHora', 'turnoId', 'valeInfo', 'notas'];
-        const gastosCols = ['id', 'importe', 'fecha', 'tipo', 'categoria', 'formaPago', 'proveedor', 'concepto', 'taller', 'numeroFactura', 'baseImponible', 'ivaImporte', 'ivaPorcentaje', 'kilometros', 'kilometrosVehiculo', 'descuento', 'servicios', 'notas'];
-        const serviciosCols = ['GastoID', 'Fecha', 'Servicio', 'Referencia', 'Importe', 'Cantidad', 'Descuento', 'Descripcion'];
+        const gastosCols = ['id', 'importe', 'fecha', 'tipo', 'categoria', 'formaPago', 'proveedor', 'nif', 'concepto', 'taller', 'numeroFactura', 'baseImponible', 'ivaImporte', 'ivaPorcentaje', 'kilometros', 'kilometrosVehiculo', 'kmParciales', 'litros', 'precioPorLitro', 'descuento', 'servicios', 'notas'];
+        const serviciosCols = ['GastoID', 'Fecha', 'Servicio', 'Referencia', 'Importe', 'Cantidad', 'Como', 'Descripcion'];
         const turnosCols = ['id', 'fechaInicio', 'kilometrosInicio', 'fechaFin', 'kilometrosFin', 'numero'];
         const proveedoresCols = ['id', 'nombre', 'direccion', 'telefono', 'nif', 'createdAt'];
         const conceptosCols = ['id', 'nombre', 'descripcion', 'categoria', 'createdAt'];
-        const talleresCols = ['id', 'nombre', 'direccion', 'telefono', 'createdAt'];
-        const excepcionesCols = ['id', 'fecha', 'descripcion', 'createdAt'];
+        const talleresCols = ['id', 'nombre', 'direccion', 'telefono', 'nif', 'createdAt'];
+        const excepcionesCols = ['id', 'fechaDesde', 'fechaHasta', 'tipo', 'nuevaLetra', 'nota', 'descripcion', 'aplicaPar', 'aplicaImpar', 'createdAt'];
+        const valesCols = ['id', 'empresa', 'codigoEmpresa', 'direccion', 'telefono'];
+        const remindersCols = ['id', 'titulo', 'descripcion', 'tipo', 'fechaLimite', 'horaRecordatorio', 'fechaRecordatorio', 'sonidoActivo', 'completado', 'fechaCompletado', 'kilometrosLimite', 'kilometrosActuales', 'createdAt', 'lastNotified'];
+        const customReportsCols = ['id', 'nombre', 'descripcion', 'filtros', 'tipoExportacion', 'agrupacion', 'createdAt', 'lastUsed'];
 
         // Convertir datos a filas
         const carrerasRows = toRows((data.carreras as any[]) || [], carrerasCols);
@@ -446,6 +508,9 @@ export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; u
         const conceptosRows = toRows((data.conceptos as any[]) || [], conceptosCols);
         const talleresRows = toRows((data.talleres as any[]) || [], talleresCols);
         const excepcionesRows = toRows((data.excepciones as any[]) || [], excepcionesCols);
+        const valesRows = toRows((data.vales as any[]) || [], valesCols);
+        const remindersRows = toRows((data.reminders as any[]) || [], remindersCols);
+        const customReportsRows = toRows((data.customReports as any[]) || [], customReportsCols);
 
         // Para objetos únicos (ajustes y breakConfiguration)
         const ajustesRows = objectToRows(data.ajustes, 'ajustes');
@@ -502,31 +567,27 @@ export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; u
             await writeSheetValues(spreadsheetId, 'Servicios', serviciosRows);
         }
 
+        console.log(`Escribiendo ${valesRows.length} filas en Vales`);
+        if (valesRows.length > 0) {
+            await writeSheetValues(spreadsheetId, 'Vales', valesRows);
+        }
+
+        console.log(`Escribiendo ${remindersRows.length} filas en Reminders`);
+        if (remindersRows.length > 0) {
+            await writeSheetValues(spreadsheetId, 'Reminders', remindersRows);
+        }
+
+        console.log(`Escribiendo ${customReportsRows.length} filas en CustomReports`);
+        if (customReportsRows.length > 0) {
+            await writeSheetValues(spreadsheetId, 'CustomReports', customReportsRows);
+        }
+
         const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
         console.log(`Exportación completa a Google Sheets. ID: ${spreadsheetId}`);
 
         return { spreadsheetId, url };
     } catch (error: any) {
-        let errorMsg = error?.message || String(error);
-
-        // Intento de extraer mensaje detallado de objetos de error de Google
-        if (error?.result?.error?.message) {
-            errorMsg = error.result.error.message;
-        } else if (error?.body && typeof error.body === 'string') {
-            try {
-                const bodyObj = JSON.parse(error.body);
-                if (bodyObj.error?.message) errorMsg = bodyObj.error.message;
-            } catch {
-                errorMsg = error.body;
-            }
-        } else if (typeof error === 'object' && error !== null && !error.message) {
-            try {
-                errorMsg = JSON.stringify(error);
-            } catch {
-                errorMsg = '[Error complejo no serializable]';
-            }
-        }
-
+        const errorMsg = error?.message || String(error);
         console.error("Error detallado exportación Sheets:", error);
 
         let userFriendlyMsg = `Error al exportar a Google Sheets: ${errorMsg}\n\n`;
@@ -619,20 +680,7 @@ const parseDate = (val: any): Date | null => {
         if (!isNaN(date.getTime())) return date;
         return null;
     }
-    if (typeof val === 'number') {
-        // Timestamp
-        const date = new Date(val);
-        if (!isNaN(date.getTime())) return date;
-        return null;
-    }
     return null;
-};
-
-// Función auxiliar para parsear booleanos
-const parseBoolean = (val: any): boolean => {
-    if (val === true || val === 'TRUE' || val === 'true' || val === 'VERDADERO') return true;
-    if (val === false || val === 'FALSE' || val === 'false' || val === 'FALSO') return false;
-    return Boolean(val);
 };
 
 export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?: (progress: number, message: string) => void): Promise<{ carreras: number; gastos: number; turnos: number }> => {
@@ -640,7 +688,6 @@ export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?
         console.log(`Iniciando restauración desde Sheet ID: ${spreadsheetId}`);
         if (onProgress) onProgress(0, "Descargando datos de Google Sheets...");
 
-        // Leer todas las hojas
         const [
             carrerasRows,
             gastosRows,
@@ -650,7 +697,10 @@ export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?
             talleresRows,
             ajustesRows,
             breakConfigRows,
-            excepcionesRows
+            excepcionesRows,
+            valesRows,
+            remindersRows,
+            customReportsRows
         ] = await Promise.all([
             readSheetValues(spreadsheetId, 'Carreras!A:Z').catch(() => []),
             readSheetValues(spreadsheetId, 'Gastos!A:Z').catch(() => []),
@@ -661,6 +711,9 @@ export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?
             readSheetValues(spreadsheetId, 'Ajustes!A:B').catch(() => []),
             readSheetValues(spreadsheetId, 'BreakConfiguration!A:B').catch(() => []),
             readSheetValues(spreadsheetId, 'Excepciones!A:Z').catch(() => []),
+            readSheetValues(spreadsheetId, 'Vales!A:Z').catch(() => []),
+            readSheetValues(spreadsheetId, 'Reminders!A:Z').catch(() => []),
+            readSheetValues(spreadsheetId, 'CustomReports!A:Z').catch(() => []),
         ]);
 
         if (onProgress) onProgress(10, "Procesando datos...");
@@ -674,6 +727,9 @@ export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?
         const conceptosRaw = fromRows(conceptosRows);
         const talleresRaw = fromRows(talleresRows);
         const excepcionesRaw = fromRows(excepcionesRows);
+        const valesRaw = fromRows(valesRows);
+        const remindersRaw = fromRows(remindersRows);
+        const customReportsRaw = fromRows(customReportsRows);
 
         // Procesar tipos de datos (números, fechas si es necesario)
         const carreras = carrerasRaw.map(c => {
@@ -683,9 +739,6 @@ export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?
                 taximetro: parseNumber(c.taximetro),
                 cobrado: parseNumber(c.cobrado),
                 fechaHora: fechaHora || new Date(), // Si no se puede parsear, usar fecha actual
-                emisora: parseBoolean(c.emisora),
-                aeropuerto: parseBoolean(c.aeropuerto),
-                estacion: parseBoolean(c.estacion),
             };
         });
 
@@ -699,6 +752,9 @@ export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?
                 ivaPorcentaje: parseNumber(g.ivaPorcentaje),
                 kilometros: parseNumber(g.kilometros),
                 kilometrosVehiculo: parseNumber(g.kilometrosVehiculo),
+                kmParciales: parseNumber(g.kmParciales),
+                litros: parseNumber(g.litros),
+                precioPorLitro: parseNumber(g.precioPorLitro),
                 descuento: parseNumber(g.descuento),
                 fecha: fecha || new Date(), // Si no se puede parsear, usar fecha actual
             };
@@ -855,25 +911,27 @@ export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?
             };
         });
 
-        // Construir payload completo
-        const payload: Partial<BackupPayload> = {
-            meta: {
-                app: 'TAppXI',
-                version: '1.0',
-                createdAt: new Date().toISOString(),
-            },
+        if (onProgress) onProgress(90, "Guardando datos...");
+
+        // Restaurar en lote usando restoreBackup logic
+        const fullPayload = {
+            meta: { app: 'TAppXI', version: '1.0', createdAt: new Date().toISOString() },
+            ajustes,
+            breakConfiguration,
+            excepciones,
             carreras,
             gastos,
             turnos,
             proveedores,
             conceptos,
             talleres,
-            excepciones,
-            ajustes,
-            breakConfiguration,
+            vales: valesRaw,
+            reminders: remindersRaw,
+            customReports: customReportsRaw
         };
 
-        return await restoreBackup(payload, onProgress);
+        const stats = await restoreBackup(fullPayload, onProgress);
+        return stats;
 
     } catch (error: any) {
         console.error("Error en restoreFromGoogleSheets:", error);

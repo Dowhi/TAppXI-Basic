@@ -25,6 +25,7 @@ import ResumenMensualDetalladoScreen from './screens/ResumenMensualDetalladoScre
 import ResumenGastosMensualScreen from './screens/ResumenGastosMensualScreen';
 import ResumenMensualIngresosScreen from './screens/ResumenMensualIngresosScreen';
 import AjustesScreen from './screens/AjustesScreen';
+import MasterDataScreen from './screens/MasterDataScreen';
 import StatisticsScreen from './screens/StatisticsScreen';
 import CalendarScreen from './screens/CalendarScreen';
 import BreakConfigurationScreen from './screens/BreakConfigurationScreen';
@@ -254,6 +255,8 @@ const App: React.FC = () => {
                 return <ResumenMensualIngresosScreen navigateTo={navigateTo} />;
             case Seccion.AjustesGenerales:
                 return <AjustesScreen navigateTo={navigateTo} />;
+            case Seccion.GestionDatos:
+                return <MasterDataScreen navigateTo={navigateTo} />;
             case Seccion.Estadisticas:
                 return <StatisticsScreen navigateTo={navigateTo} />;
             case Seccion.Calendario:

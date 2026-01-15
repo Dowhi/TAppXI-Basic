@@ -3,13 +3,36 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useFontSize } from "../contexts/FontSizeContext";
 import ScreenTopBar from "../components/ScreenTopBar";
 import { Seccion } from "../types";
-import { saveAjustes, getAjustes, deleteAllData, DeleteProgress } from "../services/api";
+import { saveAjustes, getAjustes, deleteAllData, DeleteProgress, removeDuplicates } from "../services/api";
 import { downloadBackupJson, uploadBackupToGoogleDrive, exportToGoogleSheets, restoreBackup, restoreFromGoogleSheets } from "../services/backup";
 import { listFiles, getFileContent } from "../services/google";
 import { archiveOperationalDataOlderThan, getRelativeCutoffDate } from "../services/maintenance";
 import { exportToExcel, exportToCSV, exportToPDFAdvanced, exportToHacienda, ExportFilter } from "../services/exports";
 import { getCarreras, getGastos, getRecentTurnos } from "../services/api";
 import { saveCustomReport, getCustomReports, deleteCustomReport, markReportAsUsed, CustomReport } from "../services/customReports";
+
+const parseSafeDate = (d: any): Date => {
+    if (d instanceof Date) return d;
+    if (!d) return new Date(0);
+
+    if (typeof d === 'string' && d.includes('/')) {
+        const parts = d.split('/');
+        if (parts.length === 3) {
+            // Asumir DD/MM/YYYY
+            const day = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1;
+            const year = parseInt(parts[2], 10);
+            return new Date(year, month, day);
+        }
+    }
+
+    try {
+        const date = new Date(d);
+        return isNaN(date.getTime()) ? new Date(0) : date;
+    } catch {
+        return new Date(0);
+    }
+};
 
 interface AjustesScreenProps {
     navigateTo: (page: Seccion) => void;
@@ -111,6 +134,8 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
     const [deletionProgress, setDeletionProgress] = useState<number>(0);
     const [deletionMessage, setDeletionMessage] = useState<string>("");
 
+    const [isCleaning, setIsCleaning] = useState<boolean>(false);
+
     // Custom Modal State
     const [alertMessage, setAlertMessage] = useState<string | null>(null);
     const [confirmMessage, setConfirmMessage] = useState<string | null>(null);
@@ -140,6 +165,24 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
         if (action) {
             action();
         }
+    };
+
+    const handleCleanDuplicates = () => {
+        showConfirm(
+            "Se buscarán y eliminarán registros duplicados (Exactamente el mismo contenido). ¿Continuar?",
+            async () => {
+                setIsCleaning(true);
+                try {
+                    const result = await removeDuplicates();
+                    showAlert(`✅ Completado.\n\nEliminados:\n- ${result.gastosRemoved} gastos duplicados.\n- ${result.carrerasRemoved} carreras duplicadas.`);
+                } catch (e: any) {
+                    console.error("Error limpiando duplicados:", e);
+                    showAlert(`❌ Error: ${e.message}`);
+                } finally {
+                    setIsCleaning(false);
+                }
+            }
+        );
     };
 
     useEffect(() => {
@@ -1748,6 +1791,40 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                                 </div>
                             ))
                         )}
+                    </div>
+                </div>
+
+                <section className="bg-zinc-800 rounded-lg p-2.5 border border-zinc-700 mb-2">
+                    <button
+                        onClick={() => navigateTo(Seccion.GestionDatos)}
+                        className="w-full text-left flex items-center justify-between group"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-purple-500/10 rounded-lg text-purple-400 group-hover:text-purple-300 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            </div>
+                            <div>
+                                <div className="font-semibold text-zinc-100">Gestión de Proveedores, Talleres y Conceptos</div>
+                                <div className="text-xs text-zinc-500">Administrar listas de autocompletado</div>
+                            </div>
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-600 group-hover:text-zinc-400 transition-colors"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </button>
+                </section>
+
+                <div className="bg-zinc-800 rounded-lg p-2.5 border border-orange-500/50 mb-2">
+                    <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                            <h3 className="text-orange-400 font-bold text-base mb-0.5">Mantenimiento de Datos</h3>
+                            <p className="text-zinc-400 text-sm">Eliminar registros duplicados de gastos y carreras</p>
+                        </div>
+                        <button
+                            onClick={handleCleanDuplicates}
+                            disabled={isCleaning}
+                            className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+                        >
+                            {isCleaning ? 'Limpiando...' : 'Limpiar Duplicados'}
+                        </button>
                     </div>
                 </div>
 

@@ -5,8 +5,8 @@ const GOOGLE_API_SRC = "https://apis.google.com/js/api.js";
 const GIS_API_SRC = "https://accounts.google.com/gsi/client";
 
 // Credenciales desde variables de entorno
-const CLIENT_ID = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || "210845602880-tlfrf84ul0qov0sb9voiafktrqpdvrid.apps.googleusercontent.com";
-const API_KEY = (import.meta as any).env?.VITE_GOOGLE_API_KEY || "AIzaSyC89wFGqXeC5fwy7_9v-d8TQoguM2ZTI_E";
+const CLIENT_ID = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || "";
+const API_KEY = (import.meta as any).env?.VITE_GOOGLE_API_KEY || "";
 
 const DISCOVERY_DOCS = [
     "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest",
@@ -178,12 +178,6 @@ export const ensureGoogleSignIn = async (): Promise<void> => {
     // Necesitamos un nuevo token
     return new Promise((resolve, reject) => {
         try {
-            // Verificar si tokenClient está inicializado
-            if (!tokenClient) {
-                reject(new Error("Google Identity Services no inicializado."));
-                return;
-            }
-
             tokenClient.callback = (resp: any) => {
                 if (resp.error !== undefined) {
                     console.error("Error en autenticación Google:", resp);
@@ -206,14 +200,8 @@ export const ensureGoogleSignIn = async (): Promise<void> => {
                 resolve(resp);
             };
 
-            // Intentar abrir popup
-            // NOTA: En iOS esto DEBE ser resultado directo de un click.
-            // Si 'initGoogleClient' tardó mucho, se perdió el contexto.
-            // Por eso precargamos en App.tsx.
             tokenClient.requestAccessToken({ prompt: 'consent' });
-
         } catch (err) {
-            console.error("Excepción al solicitar token:", err);
             reject(err);
         }
     });

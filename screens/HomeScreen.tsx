@@ -181,6 +181,15 @@ interface HomeScreenProps {
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction }) => {
 
+  const parseSafeDate = (dateAny: any): Date => {
+    if (!dateAny) return new Date();
+    if (dateAny instanceof Date) {
+      return isNaN(dateAny.getTime()) ? new Date() : dateAny;
+    }
+    const parsed = new Date(dateAny);
+    return isNaN(parsed.getTime()) ? new Date() : parsed;
+  };
+
   const { isDark } = useTheme();
   const [turnoActivo, setTurnoActivo] = useState<Turno | null>(null);
   const [carreras, setCarreras] = useState<CarreraVista[]>([]);
@@ -637,7 +646,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction }) =>
                         </h2>
                         <p className={`uppercase tracking-wide text-xs ${isDark ? 'text-zinc-400' : 'text-zinc-600'
                           }`}>
-                          {turnoActivo.fechaInicio.toLocaleDateString('es-ES', {
+                          {parseSafeDate(turnoActivo.fechaInicio).toLocaleDateString('es-ES', {
                             weekday: 'short',
                             day: '2-digit',
                             month: 'short',
@@ -664,7 +673,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction }) =>
                         <p className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-600'
                           }`}>H. Inicio</p>
                         <p className={`text-lg mt-1 ${isDark ? 'text-zinc-100' : 'text-zinc-900'}`}>
-                          {turnoActivo.fechaInicio.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                          {parseSafeDate(turnoActivo.fechaInicio).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
                         </p>
                       </div>
                       <div className="text-center">

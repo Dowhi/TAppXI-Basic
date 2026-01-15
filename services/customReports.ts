@@ -65,4 +65,6 @@ export const markReportAsUsed = async (id: string): Promise<void> => {
     await addItem(STORE_NAME, id, updated);
 };
 
-
+export const restoreCustomReport = async (report: any): Promise<void> => {
+    await addItem(STORE_NAME, report.id, report);
+};

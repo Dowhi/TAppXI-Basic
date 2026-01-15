@@ -131,6 +131,15 @@ const IncomeScreen: React.FC<IncomeScreenProps> = ({ navigateTo, navigateToEditR
     const [error, setError] = useState<string | null>(null);
     const [objetivoDiario, setObjetivoDiario] = useState<number>(100);
 
+    const parseSafeDate = (dateAny: any): Date => {
+        if (!dateAny) return new Date();
+        if (dateAny instanceof Date) {
+            return isNaN(dateAny.getTime()) ? new Date() : dateAny;
+        }
+        const parsed = new Date(dateAny);
+        return isNaN(parsed.getTime()) ? new Date() : parsed;
+    };
+
     // New state for raw data
     const [allCarreras, setAllCarreras] = useState<CarreraVista[]>([]);
 
@@ -256,26 +265,26 @@ const IncomeScreen: React.FC<IncomeScreenProps> = ({ navigateTo, navigateToEditR
         // Calcular horaInicio: del turno activo o de la primera carrera del día
         let horaInicio = "00:00";
         if (turnoActivo) {
-            const fechaInicio = turnoActivo.fechaInicio;
+            const fechaInicio = parseSafeDate(turnoActivo.fechaInicio);
             horaInicio = fechaInicio.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
         } else if (carreras.length > 0) {
             // Si no hay turno activo, usar la primera carrera del día
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             const carrerasHoy = carreras.filter(c => {
-                const fechaCarrera = new Date(c.fechaHora);
+                const fechaCarrera = parseSafeDate(c.fechaHora);
                 return fechaCarrera >= today;
             });
             if (carrerasHoy.length > 0) {
                 const primeraCarrera = carrerasHoy[carrerasHoy.length - 1]; // La más antigua
-                horaInicio = primeraCarrera.fechaHora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                horaInicio = parseSafeDate(primeraCarrera.fechaHora).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
             }
         }
 
         // Calcular horaTrabajo: diferencia entre ahora y horaInicio, o entre primera y última carrera del día
         let horaTrabajo = "00:00";
         if (turnoActivo) {
-            const fechaInicio = turnoActivo.fechaInicio;
+            const fechaInicio = parseSafeDate(turnoActivo.fechaInicio);
             const ahora = currentTime; // Use currentTime state to force updates
             const diffMs = ahora.getTime() - fechaInicio.getTime();
             const diffHoras = Math.floor(diffMs / (1000 * 60 * 60));
@@ -285,13 +294,13 @@ const IncomeScreen: React.FC<IncomeScreenProps> = ({ navigateTo, navigateToEditR
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             const carrerasHoy = carreras.filter(c => {
-                const fechaCarrera = new Date(c.fechaHora);
+                const fechaCarrera = parseSafeDate(c.fechaHora);
                 return fechaCarrera >= today;
             });
             if (carrerasHoy.length > 0) {
-                const primeraCarrera = carrerasHoy[carrerasHoy.length - 1]; // La más antigua
-                const ultimaCarrera = carrerasHoy[0]; // La más reciente
-                const diffMs = ultimaCarrera.fechaHora.getTime() - primeraCarrera.fechaHora.getTime();
+                const primeraCarrera = parseSafeDate(carrerasHoy[carrerasHoy.length - 1]); // La más antigua
+                const ultimaCarrera = parseSafeDate(carrerasHoy[0]); // La más reciente
+                const diffMs = ultimaCarrera.getTime() - primeraCarrera.getTime();
                 const diffHoras = Math.floor(diffMs / (1000 * 60 * 60));
                 const diffMinutos = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
                 horaTrabajo = `${String(diffHoras).padStart(2, '0')}:${String(diffMinutos).padStart(2, '0')}`;
@@ -422,7 +431,7 @@ const IncomeScreen: React.FC<IncomeScreenProps> = ({ navigateTo, navigateToEditR
                                             <TrainIcon className="w-6 h-6 text-amber-400" title="Estación" />
                                         ) : null}
                                     </span>
-                                    <span className="flex-1 text-sm text-zinc-400">{hideValues ? '****' : carrera.fechaHora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
+                                    <span className="flex-1 text-sm text-zinc-400">{hideValues ? '****' : parseSafeDate(carrera.fechaHora).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
                                 </div>
                             )
                         })}

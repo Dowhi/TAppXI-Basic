@@ -54,12 +54,21 @@ const ResumenMensualDetalladoScreen: React.FC<ResumenMensualDetalladoScreenProps
         loadData();
     }, [selectedMonth, selectedYear]);
 
+    const parseSafeDate = (dateAny: any): Date => {
+        if (!dateAny) return new Date();
+        if (dateAny instanceof Date) {
+            return isNaN(dateAny.getTime()) ? new Date() : dateAny;
+        }
+        const parsed = new Date(dateAny);
+        return isNaN(parsed.getTime()) ? new Date() : parsed;
+    };
+
     // Calcular métricas
     const metrics = useMemo(() => {
         // Días únicos con carreras o turnos
         const diasUnicos = new Set<number>();
-        carreras.forEach(c => diasUnicos.add(c.fechaHora.getDate()));
-        turnos.forEach(t => diasUnicos.add(t.fechaInicio.getDate()));
+        carreras.forEach(c => diasUnicos.add(parseSafeDate(c.fechaHora).getDate()));
+        turnos.forEach(t => diasUnicos.add(parseSafeDate(t.fechaInicio).getDate()));
         const dias = diasUnicos.size;
 
         // Carreras totales
@@ -102,7 +111,9 @@ const ResumenMensualDetalladoScreen: React.FC<ResumenMensualDetalladoScreenProps
         let horas = 0;
         turnos.forEach(t => {
             if (t.fechaFin && t.fechaInicio) {
-                const diffMs = t.fechaFin.getTime() - t.fechaInicio.getTime();
+                const inicio = parseSafeDate(t.fechaInicio);
+                const fin = parseSafeDate(t.fechaFin);
+                const diffMs = fin.getTime() - inicio.getTime();
                 const diffHours = diffMs / (1000 * 60 * 60);
                 horas += diffHours;
             }
