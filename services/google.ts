@@ -15,8 +15,7 @@ const DISCOVERY_DOCS = [
 
 const SCOPES = [
     "https://www.googleapis.com/auth/drive.file",
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive.readonly"
+    "https://www.googleapis.com/auth/spreadsheets"
 ].join(" ");
 
 // Estado global
@@ -200,7 +199,9 @@ export const ensureGoogleSignIn = async (): Promise<void> => {
                 resolve(resp);
             };
 
-            tokenClient.requestAccessToken({ prompt: 'consent' });
+            // Intentar login silencioso por defecto (o con prompt vacío para dejar que el navegador decida)
+            // Si falla o no hay sesión, Google mostrará el popup automáticamente si es necesario o podemos catch el error
+            tokenClient.requestAccessToken({ prompt: '' });
         } catch (err) {
             reject(err);
         }
@@ -408,6 +409,30 @@ export const writeSheetValues = async (
 };
 
 /**
+ * Busca una hoja de cálculo por nombre exacto
+ */
+export const findSpreadsheetByName = async (name: string): Promise<{ id: string; name: string } | null> => {
+    await ensureGoogleSignIn();
+    const gapi = (window as any).gapi;
+
+    try {
+        const response = await gapi.client.drive.files.list({
+            q: `name = '${name}' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false`,
+            fields: 'files(id, name)',
+        });
+
+        const files = response.result.files;
+        if (files && files.length > 0) {
+            return files[0];
+        }
+        return null;
+    } catch (e) {
+        console.error("Error finding spreadsheet:", e);
+        return null; // Don't throw, just return not found
+    }
+};
+
+/**
  * Lee valores de una hoja de Google Sheets
  */
 export const readSheetValues = async (
@@ -431,5 +456,115 @@ export const readSheetValues = async (
     } catch (e: any) {
         console.error("Error readSheetValues", e);
         throw e;
+    }
+};
+
+/**
+ * Añade filas a una hoja de cálculo
+ */
+export const appendValues = async (
+    spreadsheetId: string,
+    range: string,
+    values: (string | number | boolean | null)[][]
+): Promise<void> => {
+    await ensureGoogleSignIn();
+    const gapi = (window as any).gapi;
+
+    try {
+        await gapi.client.sheets.spreadsheets.values.append({
+            spreadsheetId,
+            range,
+            valueInputOption: "USER_ENTERED", // Permite fórmulas y formatos
+            insertDataOption: "INSERT_ROWS",
+            resource: { values },
+        });
+    } catch (e) {
+        console.error("Error appending values:", e);
+        throw e;
+    }
+};
+
+/**
+ * Actualiza un rango específico
+ */
+export const updateValues = async (
+    spreadsheetId: string,
+    range: string,
+    values: (string | number | boolean | null)[][]
+): Promise<void> => {
+    await ensureGoogleSignIn();
+    const gapi = (window as any).gapi;
+
+    try {
+        await gapi.client.sheets.spreadsheets.values.update({
+            spreadsheetId,
+            range,
+            valueInputOption: "USER_ENTERED",
+            resource: { values },
+        });
+    } catch (e) {
+        console.error("Error updating values:", e);
+        throw e;
+    }
+};
+
+/**
+ * Limpia un rango (para borrar filas lógicamente)
+ */
+export const clearRange = async (
+    spreadsheetId: string,
+    range: string
+): Promise<void> => {
+    await ensureGoogleSignIn();
+    const gapi = (window as any).gapi;
+
+    try {
+        await gapi.client.sheets.spreadsheets.values.clear({
+            spreadsheetId,
+            range,
+        });
+    } catch (e) {
+        console.error("Error clearing range:", e);
+        throw e;
+    }
+};
+
+/**
+ * Obtiene información completa de la hoja (pestañas)
+ */
+export const getSpreadsheetDetails = async (spreadsheetId: string): Promise<any> => {
+    await ensureGoogleSignIn();
+    const gapi = (window as any).gapi;
+    try {
+        const response = await gapi.client.sheets.spreadsheets.get({
+            spreadsheetId
+        });
+        return response.result;
+    } catch (e) {
+        console.error("Error getting spreadsheet details:", e);
+        throw e;
+    }
+};
+
+/**
+ * Añade una nueva pestaña a la hoja de cálculo
+ */
+export const addSheet = async (spreadsheetId: string, title: string): Promise<void> => {
+    await ensureGoogleSignIn();
+    const gapi = (window as any).gapi;
+    try {
+        await gapi.client.sheets.spreadsheets.batchUpdate({
+            spreadsheetId,
+            resource: {
+                requests: [{
+                    addSheet: {
+                        properties: { title }
+                    }
+                }]
+            }
+        });
+    } catch (e) {
+        // Ignorar si ya existe (error 400 generalmente)
+        console.log(`Sheet ${title} might already exist or error:`, e);
     }
 };

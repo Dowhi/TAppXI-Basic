@@ -1,8 +1,10 @@
 ﻿// services/api.ts - Reimplemented using IndexedDB
 import { addItem, getAllItems, getItem, deleteItem } from '../src/lib/indexedDB';
+import { syncService } from './syncService';
 
 // Types (import from types.ts)
 import type { CarreraVista, Gasto, Turno, Proveedor, Concepto, Taller, Reminder, Ajustes } from '../types';
+import { getCustomReports } from './customReports';
 
 // Helper functions to map data structures if needed (currently identity)
 
@@ -18,17 +20,21 @@ export async function getCarrera(id: string): Promise<CarreraVista | undefined> 
 export async function addCarrera(carrera: Omit<CarreraVista, 'id'> & { id?: string }): Promise<string> {
     const key = carrera.id ?? crypto.randomUUID();
     await addItem('carreras', key, { ...carrera, id: key });
+    syncService.create('Carreras', { ...carrera, id: key });
     return key;
 }
 
 export async function updateCarrera(id: string, updates: Partial<CarreraVista>): Promise<void> {
     const existing = await getItem<CarreraVista>('carreras', id);
     if (!existing) throw new Error('Carrera not found');
-    await addItem('carreras', id, { ...existing, ...updates });
+    const updated = { ...existing, ...updates };
+    await addItem('carreras', id, updated);
+    syncService.update('Carreras', updated);
 }
 
 export async function deleteCarrera(id: string): Promise<void> {
     await deleteItem('carreras', id);
+    syncService.delete('Carreras', id);
 }
 
 export async function getCarrerasByDate(date: Date): Promise<CarreraVista[]> {
@@ -56,17 +62,33 @@ export async function getGasto(id: string): Promise<Gasto | undefined> {
 export async function addGasto(gasto: Omit<Gasto, 'id'> & { id?: string }): Promise<string> {
     const key = gasto.id ?? crypto.randomUUID();
     await addItem('gastos', key, { ...gasto, id: key });
+
+    // Sync Gasto
+    const fullGasto = { ...gasto, id: key };
+    syncService.create('Gastos', fullGasto);
+
+    // Sync Servicios (Nested)
+    if (gasto.servicios && gasto.servicios.length > 0) {
+        gasto.servicios.forEach(s => {
+            syncService.create('Incisos', { ...s, gastoId: key, id: crypto.randomUUID() });
+        });
+    }
+
     return key;
 }
 
 export async function updateGasto(id: string, updates: Partial<Gasto>): Promise<void> {
     const existing = await getItem<Gasto>('gastos', id);
     if (!existing) throw new Error('Gasto not found');
-    await addItem('gastos', id, { ...existing, ...updates });
+    const updated = { ...existing, ...updates };
+    await addItem('gastos', id, updated);
+
+    syncService.update('Gastos', updated);
 }
 
 export async function deleteGasto(id: string): Promise<void> {
     await deleteItem('gastos', id);
+    syncService.delete('Gastos', id);
 }
 
 export async function getGastosByDate(date: Date): Promise<Gasto[]> {
@@ -93,8 +115,8 @@ export async function getTurno(id: string): Promise<Turno | undefined> {
 
 export async function addTurno(turno: Omit<Turno, 'id'> & { id?: string }): Promise<string> {
     const key = turno.id ?? crypto.randomUUID();
-    // @ts-ignore - id is optional in input but required in Turno
     await addItem('turnos', key, { ...turno, id: key });
+    syncService.create('Turnos', { ...turno, id: key });
     return key;
 }
 
@@ -106,6 +128,7 @@ export async function updateTurno(id: string, updates: Partial<Turno>): Promise<
 
 export async function deleteTurno(id: string): Promise<void> {
     await deleteItem('turnos', id);
+    syncService.delete('Turnos', id);
 }
 
 export async function getTurnosByDate(date: Date): Promise<Turno[]> {
@@ -141,17 +164,21 @@ export async function getProveedores(): Promise<Proveedor[]> {
 export async function addProveedor(proveedor: Omit<Proveedor, 'id'> & { id?: string }): Promise<string> {
     const key = proveedor.id ?? crypto.randomUUID();
     await addItem('proveedores', key, { ...proveedor, id: key });
+    syncService.create('Proveedores', { ...proveedor, id: key });
     return key;
 }
 
 export async function updateProveedor(id: string, updates: Partial<Proveedor>): Promise<void> {
     const existing = await getItem<Proveedor>('proveedores', id);
     if (!existing) throw new Error('Proveedor not found');
-    await addItem('proveedores', id, { ...existing, ...updates });
+    const updated = { ...existing, ...updates };
+    await addItem('proveedores', id, updated);
+    syncService.update('Proveedores', updated);
 }
 
 export async function deleteProveedor(id: string): Promise<void> {
     await deleteItem('proveedores', id);
+    syncService.delete('Proveedores', id);
 }
 
 /** Conceptos */
@@ -162,17 +189,21 @@ export async function getConceptos(): Promise<Concepto[]> {
 export async function addConcepto(concepto: Omit<Concepto, 'id'> & { id?: string }): Promise<string> {
     const key = concepto.id ?? crypto.randomUUID();
     await addItem('conceptos', key, { ...concepto, id: key });
+    syncService.create('Conceptos', { ...concepto, id: key });
     return key;
 }
 
 export async function updateConcepto(id: string, updates: Partial<Concepto>): Promise<void> {
     const existing = await getItem<Concepto>('conceptos', id);
     if (!existing) throw new Error('Concepto not found');
-    await addItem('conceptos', id, { ...existing, ...updates });
+    const updated = { ...existing, ...updates };
+    await addItem('conceptos', id, updated);
+    syncService.update('Conceptos', updated);
 }
 
 export async function deleteConcepto(id: string): Promise<void> {
     await deleteItem('conceptos', id);
+    syncService.delete('Conceptos', id);
 }
 export async function getTalleres(): Promise<Taller[]> {
     return getAllItems('talleres');
@@ -181,17 +212,21 @@ export async function getTalleres(): Promise<Taller[]> {
 export async function addTaller(taller: Omit<Taller, 'id'> & { id?: string }): Promise<string> {
     const key = taller.id ?? crypto.randomUUID();
     await addItem('talleres', key, { ...taller, id: key });
+    syncService.create('Talleres', { ...taller, id: key });
     return key;
 }
 
 export async function updateTaller(id: string, updates: Partial<Taller>): Promise<void> {
     const existing = await getItem<Taller>('talleres', id);
     if (!existing) throw new Error('Taller not found');
-    await addItem('talleres', id, { ...existing, ...updates });
+    const updated = { ...existing, ...updates };
+    await addItem('talleres', id, updated);
+    syncService.update('Talleres', updated);
 }
 
 export async function deleteTaller(id: string): Promise<void> {
     await deleteItem('talleres', id);
+    syncService.delete('Talleres', id);
 }
 export async function closeTurno(id: string, kilometrosFin: number): Promise<void> {
     const turno = await getItem<Turno>('turnos', id);
@@ -204,6 +239,7 @@ export async function closeTurno(id: string, kilometrosFin: number): Promise<voi
     };
 
     await addItem('turnos', id, updatedTurno);
+    syncService.update('Turnos', updatedTurno);
 }
 
 /** Reminders */
@@ -214,17 +250,21 @@ export async function getReminders(): Promise<Reminder[]> {
 export async function addReminder(reminder: Reminder): Promise<string> {
     const key = reminder.id ?? crypto.randomUUID();
     await addItem('reminders', key, { ...reminder, id: key });
+    syncService.create('Recordatorios', { ...reminder, id: key });
     return key;
 }
 
 export async function updateReminder(id: string, updates: Partial<Reminder>): Promise<void> {
     const existing = await getItem<Reminder>('reminders', id);
     if (!existing) throw new Error('Reminder not found');
-    await addItem('reminders', id, { ...existing, ...updates });
+    const updated = { ...existing, ...updates };
+    await addItem('reminders', id, updated);
+    syncService.update('Recordatorios', updated);
 }
 
 export async function deleteReminder(id: string): Promise<void> {
     await deleteItem('reminders', id);
+    syncService.delete('Recordatorios', id);
 }
 
 // ...
@@ -344,6 +384,10 @@ export async function getAjustes(): Promise<Ajustes | null> {
 
 export async function saveAjustes(ajustes: any): Promise<void> {
     await addItem('settings', 'ajustes', { ...ajustes, key: 'ajustes' });
+    // Sync each setting key individually
+    for (const [key, value] of Object.entries(ajustes)) {
+        syncService.update('Ajustes', { clave: key, valor: value });
+    }
 }
 
 /** Break Configuration */
@@ -354,6 +398,7 @@ export async function getBreakConfiguration(): Promise<any> {
 
 export async function saveBreakConfiguration(config: any): Promise<void> {
     await addItem('settings', 'breakConfig', { ...config, key: 'breakConfig' });
+    syncService.update('Ajustes', { clave: 'breakConfiguration', valor: config });
 }
 
 /** Excepciones */
@@ -385,11 +430,13 @@ export async function getValesDirectory(): Promise<ValeDirectoryEntry[]> {
 export async function addValeDirectoryEntry(entry: Omit<ValeDirectoryEntry, 'id'> & { id?: string }): Promise<string> {
     const key = entry.id ?? crypto.randomUUID();
     await addItem('vales', key, { ...entry, id: key });
+    syncService.create('Vales', { ...entry, id: key });
     return key;
 }
 
 export async function deleteValeDirectoryEntry(id: string): Promise<void> {
     await deleteItem('vales', id);
+    syncService.delete('Vales', id);
 }
 
 export async function getExcepciones(): Promise<Excepcion[]> {
@@ -399,21 +446,26 @@ export async function getExcepciones(): Promise<Excepcion[]> {
 export async function addExcepcion(excepcion: Omit<Excepcion, 'id'> & { id?: string }): Promise<string> {
     const key = excepcion.id ?? crypto.randomUUID();
     await addItem('excepciones', key, { ...excepcion, id: key });
+    syncService.create('Excepciones', { ...excepcion, id: key });
     return key;
 }
 
 export async function updateExcepcion(id: string, updates: Partial<Excepcion>): Promise<void> {
     const existing = await getItem<Excepcion>('excepciones', id);
     if (!existing) throw new Error('Excepcion not found');
-    await addItem('excepciones', id, { ...existing, ...updates });
+    const updated = { ...existing, ...updates };
+    await addItem('excepciones', id, updated);
+    syncService.update('Excepciones', updated);
 }
 
 export async function deleteExcepcion(id: string): Promise<void> {
     await deleteItem('excepciones', id);
+    syncService.delete('Excepciones', id);
 }
 
 export async function restoreExcepcion(excepcion: any): Promise<void> {
     await addItem('excepciones', excepcion.id, excepcion);
+    syncService.create('Excepciones', { ...excepcion, id: excepcion.id });
 }
 
 export async function isRestDay(date: Date): Promise<boolean> {
@@ -435,28 +487,43 @@ export async function isRestDay(date: Date): Promise<boolean> {
 /** Restore Functions (Wrappers) */
 export async function restoreCarrera(carrera: any): Promise<void> {
     await addItem('carreras', carrera.id, carrera);
+    syncService.create('Carreras', { ...carrera, id: carrera.id });
 }
 export async function restoreGasto(gasto: any): Promise<void> {
     await addItem('gastos', gasto.id, gasto);
+    // Sync Gasto
+    syncService.create('Gastos', { ...gasto, id: gasto.id });
+    // Sync Servicios (Nested)
+    if (gasto.servicios && gasto.servicios.length > 0) {
+        gasto.servicios.forEach((s: any) => {
+            syncService.create('Incisos', { ...s, gastoId: gasto.id, id: s.id || crypto.randomUUID() });
+        });
+    }
 }
 export async function restoreTurno(turno: any): Promise<void> {
     await addItem('turnos', turno.id, turno);
+    syncService.create('Turnos', { ...turno, id: turno.id });
 }
 export async function restoreProveedor(proveedor: any): Promise<void> {
     await addItem('proveedores', proveedor.id, proveedor);
+    syncService.create('Proveedores', { ...proveedor, id: proveedor.id });
 }
 export async function restoreConcepto(concepto: any): Promise<void> {
     await addItem('conceptos', concepto.id, concepto);
+    syncService.create('Conceptos', { ...concepto, id: concepto.id });
 }
 // ... existing code ...
 export async function restoreTaller(taller: any): Promise<void> {
     await addItem('talleres', taller.id, taller);
+    syncService.create('Talleres', { ...taller, id: taller.id });
 }
 export async function restoreValeDirectoryEntry(entry: any): Promise<void> {
     await addItem('vales', entry.id, entry);
+    syncService.create('Vales', { ...entry, id: entry.id });
 }
 export async function restoreReminder(reminder: any): Promise<void> {
     await addItem('reminders', reminder.id, reminder);
+    syncService.create('Recordatorios', { ...reminder, id: reminder.id });
 }
 
 /** Statistics Helpers */
@@ -618,6 +685,36 @@ export async function getTotalGastosByYear(year: number): Promise<number> {
     const monthly = await getGastosByYear(year);
     return monthly.reduce((sum, val) => sum + val, 0);
 }
+export async function forceCloudSync(): Promise<string | null> {
+    const carreras = await getCarreras();
+    const gastos = await getGastos();
+    const turnos = await getTurnos();
+    const proveedores = await getProveedores();
+    const conceptos = await getConceptos();
+    const talleres = await getTalleres();
+    const recordatorios = await getReminders();
+    const ajustes = await getAjustes();
+    const excepciones = await getExcepciones();
+    const vales = await getValesDirectory();
+    const informes = await getCustomReports();
+    const breakConfig = await getBreakConfiguration();
+
+    return await syncService.uploadAllData(
+        carreras,
+        gastos,
+        turnos,
+        proveedores,
+        conceptos,
+        talleres,
+        recordatorios,
+        ajustes,
+        excepciones,
+        vales,
+        informes,
+        breakConfig
+    );
+}
+
 export async function removeDuplicates(): Promise<{ gastosRemoved: number, carrerasRemoved: number }> {
     // Gastos
     const allGastos = await getGastos();

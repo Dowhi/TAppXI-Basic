@@ -145,11 +145,35 @@ const BreakConfigurationScreen: React.FC<BreakConfigurationScreenProps> = ({ nav
             setSavingConfig(false);
         }
     };
+    // Helper para garantizar fechas válidas
+    const ensureDate = (date: any): Date | null => {
+        if (!date) return null;
+        if (date instanceof Date) return isNaN(date.getTime()) ? null : date;
+        try {
+            const parsed = new Date(date);
+            return isNaN(parsed.getTime()) ? null : parsed;
+        } catch {
+            return null;
+        }
+    };
+
     const loadExcepciones = async () => {
         setLoadingExcepciones(true);
         try {
             const data = await getExcepciones();
-            setExcepciones(data);
+            // Asegurar que las fechas sean objetos Date y filtrar inválidas
+            const hydratedData = data.map(e => {
+                const fechaDesde = ensureDate(e.fechaDesde);
+                const fechaHasta = ensureDate(e.fechaHasta);
+                if (!fechaDesde || !fechaHasta) return null;
+                return {
+                    ...e,
+                    fechaDesde,
+                    fechaHasta
+                };
+            }).filter((e) => e !== null) as Excepcion[];
+
+            setExcepciones(hydratedData);
         } catch (error) {
             console.error('Error cargando excepciones:', error);
         } finally {
@@ -181,8 +205,8 @@ const BreakConfigurationScreen: React.FC<BreakConfigurationScreenProps> = ({ nav
         setAppliesToImpar(excepcion.aplicaImpar);
         setExceptionDescription(excepcion.descripcion || '');
         setExceptionNewLetter(excepcion.nuevaLetra || 'A');
-        setSelectedExceptionDateFrom(excepcion.fechaDesde);
-        setSelectedExceptionDateTo(excepcion.fechaHasta);
+        setSelectedExceptionDateFrom(fechaDesdeDate);
+        setSelectedExceptionDateTo(fechaHastaDate);
         setEditingExceptionId(excepcion.id);
 
         // Cerrar modal de gestión y abrir modal de edición
@@ -384,8 +408,8 @@ const BreakConfigurationScreen: React.FC<BreakConfigurationScreenProps> = ({ nav
                                     key={letter}
                                     onClick={() => handleLetterSelect(letter)}
                                     className={`p-4 rounded-lg font-bold text-2xl transition-all ${startDayLetter === letter
-                                            ? 'bg-red-500 text-white'
-                                            : 'bg-zinc-700 text-white hover:bg-zinc-600'
+                                        ? 'bg-red-500 text-white'
+                                        : 'bg-zinc-700 text-white hover:bg-zinc-600'
                                         }`}
                                 >
                                     {letter}
@@ -413,8 +437,8 @@ const BreakConfigurationScreen: React.FC<BreakConfigurationScreenProps> = ({ nav
                                     key={letter}
                                     onClick={() => handleUserLetterSelect(letter)}
                                     className={`p-4 rounded-lg font-bold text-2xl transition-all ${userBreakLetter === letter
-                                            ? 'bg-green-500 text-white'
-                                            : 'bg-zinc-700 text-white hover:bg-zinc-600'
+                                        ? 'bg-green-500 text-white'
+                                        : 'bg-zinc-700 text-white hover:bg-zinc-600'
                                         }`}
                                 >
                                     {letter}
@@ -442,8 +466,8 @@ const BreakConfigurationScreen: React.FC<BreakConfigurationScreenProps> = ({ nav
                                     key={pattern}
                                     onClick={() => handlePatternSelect(pattern)}
                                     className={`w-full p-4 rounded-lg text-left transition-all ${weekendPattern === pattern
-                                            ? 'bg-pink-500 text-white'
-                                            : 'bg-zinc-700 text-white hover:bg-zinc-600'
+                                        ? 'bg-pink-500 text-white'
+                                        : 'bg-zinc-700 text-white hover:bg-zinc-600'
                                         }`}
                                 >
                                     {pattern}
@@ -510,10 +534,10 @@ const BreakConfigurationScreen: React.FC<BreakConfigurationScreenProps> = ({ nav
                                         key={idx}
                                         onClick={() => handleDateSelect(dayDate)}
                                         className={`aspect-square rounded-lg text-sm font-medium transition-all ${isSelected
-                                                ? 'bg-green-500 text-white'
-                                                : isToday
-                                                    ? 'bg-zinc-600 text-white'
-                                                    : 'bg-zinc-700 text-white hover:bg-zinc-600'
+                                            ? 'bg-green-500 text-white'
+                                            : isToday
+                                                ? 'bg-zinc-600 text-white'
+                                                : 'bg-zinc-700 text-white hover:bg-zinc-600'
                                             }`}
                                     >
                                         {day}
@@ -575,7 +599,7 @@ const BreakConfigurationScreen: React.FC<BreakConfigurationScreenProps> = ({ nav
                                                         {excepcion.tipo}
                                                     </div>
                                                     <div className="text-white text-xs mb-1">
-                                                        {excepcion.fechaDesde.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })} - {excepcion.fechaHasta.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                                        {new Date(excepcion.fechaDesde).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })} - {new Date(excepcion.fechaHasta).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                                                     </div>
                                                     {excepcion.descripcion && (
                                                         <div className="text-zinc-400 text-xs mt-2">
@@ -814,8 +838,8 @@ const BreakConfigurationScreen: React.FC<BreakConfigurationScreenProps> = ({ nav
                                         setShowExceptionTypeSelector(false);
                                     }}
                                     className={`w-full p-4 rounded-lg text-left transition-all ${exceptionType === type
-                                            ? 'bg-green-500 text-white'
-                                            : 'bg-zinc-700 text-white hover:bg-zinc-600'
+                                        ? 'bg-green-500 text-white'
+                                        : 'bg-zinc-700 text-white hover:bg-zinc-600'
                                         }`}
                                 >
                                     {type}
@@ -847,8 +871,8 @@ const BreakConfigurationScreen: React.FC<BreakConfigurationScreenProps> = ({ nav
                                         setShowNewLetterSelector(false);
                                     }}
                                     className={`p-4 rounded-lg font-bold text-lg transition-all ${exceptionNewLetter === letter
-                                            ? 'bg-blue-500 text-white'
-                                            : 'bg-zinc-700 text-white hover:bg-zinc-600'
+                                        ? 'bg-blue-500 text-white'
+                                        : 'bg-zinc-700 text-white hover:bg-zinc-600'
                                         }`}
                                 >
                                     {letter}
@@ -948,10 +972,10 @@ const BreakConfigurationScreen: React.FC<BreakConfigurationScreenProps> = ({ nav
                                                 setShowDateFromPicker(false);
                                             }}
                                             className={`aspect-square rounded-lg text-sm font-medium transition-all ${isSelected
-                                                    ? 'bg-green-500 text-white'
-                                                    : isToday
-                                                        ? 'bg-zinc-600 text-white'
-                                                        : 'bg-zinc-700 text-white hover:bg-zinc-600'
+                                                ? 'bg-green-500 text-white'
+                                                : isToday
+                                                    ? 'bg-zinc-600 text-white'
+                                                    : 'bg-zinc-700 text-white hover:bg-zinc-600'
                                                 }`}
                                         >
                                             {day}
@@ -1054,10 +1078,10 @@ const BreakConfigurationScreen: React.FC<BreakConfigurationScreenProps> = ({ nav
                                                 setShowDateToPicker(false);
                                             }}
                                             className={`aspect-square rounded-lg text-sm font-medium transition-all ${isSelected
-                                                    ? 'bg-green-500 text-white'
-                                                    : isToday
-                                                        ? 'bg-zinc-600 text-white'
-                                                        : 'bg-zinc-700 text-white hover:bg-zinc-600'
+                                                ? 'bg-green-500 text-white'
+                                                : isToday
+                                                    ? 'bg-zinc-600 text-white'
+                                                    : 'bg-zinc-700 text-white hover:bg-zinc-600'
                                                 }`}
                                         >
                                             {day}

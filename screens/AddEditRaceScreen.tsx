@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Seccion, CarreraVista } from '../types';
-import { getCarrera, addCarrera, updateCarrera, deleteCarrera, getValesDirectory, ValeDirectoryEntry, getActiveTurno } from '../services/api';
+import { getCarrera, addCarrera, updateCarrera, deleteCarrera, getValesDirectory, ValeDirectoryEntry, getActiveTurno, addValeDirectoryEntry } from '../services/api';
 
 
 import ScreenTopBar from '../components/ScreenTopBar';
@@ -159,7 +159,9 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
         }
     }, [isListening, transcript, processCommand, showToast, cobradoManuallySet]);
 
-    // Resume useEffects...
+    const [showSuggestions, setShowSuggestions] = useState(false);
+
+    // Initial useEffects...
 
     const isValeFormComplete = useMemo(() => {
         return Object.values(valeForm).every((value) => (value as string).trim().length > 0);
@@ -275,6 +277,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                     ...prev,
                     codigoEmpresa: value,
                 };
+                setShowSuggestions(true);
 
                 const trimmed = value.trim();
                 if (!trimmed) {
@@ -311,7 +314,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
         }));
     };
 
-    const handleValeRegister = () => {
+    const handleValeRegister = async () => {
         setValeFormTouched(true);
         const sanitized = {
             despacho: valeForm.despacho.trim(),
@@ -324,6 +327,26 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
         if (hasEmpty) {
             return;
         }
+
+        // Auto-save company if new
+        const exists = valeDirectory.some(v => v.codigoEmpresa === sanitized.codigoEmpresa);
+        if (!exists && sanitized.codigoEmpresa && sanitized.empresa) {
+            try {
+                await addValeDirectoryEntry({
+                    codigoEmpresa: sanitized.codigoEmpresa,
+                    empresa: sanitized.empresa,
+                });
+                // Refresh directory
+                const entries = await getValesDirectory();
+                setValeDirectory(entries);
+            } catch (e) {
+                console.error("Error auto-saving vale company:", e);
+            }
+        } else if (exists && sanitized.codigoEmpresa && sanitized.empresa) {
+            // Update name if changed? For now let's just respect the input
+            // potentially could update the entry if the name is different
+        }
+
         setValeForm(sanitized);
         setEmpresaManuallyEdited(false);
         setShowValeModal(false);
@@ -336,6 +359,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
             empresa: entry.empresa,
         }));
         setEmpresaManuallyEdited(false);
+        setShowSuggestions(false);
     };
 
     const handleTaximetroClick = () => {
@@ -753,21 +777,18 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                                     <p className="text-xs text-red-400 mt-1">Este campo es obligatorio.</p>
                                 )}
                             </div>
-                            <div>
-                                <label className="block text-xs uppercase tracking-wide text-zinc-400 mb-1">Nº Empresa</label>
+                            <div className="relative">
+                                <label className="block text-xs uppercase tracking-wide text-zinc-400 mb-1">Cód. Empresa</label>
                                 <TextInput
                                     value={valeForm.codigoEmpresa}
                                     onChange={(e) => handleValeInputChange('codigoEmpresa', e.target.value)}
-                                    placeholder="Introduce el número de empresa"
+                                    placeholder="Código"
                                 />
-                                {valeFormTouched && valeForm.codigoEmpresa.trim().length === 0 && (
-                                    <p className="text-xs text-red-400 mt-1">Este campo es obligatorio.</p>
-                                )}
-                                {valeSuggestions.length > 0 && (
-                                    <div className="mt-1 bg-zinc-800 border border-zinc-700 rounded-lg overflow-hidden">
+                                {showSuggestions && valeSuggestions.length > 0 && (
+                                    <div className="absolute z-50 w-full mt-1 bg-zinc-800 border border-zinc-700 rounded-md shadow-lg max-h-40 overflow-y-auto">
                                         {valeSuggestions.map((suggestion) => (
                                             <button
-                                                key={`${suggestion.codigoEmpresa}-${suggestion.empresa}`}
+                                                key={suggestion.id}
                                                 type="button"
                                                 onClick={() => handleValeSuggestionSelect(suggestion)}
                                                 className="w-full px-3 py-2 text-left text-xs text-zinc-200 hover:bg-zinc-700 transition-colors flex justify-between gap-2"

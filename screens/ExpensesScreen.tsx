@@ -421,6 +421,22 @@ const ExpensesScreen: React.FC<{ navigateTo: (page: Seccion) => void; gastoId?: 
                             onAddNew={() => setModals(m => ({ ...m, concepto: true }))}
                         />
 
+                        <div className="grid grid-cols-2 gap-4 pt-2">
+                            <FormField label="¿Desgrava IVA?">
+                                <button
+                                    onClick={() => setSoportaIVA(!soportaIVA)}
+                                    className={`w-full py-2 rounded-lg border text-sm font-bold transition-colors ${soportaIVA ? 'bg-blue-900/30 border-blue-500 text-blue-200' : 'bg-zinc-800 border-zinc-700 text-zinc-500'}`}
+                                >
+                                    {soportaIVA ? 'SÍ (21%)' : 'NO'}
+                                </button>
+                            </FormField>
+                            {soportaIVA && (
+                                <FormField label="Porcentaje IVA">
+                                    <TextInput type="number" value={ivaPorcentaje} onChange={e => setIvaPorcentaje(e.target.value)} />
+                                </FormField>
+                            )}
+                        </div>
+
                         <div className="pt-2 border-t border-zinc-800">
                             <div className="flex justify-between items-center mb-3">
                                 <h3 className="text-xs font-black text-zinc-500 uppercase">Desglose de Servicios</h3>

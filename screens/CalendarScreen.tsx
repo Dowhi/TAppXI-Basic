@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect, useMemo } from 'react';
+import { jsPDF } from 'jspdf';
 import { Seccion } from '../types';
 import { getCarrerasByDate, getGastosByDate, getExcepciones, Excepcion } from '../services/api';
 import ScreenTopBar from '../components/ScreenTopBar';
@@ -24,6 +25,8 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ navigateTo }) => {
     const [showDayModal, setShowDayModal] = useState(false);
     const [selectedDayForModal, setSelectedDayForModal] = useState<number | null>(null);
     const [excepciones, setExcepciones] = useState<Excepcion[]>([]);
+    // Estado para el modo de calendario (Taxi vs Aeropuerto)
+    const [calendarMode, setCalendarMode] = useState<'taxi' | 'airport'>('taxi');
 
     const monthNames = [
         'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -81,6 +84,9 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ navigateTo }) => {
 
     // Función auxiliar para verificar si una fecha está dentro de un rango
     const isDateInRange = (date: Date, fechaDesde: Date, fechaHasta: Date): boolean => {
+        if (!date || !fechaDesde || !fechaHasta) return false;
+        if (isNaN(date.getTime()) || isNaN(fechaDesde.getTime()) || isNaN(fechaHasta.getTime())) return false;
+
         const dateTime = date.getTime();
         const desdeTime = fechaDesde.getTime();
         const hastaTime = fechaHasta.getTime();
@@ -88,6 +94,7 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ navigateTo }) => {
     };
 
     const parseWeekendPattern = (patternRaw: string) => {
+        // ... (unchanged)
         const normalized = (patternRaw || '')
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '')
@@ -102,124 +109,170 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ navigateTo }) => {
         };
     };
 
+    // Helper para asegurar Date válido
+    const ensureDate = (date: any): Date | null => {
+        if (!date) return null;
+        if (date instanceof Date) return isNaN(date.getTime()) ? null : date;
+        try {
+            const parsed = new Date(date);
+            return isNaN(parsed.getTime()) ? null : parsed;
+        } catch {
+            return null;
+        }
+    };
+
     // Calcular las letras para todos los días del mes
     const dayLetters = useMemo(() => {
-        if (!breakConfig || !breakConfig.startDate) return {};
-
         const letters: Record<number, string> = {};
 
-        try {
-            // Parsear la fecha de inicio (formato DD/MM/AAAA)
-            const [dayStr, monthStr, yearStr] = breakConfig.startDate.split('/');
-            const startDate = new Date(parseInt(yearStr), parseInt(monthStr) - 1, parseInt(dayStr));
-            const lettersArray = ['A', 'B', 'C', 'D'];
-            const mod = (value: number, divisor: number) => ((value % divisor) + divisor) % divisor;
-            const weekendPattern = parseWeekendPattern(breakConfig.weekendPattern || '');
+        if (calendarMode === 'taxi') {
+            if (!breakConfig || !breakConfig.startDate) return {};
 
-            // Obtener la letra del día de inicio (compatibilidad con versiones anteriores)
-            const startLetter = breakConfig.startDayLetter || breakConfig.initialBreakLetter || 'A';
-            const startLetterIndex = lettersArray.indexOf(startLetter);
+            try {
+                // Parsear la fecha de inicio (formato DD/MM/AAAA)
+                const [dayStr, monthStr, yearStr] = breakConfig.startDate.split('/');
+                const startDate = new Date(parseInt(yearStr), parseInt(monthStr) - 1, parseInt(dayStr));
+                const lettersArray = ['A', 'B', 'C', 'D'];
+                const mod = (value: number, divisor: number) => ((value % divisor) + divisor) % divisor;
+                const weekendPattern = parseWeekendPattern(breakConfig.weekendPattern || '');
 
-            if (startLetterIndex === -1) return {};
+                // Obtener la letra del día de inicio (compatibilidad con versiones anteriores)
+                const startLetter = breakConfig.startDayLetter || breakConfig.initialBreakLetter || 'A';
+                const startLetterIndex = lettersArray.indexOf(startLetter);
 
-            // Obtener el día de la semana del inicio (0=Domingo, 1=Lunes, etc.)
-            const startDayOfWeek = startDate.getDay();
-            // Convertir a formato donde Lunes=0
-            const startWeekday = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
+                if (startLetterIndex === -1) return {};
 
-            // Calcular la letra base para el lunes de la semana del inicio
-            // Si el día de inicio es un lunes con letra A, entonces el lunes de esa semana es A
-            // Si el día de inicio es un martes con letra B, entonces el lunes de esa semana es A (B-1)
-            // Si el día de inicio es un miércoles con letra C, entonces el lunes de esa semana es A (C-2)
-            // etc.
-            const mondayOfStartWeekLetterIndex = mod(startLetterIndex - startWeekday, 4);
+                // Obtener el día de la semana del inicio (0=Domingo, 1=Lunes, etc.)
+                const startDayOfWeek = startDate.getDay();
+                // Convertir a formato donde Lunes=0
+                const startWeekday = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
 
-            for (let day = 1; day <= daysInMonth; day++) {
-                const currentDayDate = new Date(year, month, day);
-                const diffTime = currentDayDate.getTime() - startDate.getTime();
-                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                const mondayOfStartWeekLetterIndex = mod(startLetterIndex - startWeekday, 4);
 
-                if (diffDays < 0) continue; // Día antes del inicio del ciclo
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const currentDayDate = new Date(year, month, day);
+                    const diffTime = currentDayDate.getTime() - startDate.getTime();
+                    // Use Math.round to handle DST changes (23h or 25h days) correctly
+                    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
-                // Verificar si hay una excepción que afecte a este día
-                let exceptionApplied = false;
-                for (const excepcion of excepciones) {
-                    // Normalizar fechas para comparación (solo día, mes, año)
-                    const fechaDesde = new Date(excepcion.fechaDesde);
-                    fechaDesde.setHours(0, 0, 0, 0);
-                    const fechaHasta = new Date(excepcion.fechaHasta);
-                    fechaHasta.setHours(23, 59, 59, 999);
-                    const dayDate = new Date(currentDayDate);
-                    dayDate.setHours(0, 0, 0, 0);
+                    if (diffDays < 0) continue; // Día antes del inicio del ciclo
 
-                    if (isDateInRange(dayDate, fechaDesde, fechaHasta)) {
-                        if (excepcion.tipo === 'Cambio de Letra' && excepcion.nuevaLetra) {
-                            letters[day] = excepcion.nuevaLetra;
-                            exceptionApplied = true;
-                            break; // Usar la primera excepción que coincida
-                        }
-                        // Para "Vacaciones" y otros tipos, solo marcamos que hay excepción
-                        // pero no cambiamos la letra, se aplicará el fondo verde después
-                        if (excepcion.tipo === 'Vacaciones') {
-                            exceptionApplied = true;
-                            break;
+                    // Verificar si hay una excepción que afecte a este día
+                    let skipStandardCalc = false;
+                    for (const excepcion of excepciones) {
+                        const fechaDesde = ensureDate(excepcion.fechaDesde);
+                        const fechaHasta = ensureDate(excepcion.fechaHasta);
+
+                        if (!fechaDesde || !fechaHasta) continue;
+
+                        fechaDesde.setHours(0, 0, 0, 0);
+                        fechaHasta.setHours(23, 59, 59, 999);
+                        const dayDate = new Date(currentDayDate);
+                        dayDate.setHours(0, 0, 0, 0);
+
+                        if (isDateInRange(dayDate, fechaDesde, fechaHasta)) {
+                            if (excepcion.tipo === 'Cambio de Letra' && excepcion.nuevaLetra) {
+                                letters[day] = excepcion.nuevaLetra;
+                                skipStandardCalc = true;
+                                break;
+                            }
+                            if (['Festivo (sin descanso)', 'Liberacion Especial'].includes(excepcion.tipo)) {
+                                skipStandardCalc = true;
+                                break;
+                            }
                         }
                     }
+
+                    if (skipStandardCalc) continue;
+
+                    // ... (standard calculations)
+                    const dayOfWeek = currentDayDate.getDay();
+                    const isSaturday = dayOfWeek === 6;
+                    const isSunday = dayOfWeek === 0;
+
+                    // Si es fin de semana, usar el patrón de fin de semana
+                    if (isSaturday || isSunday) {
+                        const weekNumber = Math.floor((diffDays + startWeekday) / 7);
+                        const swapPattern = weekNumber % 2 === 1;
+                        const saturdayLetters = swapPattern ? weekendPattern.sunday : weekendPattern.saturday;
+                        const sundayLetters = swapPattern ? weekendPattern.saturday : weekendPattern.sunday;
+                        letters[day] = isSaturday ? saturdayLetters : sundayLetters;
+                    } else {
+                        const weekday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                        const weekNumber = Math.floor((diffDays + startWeekday) / 7);
+                        const mondayLetterIndex = mod(mondayOfStartWeekLetterIndex + weekNumber, 4);
+                        const letterIndex = mod(mondayLetterIndex + weekday, 4);
+                        letters[day] = lettersArray[letterIndex];
+                    }
                 }
-
-                // Si ya se aplicó una excepción de "Cambio de Letra", continuar con el siguiente día
-                // (las vacaciones no cambian la letra, solo el fondo)
-                if (exceptionApplied && letters[day]) continue;
-
-                const dayOfWeek = currentDayDate.getDay();
-                const isSaturday = dayOfWeek === 6;
-                const isSunday = dayOfWeek === 0;
-
-                // Si es fin de semana, usar el patrón de fin de semana
-                if (isSaturday || isSunday) {
-                    const weekNumber = Math.floor((diffDays + startWeekday) / 7);
-                    const swapPattern = weekNumber % 2 === 1;
-                    const saturdayLetters = swapPattern ? weekendPattern.sunday : weekendPattern.saturday;
-                    const sundayLetters = swapPattern ? weekendPattern.saturday : weekendPattern.sunday;
-
-                    letters[day] = isSaturday ? saturdayLetters : sundayLetters;
-                } else {
-                    // Para días laborables (L-V): calcular basándose en el lunes de cada semana
-                    // Convertir día de la semana a formato Lunes=0
-                    const weekday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-
-                    // Calcular qué semana es desde el inicio
-                    const weekNumber = Math.floor((diffDays + startWeekday) / 7);
-
-                    // El lunes de cada semana avanza una letra cada semana
-                    // Semana 0: L=A, M=B, X=C, J=D, V=A
-                    // Semana 1: L=B, M=C, X=D, J=A, V=B
-                    // Semana 2: L=C, M=D, X=A, J=B, V=C
-                    // Semana 3: L=D, M=A, X=B, J=C, V=D
-                    // Semana 4: L=A (vuelve al inicio)
-
-                    // Calcular la letra del lunes de esta semana
-                    const mondayLetterIndex = mod(mondayOfStartWeekLetterIndex + weekNumber, 4);
-
-                    // Calcular la letra según el día de la semana dentro de la semana
-                    // weekday: 0=Lunes, 1=Martes, 2=Miércoles, 3=Jueves, 4=Viernes
-                    const letterIndex = mod(mondayLetterIndex + weekday, 4);
-                    letters[day] = lettersArray[letterIndex];
-                }
+            } catch (error) {
+                console.error('Error al calcular letras de descanso (Taxi):', error);
             }
-        } catch (error) {
-            console.error('Error al calcular letras de descanso:', error);
+        } else {
+            // Modo Aeropuerto
+            try {
+                // Epoch: 1 Enero 2026 = A
+                const epochDate = new Date(2026, 0, 1);
+                const lettersArray = ['A', 'B', 'C', 'D'];
+                let currentLetterIdx = 0; // Starts with A
+
+                // Iterar desde Epoch hasta fin del mes solicitado
+                const targetEndDate = new Date(year, month + 1, 0);
+                const iterDate = new Date(epochDate);
+                iterDate.setHours(0, 0, 0, 0);
+
+                // Si la fecha solicitada es anterior a 2026, esto no generará letras (intencional por ahora)
+                while (iterDate <= targetEndDate) {
+                    const dYear = iterDate.getFullYear();
+                    const dMonth = iterDate.getMonth();
+                    const dDay = iterDate.getDate();
+
+                    // Guardar letra si está en el mes visualizado
+                    if (dYear === year && dMonth === month) {
+                        letters[dDay] = lettersArray[currentLetterIdx];
+                    }
+
+                    // Lógica de avance:
+                    // Viernes (5) -> Sábado (Misma letra) -> NO AVANZAR
+                    // Domingo (0) -> Lunes (Misma letra) -> NO AVANZAR
+                    // El resto avanza.
+                    const dayOfWeek = iterDate.getDay(); // 0=Sun, 1=Mon, ..., 5=Fri, 6=Sat
+                    let shouldAdvance = true;
+                    if (dayOfWeek === 5) shouldAdvance = false; // Friday (next day is Saturday, same letter)
+                    if (dayOfWeek === 0) shouldAdvance = false; // Sunday (next day is Monday, same letter)
+
+                    if (shouldAdvance) {
+                        currentLetterIdx = (currentLetterIdx + 1) % 4;
+                    }
+
+                    iterDate.setDate(iterDate.getDate() + 1);
+                }
+            } catch (error) {
+                console.error('Error al calcular letras de aeropuerto:', error);
+            }
         }
 
         return letters;
-    }, [year, month, daysInMonth, breakConfig, excepciones]);
+    }, [year, month, daysInMonth, breakConfig, excepciones, calendarMode]);
 
     // Cargar excepciones
     useEffect(() => {
         const loadExcepciones = async () => {
             try {
                 const data = await getExcepciones();
-                setExcepciones(data);
+                // Safe Hydration
+                const hydratedData = data.map(e => {
+                    const fd = ensureDate(e.fechaDesde);
+                    const fh = ensureDate(e.fechaHasta);
+                    if (!fd || !fh) return null; // Skip invalid
+                    return {
+                        ...e,
+                        fechaDesde: fd,
+                        fechaHasta: fh
+                    };
+                }).filter((e) => e !== null) as Excepcion[];
+
+                setExcepciones(hydratedData);
             } catch (error) {
                 console.error('Error cargando excepciones:', error);
             }
@@ -296,6 +349,256 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ navigateTo }) => {
         setShowDayModal(true);
     };
 
+    const handleGeneratePDF = () => {
+        const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+        // Colores
+        const COLOR_BG = [255, 255, 255];
+        const COLOR_TEXT = [0, 0, 0];
+        const COLOR_REST = [200, 255, 200];
+        const COLOR_HOLIDAY = [255, 200, 200];
+        const COLOR_SPECIAL = [230, 200, 255];
+        const COLOR_HEADER_MONTH = [220, 240, 255];
+
+        // Título Global
+        doc.setFontSize(18);
+        doc.setTextColor(0, 0, 0);
+        doc.text(`Calendario Taxi & Aeropuerto - Año ${year}`, 148.5, 12, { align: 'center' });
+
+        // Leyenda Rápida
+        doc.setFontSize(8);
+        doc.setFillColor(COLOR_REST[0], COLOR_REST[1], COLOR_REST[2]);
+        doc.rect(210, 6, 4, 4, 'F');
+        doc.text('Descanso Taxi', 215, 9);
+        doc.setFillColor(COLOR_HOLIDAY[0], COLOR_HOLIDAY[1], COLOR_HOLIDAY[2]);
+        doc.rect(235, 6, 4, 4, 'F');
+        doc.text('Festivo', 240, 9);
+
+        // Simular leyenda de letras
+        doc.setTextColor(50, 50, 50);
+        doc.setFont(undefined, 'bold');
+        doc.text("A", 260, 9);
+        doc.setFont(undefined, 'normal');
+        doc.setTextColor(0, 0, 0);
+        doc.text(": Taxi", 263, 9);
+
+        doc.setTextColor(0, 110, 200);
+        doc.setFont(undefined, 'bold');
+        doc.text("A", 275, 9);
+        doc.setFont(undefined, 'normal');
+        doc.setTextColor(0, 0, 0);
+        doc.text(": Aeropuerto", 278, 9);
+
+
+        // Dimensiones A4 Landscape: 297x210
+        // Layout 4x3
+        const marginX = 10;
+        const marginY = 18;
+        const gapX = 6;
+        const gapY = 8;
+        const monthWidth = (297 - (marginX * 2) - (gapX * 3)) / 4;
+        const monthHeight = (210 - (marginY * 2) - (gapY * 2)) / 3;
+
+        const headerHeight = 5;
+        const weekHeaderHeight = 4;
+        const gridHeight = monthHeight - headerHeight - weekHeaderHeight;
+        const cellWidth = monthWidth / 7;
+        const cellHeight = gridHeight / 6;
+
+        // --- PRE-CÁLCULO AEROPUERTO ---
+        // Generar mapa de fechas -> Letra Aeropuerto para todo el año
+        const airportMap: Record<string, string> = {};
+        try {
+            // Epoch: 1 Enero 2026 = A. 
+            // Si el año es previo a 2026, no mostramos nada (fallback)
+            if (year >= 2026) {
+                let iter = new Date(2026, 0, 1);
+                iter.setHours(0, 0, 0, 0);
+                const endOfYear = new Date(year, 11, 31);
+                endOfYear.setHours(23, 59, 59, 999);
+
+                const letters = ['A', 'B', 'C', 'D'];
+                let idx = 0;
+
+                while (iter <= endOfYear) {
+                    // Si estamos en el año actual, guardar
+                    if (iter.getFullYear() === year) {
+                        // Key format: YYYY-MM-DD
+                        // Note: getMonth is 0-indexed.
+                        const k = `${iter.getFullYear()}-${String(iter.getMonth() + 1).padStart(2, '0')}-${String(iter.getDate()).padStart(2, '0')}`;
+                        airportMap[k] = letters[idx];
+                    }
+
+                    // Advance rules: Skip Fri(5) and Sun(0)
+                    const dow = iter.getDay();
+                    let advance = true;
+                    if (dow === 5 || dow === 0) advance = false;
+
+                    if (advance) idx = (idx + 1) % 4;
+                    iter.setDate(iter.getDate() + 1);
+                }
+            }
+        } catch (e) { console.error(e); }
+
+
+        // Bucle 12 meses
+        for (let m = 0; m < 12; m++) {
+            const col = m % 4;
+            const row = Math.floor(m / 4);
+            const x = marginX + (col * (monthWidth + gapX));
+            const y = marginY + (row * (monthHeight + gapY));
+
+            // Título Mes
+            doc.setFillColor(COLOR_HEADER_MONTH[0], COLOR_HEADER_MONTH[1], COLOR_HEADER_MONTH[2]);
+            doc.rect(x, y, monthWidth, headerHeight, 'F');
+            doc.rect(x, y, monthWidth, headerHeight, 'S');
+            doc.setFontSize(10);
+            doc.setTextColor(0, 0, 0);
+            doc.text(monthNames[m], x + (monthWidth / 2), y + 3.5, { align: 'center' });
+
+            // Cabecera Semanal
+            doc.setFontSize(7);
+            const weekDaysShort = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+            let currentY = y + headerHeight;
+            weekDaysShort.forEach((dStr, i) => {
+                const cx = x + (i * cellWidth);
+                doc.rect(cx, currentY, cellWidth, weekHeaderHeight, 'S');
+                if (i >= 5) doc.setTextColor(200, 50, 50);
+                else doc.setTextColor(0, 0, 0);
+                doc.text(dStr, cx + (cellWidth / 2), currentY + 3, { align: 'center' });
+            });
+            currentY += weekHeaderHeight;
+
+            const firstDay = new Date(year, m, 1);
+            const lastDay = new Date(year, m + 1, 0);
+            const numDays = lastDay.getDate();
+            const startDayOfWeek = firstDay.getDay();
+            const startPos = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
+
+            // Días
+            let dayCounter = 1;
+
+            for (let i = 0; i < 42; i++) {
+                if (dayCounter > numDays) break;
+
+                const cx = x + ((i % 7) * cellWidth);
+                const cy = currentY + (Math.floor(i / 7) * cellHeight);
+
+                if (i >= startPos) {
+                    const day = dayCounter;
+                    const currentDate = new Date(year, m, day);
+                    const dow = currentDate.getDay();
+
+                    // --- 1. Letra TAXI ---
+                    let taxiLetter = '';
+                    if (breakConfig?.startDate) {
+                        // Misma lógica que Main Component
+                        const [ds, ms, ys] = breakConfig.startDate.split('/');
+                        const startDate = new Date(parseInt(ys), parseInt(ms) - 1, parseInt(ds));
+                        const lettersArray = ['A', 'B', 'C', 'D'];
+
+                        const diffTime = currentDate.getTime() - startDate.getTime();
+                        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+                        if (diffDays >= 0) {
+                            const startLetter = breakConfig.startDayLetter || breakConfig.initialBreakLetter || 'A';
+                            const startIdx = lettersArray.indexOf(startLetter);
+                            const startDow = startDate.getDay();
+                            const startWd = startDow === 0 ? 6 : startDow - 1;
+                            const mod = (v: number, d: number) => ((v % d) + d) % d;
+                            const startWkMondayIdx = mod(startIdx - startWd, 4);
+
+                            const isSat = dow === 6;
+                            const isSun = dow === 0;
+                            if (isSat || isSun) {
+                                const weekendPattern = parseWeekendPattern(breakConfig.weekendPattern || '');
+                                const weekNum = Math.floor((diffDays + startWd) / 7);
+                                const swap = weekNum % 2 === 1;
+                                taxiLetter = isSat
+                                    ? (swap ? weekendPattern.sunday : weekendPattern.saturday)
+                                    : (swap ? weekendPattern.saturday : weekendPattern.sunday);
+                            } else {
+                                const weekNum = Math.floor((diffDays + startWd) / 7);
+                                const wd = dow === 0 ? 6 : dow - 1;
+                                const mondayIdx = mod(startWkMondayIdx + weekNum, 4);
+                                const finalIdx = mod(mondayIdx + wd, 4);
+                                taxiLetter = lettersArray[finalIdx];
+                            }
+                        }
+                    }
+
+                    // --- 2. Letra AEROPUERTO ---
+                    const dateKey = `${year}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const airportLetter = airportMap[dateKey] || '';
+
+                    // --- 3. Determinar COLOR FONDO (Usamos Taxi User Letter) ---
+                    const userLetter = breakConfig?.userBreakLetter?.toUpperCase();
+                    const tl = taxiLetter.toUpperCase();
+                    const isRest = Boolean(
+                        userLetter && tl &&
+                        (tl === userLetter ||
+                            (tl === 'AC' && (userLetter === 'A' || userLetter === 'C')) ||
+                            (tl === 'BD' && (userLetter === 'B' || userLetter === 'D')))
+                    );
+
+                    // Excepciones
+                    const activeException = excepciones.find(e => {
+                        const fd = ensureDate(e.fechaDesde);
+                        const fh = ensureDate(e.fechaHasta);
+                        if (!fd || !fh) return false;
+                        // Range check logic...
+                        const fds = new Date(fd); fds.setHours(0, 0, 0, 0);
+                        const fhs = new Date(fh); fhs.setHours(23, 59, 59, 999);
+                        const dDate = new Date(year, m, day); dDate.setHours(12, 0, 0, 0);
+                        return dDate >= fds && dDate <= fhs;
+                    });
+
+                    let bg = COLOR_BG;
+                    if (activeException && ['Vacaciones', 'Festivo (sin descanso)', 'Liberacion Especial'].includes(activeException.tipo)) {
+                        if (activeException.tipo === 'Festivo (sin descanso)') bg = COLOR_HOLIDAY;
+                        else if (activeException.tipo === 'Liberacion Especial') bg = COLOR_SPECIAL;
+                        else bg = COLOR_REST;
+                    } else if (isRest) {
+                        bg = COLOR_REST;
+                    }
+
+                    // --- DRAW ---
+                    doc.setFillColor(bg[0], bg[1], bg[2]);
+                    doc.rect(cx, cy, cellWidth, cellHeight, 'FD');
+
+                    // Number (Corner Small)
+                    doc.setFontSize(6);
+                    doc.setTextColor(0, 0, 0);
+                    // Right Align
+                    doc.text(String(day), cx + cellWidth - 0.5, cy + 2.5, { align: 'right' });
+
+                    // Taxi Letter (Center Big)
+                    if (taxiLetter) {
+                        doc.setFontSize(10);
+                        doc.setFont(undefined, 'bold');
+                        doc.setTextColor(50, 50, 50);
+                        // Shift center slightly up to make room for bottom text
+                        doc.text(taxiLetter, cx + (cellWidth / 2), cy + (cellHeight / 2) + 0.5, { align: 'center' });
+                        doc.setFont(undefined, 'normal');
+                    }
+
+                    // Airport Letter (Bottom Small Blue)
+                    if (airportLetter) {
+                        doc.setFontSize(7);
+                        doc.setFont(undefined, 'bold');
+                        doc.setTextColor(0, 110, 200); // Blueish
+                        doc.text(airportLetter, cx + (cellWidth / 2), cy + cellHeight - 1, { align: 'center' });
+                        doc.setFont(undefined, 'normal');
+                    }
+
+                    dayCounter++;
+                }
+            }
+        }
+
+        doc.save(`Calendario_TAppXI_Anual_${year}.pdf`);
+    };
+
     // Generar array de días del mes
     const days = [];
     // Días vacíos al inicio
@@ -322,34 +625,82 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ navigateTo }) => {
                 backTarget={Seccion.Home}
             />
 
-            {/* Navegación de Mes */}
-            <div className="bg-blue-800 flex items-center justify-between py-2 px-2 flex-shrink-0">
-                <button
-                    onClick={() => navigateMonth('prev')}
-                    className="text-cyan-400 hover:text-cyan-300 transition-colors"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
-                    </svg>
-                </button>
-                <h2 className="text-cyan-400 text-lg font-semibold">
-                    {monthNames[month]} {year}
-                </h2>
-                <div className="flex items-center gap-2">
+            {/* Navegación y Herramientas Unificadas */}
+            <div className="bg-zinc-900/90 backdrop-blur-md border-b border-white/10 flex items-center justify-between py-2 px-2 flex-shrink-0 shadow-sm relative z-20 gap-2">
+                {/* Grupo Izquierda: Navegación Mes */}
+                <div className="flex items-center gap-1 flex-1 min-w-0">
                     <button
-                        onClick={() => navigateTo(Seccion.ConfiguracionDescansos)}
-                        className="text-cyan-400 hover:text-cyan-300 transition-colors"
+                        onClick={() => navigateMonth('prev')}
+                        className="w-8 h-8 flex items-center justify-center rounded-full text-zinc-400 hover:text-white hover:bg-white/10 transition-all active:scale-95 flex-shrink-0"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="15 18 9 12 15 6"></polyline>
                         </svg>
                     </button>
+
+                    <h2 className="text-white text-base font-medium tracking-tight text-center select-none truncate flex-1 leading-tight">
+                        {monthNames[month]} <span className="text-zinc-500 font-light text-sm hidden sm:inline">{year}</span>
+                    </h2>
+
                     <button
                         onClick={() => navigateMonth('next')}
-                        className="text-cyan-400 hover:text-cyan-300 transition-colors"
+                        className="w-8 h-8 flex items-center justify-center rounded-full text-zinc-400 hover:text-white hover:bg-white/10 transition-all active:scale-95 flex-shrink-0"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </button>
+                </div>
+
+                {/* Grupo Derecha: Acciones */}
+                <div className="flex items-center gap-1 flex-shrink-0">
+                    {/* Toggle Modo */}
+                    <button
+                        onClick={() => setCalendarMode(prev => prev === 'taxi' ? 'airport' : 'taxi')}
+                        className={`
+                            h-7 px-2 rounded-full text-[10px] font-bold tracking-wide transition-all border flex items-center gap-1.5 uppercase
+                            ${calendarMode === 'taxi'
+                                ? 'bg-yellow-500/10 border-yellow-500/50 text-yellow-500 hover:bg-yellow-500/20'
+                                : 'bg-sky-500/10 border-sky-500/50 text-sky-400 hover:bg-sky-500/20'}
+                        `}
+                        title={calendarMode === 'taxi' ? 'Modo Taxi' : 'Modo Aeropuerto'}
+                    >
+                        {calendarMode === 'taxi' ? (
+                            <>
+                                <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse"></span>
+                                TAX
+                            </>
+                        ) : (
+                            <>
+                                <span className="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
+                                AERP
+                            </>
+                        )}
+                    </button>
+
+                    {/* PDF */}
+                    <button
+                        onClick={handleGeneratePDF}
+                        className="w-8 h-8 flex items-center justify-center rounded-full text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/30"
+                        title="Descargar PDF"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                        </svg>
+                    </button>
+
+                    {/* Configuración */}
+                    <button
+                        onClick={() => navigateTo(Seccion.ConfiguracionDescansos)}
+                        className="w-8 h-8 flex items-center justify-center rounded-full text-zinc-400 hover:text-white hover:bg-white/10 transition-all"
+                        title="Configuración"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.18-.08a2 2 0 0 0-2 0l-.45.45a2 2 0 0 0 0 2l.08.18a2 2 0 0 1 0 2l-.25.43a2 2 0 0 1-1.73 1H2a2 2 0 0 0-2 2v.45a2 2 0 0 0 2 2h.18a2 2 0 0 1 1.73 1l.25.43a2 2 0 0 1 0 2l-.08.18a2 2 0 0 0 0 2l.45.45a2 2 0 0 0 2 0l.18-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.18.08a2 2 0 0 0 2 0l.45-.45a2 2 0 0 0 0-2l-.08-.18a2 2 0 0 1 0-2l.25-.43a2 2 0 0 1 1.73-1H22a2 2 0 0 0 2-2v-.45a2 2 0 0 0-2-2h-.18a2 2 0 0 1-1.73-1l-.25-.43a2 2 0 0 1 0-2l.08-.18a2 2 0 0 0 0-2l-.45-.45a2 2 0 0 0-2 0l-.18.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
                         </svg>
                     </button>
                 </div>
@@ -402,19 +753,31 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ navigateTo }) => {
                             (dayLetter === 'BD' && (userLetter === 'B' || userLetter === 'D')))
                     );
 
-                    // Verificar si el día está en vacaciones
-                    const isVacaciones = excepciones.some(excepcion => {
-                        if (excepcion.tipo === 'Vacaciones') {
-                            const fechaDesde = new Date(excepcion.fechaDesde);
-                            fechaDesde.setHours(0, 0, 0, 0);
-                            const fechaHasta = new Date(excepcion.fechaHasta);
-                            fechaHasta.setHours(23, 59, 59, 999);
-                            const dayDate = new Date(year, month, day);
-                            dayDate.setHours(0, 0, 0, 0);
-                            return isDateInRange(dayDate, fechaDesde, fechaHasta);
+                    // Verificar si el día tiene una excepción (Vacaciones, Festivo, etc.)
+                    const activeException = excepciones.find(excepcion => {
+                        if (!['Vacaciones', 'Festivo (sin descanso)', 'Liberacion Especial'].includes(excepcion.tipo)) {
+                            return false;
                         }
-                        return false;
+
+                        const fechaDesde = ensureDate(excepcion.fechaDesde);
+                        const fechaHasta = ensureDate(excepcion.fechaHasta);
+
+                        if (!fechaDesde || !fechaHasta) return false;
+
+                        // Normalizar para comparación exacta de días
+                        const fDesde = new Date(fechaDesde);
+                        fDesde.setHours(0, 0, 0, 0);
+
+                        const fHasta = new Date(fechaHasta);
+                        fHasta.setHours(23, 59, 59, 999);
+
+                        const dDate = new Date(year, month, day);
+                        dDate.setHours(0, 0, 0, 0);
+
+                        return isDateInRange(dDate, fDesde, fHasta);
                     });
+
+                    const isExceptionDay = !!activeException;
 
                     // Determinar el color de fondo
                     let bgColor = '';
@@ -422,21 +785,32 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ navigateTo }) => {
                         bgColor = 'bg-gradient-to-b from-orange-500 via-orange-400 to-yellow-500 border-2 border-white shadow-lg z-10';
                     } else if (isToday) {
                         bgColor = 'bg-gradient-to-b from-cyan-500 via-blue-500 to-indigo-500 border-2 border-white shadow-md';
-                    } else if (isRestDay || isVacaciones) {
+                    } else if (isRestDay) {
                         bgColor = 'bg-green-600 hover:bg-green-500 border border-green-500';
+                    } else if (activeException) {
+                        // Colores específicos según el tipo de excepción
+                        if (activeException.tipo === 'Vacaciones') {
+                            bgColor = 'bg-green-600 hover:bg-green-500 border border-green-500';
+                        } else if (activeException.tipo === 'Festivo (sin descanso)') {
+                            bgColor = 'bg-red-600 hover:bg-red-500 border border-red-500';
+                        } else if (activeException.tipo === 'Liberacion Especial') {
+                            bgColor = 'bg-purple-600 hover:bg-purple-500 border border-purple-500';
+                        } else {
+                            bgColor = 'bg-green-600 hover:bg-green-500 border border-green-500';
+                        }
                     } else {
                         bgColor = 'bg-zinc-700 hover:bg-zinc-600 border border-zinc-600';
                     }
 
                     const incomeTextClass = (isSelected || isToday)
                         ? 'text-white'
-                        : (isRestDay || isVacaciones)
+                        : (isRestDay || isExceptionDay)
                             ? 'text-white'
                             : 'text-sky-200';
 
                     const expenseTextClass = (isSelected || isToday)
                         ? 'text-white'
-                        : (isRestDay || isVacaciones)
+                        : (isRestDay || isExceptionDay)
                             ? 'text-red-200'
                             : 'text-red-400';
 

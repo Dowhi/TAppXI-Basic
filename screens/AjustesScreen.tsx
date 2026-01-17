@@ -3,7 +3,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useFontSize } from "../contexts/FontSizeContext";
 import ScreenTopBar from "../components/ScreenTopBar";
 import { Seccion } from "../types";
-import { saveAjustes, getAjustes, deleteAllData, DeleteProgress, removeDuplicates } from "../services/api";
+import { saveAjustes, getAjustes, deleteAllData, DeleteProgress, removeDuplicates, forceCloudSync } from "../services/api";
 import { downloadBackupJson, uploadBackupToGoogleDrive, exportToGoogleSheets, restoreBackup, restoreFromGoogleSheets } from "../services/backup";
 import { listFiles, getFileContent } from "../services/google";
 import { archiveOperationalDataOlderThan, getRelativeCutoffDate } from "../services/maintenance";
@@ -89,6 +89,7 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
     // Estados para backup
     const [uploadingToDrive, setUploadingToDrive] = useState<boolean>(false);
     const [exportingToSheets, setExportingToSheets] = useState<boolean>(false);
+    const [syncingCloud, setSyncingCloud] = useState<boolean>(false);
 
     // Exportación avanzada
     const [exportFechaDesde, setExportFechaDesde] = useState<string>('');
@@ -433,6 +434,37 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
         } finally {
             setUploadingToDrive(false);
         }
+    };
+
+    const handleForceCloudSync = async () => {
+        if (syncingCloud) return;
+
+        showConfirm(
+            "¿Quieres sincronizar TODOS los datos locales con la hoja de cálculo de Google?\n\n" +
+            "⚠️ ESTO SOBREESCRIBIRÁ EL CONTENIDO DE LA HOJA 'TAppXI_DB' EN LA NUBE.",
+            async () => {
+                setSyncingCloud(true);
+                try {
+                    const sheetId = await forceCloudSync();
+                    if (sheetId) {
+                        const url = `https://docs.google.com/spreadsheets/d/${sheetId}`;
+                        showConfirm(
+                            "✅ Sincronización completa.\n\n" +
+                            "La hoja 'TAppXI_DB' se ha actualizado correctamente en Google Drive.\n\n" +
+                            "¿Quieres abrirla para verificar?",
+                            () => window.open(url, '_blank')
+                        );
+                    } else {
+                        showAlert("✅ Sincronización completa (ID desconocido).");
+                    }
+                } catch (e: any) {
+                    console.error("Error en Force Sync:", e);
+                    showAlert(`❌ Error al sincronizar: ${e.message || e}`);
+                } finally {
+                    setSyncingCloud(false);
+                }
+            }
+        );
     };
 
     const handleExportGoogleSheets = async () => {
@@ -1390,6 +1422,40 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                     </div>
                 </div>
 
+                <div className="bg-zinc-800 rounded-lg p-2.5 border border-zinc-700">
+                    <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                            <h3 className="text-zinc-100 font-bold text-base mb-0.5">Sincronización Nube</h3>
+                            <p className="text-zinc-400 text-sm">Forzar subida de datos a Google Sheets (TAppXI_DB)</p>
+                        </div>
+                        <button
+                            onClick={handleForceCloudSync}
+                            disabled={syncingCloud || uploadingToDrive}
+                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                            {syncingCloud ? (
+                                <>
+                                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <span>Sync</span>
+                                </>
+                            ) : (
+                                <>
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                                        <line x1="21" y1="2" x2="9" y2="14" />
+                                        <line x1="21" y1="2" x2="21" y2="8" />
+                                        <line x1="21" y1="2" x2="15" y2="2" />
+                                    </svg>
+                                    <span>Forzar Subida</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </div>
+
                 {/* Modal de Selección de Backup */}
                 {
                     showRestoreModal && (
@@ -1488,6 +1554,25 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                                 </div>
                                 <h3 className="text-xl font-bold text-white mb-2">Exportando a Google Sheets</h3>
                                 <p className="text-zinc-400 text-sm mb-4">Creando hojas y exportando tus datos...</p>
+                                <p className="text-xs text-zinc-500 mt-2">Por favor, no cierres la aplicación.</p>
+                            </div>
+                        </div>
+                    )
+                }
+
+                {/* Modal de Carga para Cloud Sync */}
+                {
+                    syncingCloud && (
+                        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4">
+                            <div className="bg-zinc-800 rounded-xl w-full max-w-sm p-6 border border-zinc-700 shadow-2xl flex flex-col items-center text-center">
+                                <div className="w-16 h-16 mb-4 relative flex items-center justify-center">
+                                    <svg className="animate-spin w-full h-full text-blue-500 absolute" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                </div>
+                                <h3 className="text-xl font-bold text-white mb-2">Sincronizando con la Nube</h3>
+                                <p className="text-zinc-400 text-sm mb-4">Subiendo todos los datos a TAppXI_DB...</p>
                                 <p className="text-xs text-zinc-500 mt-2">Por favor, no cierres la aplicación.</p>
                             </div>
                         </div>

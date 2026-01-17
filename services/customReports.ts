@@ -1,5 +1,6 @@
 import { addItem, getAllItems, getItem, deleteItem } from '../src/lib/indexedDB';
 import type { ExportFilter } from './exports';
+import { syncService } from './syncService';
 
 export interface CustomReport {
     id: string;
@@ -39,6 +40,7 @@ export const saveCustomReport = async (report: Omit<CustomReport, 'id' | 'create
         lastUsed: undefined,
     };
     await addItem(STORE_NAME, id, data);
+    syncService.create('Informes', data);
     return id;
 };
 
@@ -52,10 +54,12 @@ export const updateCustomReport = async (id: string, updates: Partial<CustomRepo
     if (!existing) throw new Error('CustomReport not found');
     const merged = { ...existing, ...updates, lastUsed: new Date().toISOString() };
     await addItem(STORE_NAME, id, merged);
+    syncService.update('Informes', merged);
 };
 
 export const deleteCustomReport = async (id: string): Promise<void> => {
     await deleteItem(STORE_NAME, id);
+    syncService.delete('Informes', id);
 };
 
 export const markReportAsUsed = async (id: string): Promise<void> => {
@@ -63,8 +67,10 @@ export const markReportAsUsed = async (id: string): Promise<void> => {
     if (!existing) throw new Error('CustomReport not found');
     const updated = { ...existing, lastUsed: new Date().toISOString() };
     await addItem(STORE_NAME, id, updated);
+    syncService.update('Informes', updated);
 };
 
 export const restoreCustomReport = async (report: any): Promise<void> => {
     await addItem(STORE_NAME, report.id, report);
+    syncService.create('Informes', report);
 };
