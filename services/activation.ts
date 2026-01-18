@@ -22,14 +22,11 @@ export const ActivationService = {
     },
 
     activate: (code: string): boolean => {
+        const sanitizedCode = code.trim().toUpperCase();
         const deviceId = ActivationService.getDeviceId();
         const validCode = ActivationService.generateValidCode(deviceId);
 
-        // Master override for the developer/admin just in case (e.g. "ADMIN-KEY")
-        // But for security, better to rely on the algorithm. 
-        // Let's rely on the algorithm.
-
-        if (code === validCode) {
+        if (sanitizedCode === validCode) {
             localStorage.setItem(STORAGE_KEY_ACTIVATED, 'true');
             return true;
         }

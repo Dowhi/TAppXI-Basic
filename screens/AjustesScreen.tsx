@@ -10,6 +10,7 @@ import { archiveOperationalDataOlderThan, getRelativeCutoffDate } from "../servi
 import { exportToExcel, exportToCSV, exportToPDFAdvanced, exportToHacienda, ExportFilter } from "../services/exports";
 import { getCarreras, getGastos, getRecentTurnos } from "../services/api";
 import { saveCustomReport, getCustomReports, deleteCustomReport, markReportAsUsed, CustomReport } from "../services/customReports";
+import { ActivationService } from "../services/activation";
 
 const parseSafeDate = (d: any): Date => {
     if (d instanceof Date) return d;
@@ -98,6 +99,15 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
     const [exporting, setExporting] = useState<boolean>(false);
 
     // Exportación para Hacienda
+    const [haciendaFilter, setHaciendaFilter] = useState<ExportFilter>('trimestre');
+    const [haciendaYear, setHaciendaYear] = useState<number>(new Date().getFullYear());
+    const [haciendaQuarter, setHaciendaQuarter] = useState<number>(Math.floor((new Date().getMonth() + 3) / 3));
+
+    // Admin Mode / License Generator
+    const [adminMode, setAdminMode] = useState(false);
+    const [adminTriggerCount, setAdminTriggerCount] = useState(0);
+    const [targetDeviceId, setTargetDeviceId] = useState('');
+    const [generatedCode, setGeneratedCode] = useState<string | null>(null);
     const [haciendaFechaDesde, setHaciendaFechaDesde] = useState<string>('');
     const [haciendaFechaHasta, setHaciendaFechaHasta] = useState<string>('');
     const [exportingHacienda, setExportingHacienda] = useState<boolean>(false);
@@ -556,6 +566,28 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
             setLoadingBackups(false);
         }
     };
+
+
+
+    // START NEW CODE
+    const handleAdminTrigger = () => {
+        if (adminMode) return;
+        setAdminTriggerCount(prev => {
+            const newCount = prev + 1;
+            if (newCount >= 5) {
+                setAdminMode(true);
+                return 0;
+            }
+            return newCount;
+        });
+    };
+
+    const handleGenerateLicense = () => {
+        if (targetDeviceId.length < 5) return; // Simple check
+        const code = ActivationService.generateValidCode(targetDeviceId);
+        setGeneratedCode(code);
+    };
+    // END NEW CODE
 
     const handleRestoreBackup = async (fileId: string, fileName: string, mimeType: string) => {
         showConfirm(
@@ -1960,6 +1992,49 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                         </div>
                     )
                 }
+                {/* Admin / License Generator */}
+                {adminMode && (
+                    <div className="bg-purple-900/20 border border-purple-500/50 rounded-lg p-4 mt-8">
+                        <h3 className="text-purple-400 font-bold text-lg mb-2 flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                            </svg>
+                            Generador de Licencias
+                        </h3>
+                        <div className="space-y-3">
+                            <div>
+                                <label className="block text-xs uppercase text-purple-300/70 mb-1">ID del Terminal Bloqueado</label>
+                                <input
+                                    type="text"
+                                    value={targetDeviceId}
+                                    onChange={(e) => setTargetDeviceId(e.target.value.toUpperCase())}
+                                    placeholder="XXXX-XXXX"
+                                    className="w-full bg-zinc-900/50 border border-purple-500/30 rounded p-2 text-purple-200 font-mono text-center tracking-widest placeholder:text-purple-500/20"
+                                />
+                            </div>
+                            <button
+                                onClick={handleGenerateLicense}
+                                className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded transition-colors"
+                            >
+                                Generar Código
+                            </button>
+
+                            {generatedCode && (
+                                <div className="bg-black/50 p-3 rounded border border-purple-500/30 text-center mt-2">
+                                    <p className="text-xs text-purple-400 mb-1">CÓDIGO DE DESBLOQUEO</p>
+                                    <p className="text-3xl font-mono font-bold text-white tracking-[0.5em]">{generatedCode}</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                <p
+                    onClick={handleAdminTrigger}
+                    className="mt-8 text-zinc-600 text-xs text-center select-none cursor-pointer active:text-zinc-500"
+                >
+                    TAppXI v1.0 • Acceso Restringido
+                </p>
             </div>
         </div>
     );
