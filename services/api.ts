@@ -3,14 +3,21 @@ import { addItem, getAllItems, getItem, deleteItem } from '../src/lib/indexedDB'
 import { syncService } from './syncService';
 
 // Types (import from types.ts)
-import type { CarreraVista, Gasto, Turno, Proveedor, Concepto, Taller, Reminder, Ajustes } from '../types';
+import type { CarreraVista, Gasto, Turno, Proveedor, Concepto, Taller, Reminder, Ajustes, OtroIngreso } from '../types';
 import { getCustomReports } from './customReports';
 
 // Helper functions to map data structures if needed (currently identity)
 
 /** Carreras */
 export async function getCarreras(): Promise<CarreraVista[]> {
-    return getAllItems('carreras');
+    const carreras = await getAllItems<CarreraVista>('carreras');
+    // Normalizar valores booleanos para carreras antiguas que no tienen estos campos
+    return carreras.map(c => ({
+        ...c,
+        emisora: c.emisora === true,
+        aeropuerto: c.aeropuerto === true,
+        estacion: c.estacion === true
+    }));
 }
 
 export async function getCarrera(id: string): Promise<CarreraVista | undefined> {
@@ -267,6 +274,48 @@ export async function deleteReminder(id: string): Promise<void> {
     syncService.delete('Recordatorios', id);
 }
 
+/** Otros Ingresos */
+export async function getOtrosIngresos(): Promise<OtroIngreso[]> {
+    return getAllItems('otrosIngresos');
+}
+
+export async function getOtroIngreso(id: string): Promise<OtroIngreso | undefined> {
+    return getItem<OtroIngreso>('otrosIngresos', id);
+}
+
+export async function addOtroIngreso(entry: Omit<OtroIngreso, 'id'> & { id?: string }): Promise<string> {
+    const key = entry.id ?? crypto.randomUUID();
+    await addItem('otrosIngresos', key, { ...entry, id: key });
+    syncService.create('OtrosIngresos', { ...entry, id: key });
+    return key;
+}
+
+export async function updateOtroIngreso(id: string, updates: Partial<OtroIngreso>): Promise<void> {
+    const existing = await getItem<OtroIngreso>('otrosIngresos', id);
+    if (!existing) throw new Error('OtroIngreso not found');
+    const updated = { ...existing, ...updates };
+    await addItem('otrosIngresos', id, updated);
+    syncService.update('OtrosIngresos', updated);
+}
+
+export async function deleteOtroIngreso(id: string): Promise<void> {
+    await deleteItem('otrosIngresos', id);
+    syncService.delete('OtrosIngresos', id);
+}
+
+export async function getOtrosIngresosByDateRange(start: Date, end: Date): Promise<OtroIngreso[]> {
+    const all = await getOtrosIngresos();
+    return all.filter(oi => {
+        const d = oi.fecha instanceof Date ? oi.fecha : new Date(oi.fecha);
+        return d >= start && d <= end;
+    });
+}
+
+export async function restoreOtroIngreso(entry: any, skipSync = false): Promise<void> {
+    await addItem('otrosIngresos', entry.id, entry);
+    if (!skipSync) syncService.create('OtrosIngresos', { ...entry, id: entry.id });
+}
+
 // ...
 export function subscribeToReminders(callback: (reminders: Reminder[]) => void, errorCallback?: (error: any) => void): () => void {
     getReminders().then(callback).catch(err => {
@@ -324,14 +373,35 @@ export async function getCarrerasByMonth(month: number, year: number): Promise<C
 export async function getIngresosByYear(year: number): Promise<number[]> {
     const start = new Date(year, 0, 1);
     const end = new Date(year, 11, 31, 23, 59, 59, 999);
-    const carreras = await getCarrerasByDateRange(start, end);
+    const [carreras, otros] = await Promise.all([
+        getCarrerasByDateRange(start, end),
+        getOtrosIngresosByDateRange(start, end)
+    ]);
 
     const monthly = new Array(12).fill(0);
     carreras.forEach(c => {
         const d = c.fechaHora instanceof Date ? c.fechaHora : new Date(c.fechaHora);
         const month = d.getMonth();
+        const carreraYear = d.getFullYear();
+
+        // Debug logging for Nov/Dec
+        if (year === 2025 && (month === 10 || month === 11)) {
+            console.log(`Carrera encontrada: ${d.toISOString()}, Año: ${carreraYear}, Mes: ${month}, Cobrado: ${c.cobrado}`);
+        }
+
         monthly[month] += (c.cobrado || 0);
     });
+    otros.forEach(oi => {
+        const d = oi.fecha instanceof Date ? oi.fecha : new Date(oi.fecha);
+        const month = d.getMonth();
+        monthly[month] += (oi.importe || 0);
+    });
+
+    // Debug summary
+    if (year === 2025) {
+        console.log('Resumen 2025 - Nov:', monthly[10], 'Dic:', monthly[11]);
+    }
+
     return monthly;
 }
 
@@ -382,11 +452,13 @@ export async function getAjustes(): Promise<Ajustes | null> {
     return settings || null;
 }
 
-export async function saveAjustes(ajustes: any): Promise<void> {
+export async function saveAjustes(ajustes: any, skipSync = false): Promise<void> {
     await addItem('settings', 'ajustes', { ...ajustes, key: 'ajustes' });
-    // Sync each setting key individually
-    for (const [key, value] of Object.entries(ajustes)) {
-        syncService.update('Ajustes', { clave: key, valor: value });
+    if (!skipSync) {
+        // Sync each setting key individually
+        for (const [key, value] of Object.entries(ajustes)) {
+            syncService.update('Ajustes', { clave: key, valor: value });
+        }
     }
 }
 
@@ -396,9 +468,9 @@ export async function getBreakConfiguration(): Promise<any> {
     return config || null;
 }
 
-export async function saveBreakConfiguration(config: any): Promise<void> {
+export async function saveBreakConfiguration(config: any, skipSync = false): Promise<void> {
     await addItem('settings', 'breakConfig', { ...config, key: 'breakConfig' });
-    syncService.update('Ajustes', { clave: 'breakConfiguration', valor: config });
+    if (!skipSync) syncService.update('Ajustes', { clave: 'breakConfiguration', valor: config });
 }
 
 /** Excepciones */
@@ -434,6 +506,14 @@ export async function addValeDirectoryEntry(entry: Omit<ValeDirectoryEntry, 'id'
     return key;
 }
 
+export async function updateValeDirectoryEntry(id: string, updates: Partial<ValeDirectoryEntry>): Promise<void> {
+    const existing = await getItem<ValeDirectoryEntry>('vales', id);
+    if (!existing) throw new Error('Vale directory entry not found');
+    const updated = { ...existing, ...updates };
+    await addItem('vales', id, updated);
+    syncService.update('Vales', updated);
+}
+
 export async function deleteValeDirectoryEntry(id: string): Promise<void> {
     await deleteItem('vales', id);
     syncService.delete('Vales', id);
@@ -463,9 +543,9 @@ export async function deleteExcepcion(id: string): Promise<void> {
     syncService.delete('Excepciones', id);
 }
 
-export async function restoreExcepcion(excepcion: any): Promise<void> {
+export async function restoreExcepcion(excepcion: any, skipSync = false): Promise<void> {
     await addItem('excepciones', excepcion.id, excepcion);
-    syncService.create('Excepciones', { ...excepcion, id: excepcion.id });
+    if (!skipSync) syncService.create('Excepciones', { ...excepcion, id: excepcion.id });
 }
 
 export async function isRestDay(date: Date): Promise<boolean> {
@@ -485,45 +565,46 @@ export async function isRestDay(date: Date): Promise<boolean> {
 }
 
 /** Restore Functions (Wrappers) */
-export async function restoreCarrera(carrera: any): Promise<void> {
+export async function restoreCarrera(carrera: any, skipSync = false): Promise<void> {
     await addItem('carreras', carrera.id, carrera);
-    syncService.create('Carreras', { ...carrera, id: carrera.id });
+    if (!skipSync) syncService.create('Carreras', { ...carrera, id: carrera.id });
 }
-export async function restoreGasto(gasto: any): Promise<void> {
+export async function restoreGasto(gasto: any, skipSync = false): Promise<void> {
     await addItem('gastos', gasto.id, gasto);
-    // Sync Gasto
-    syncService.create('Gastos', { ...gasto, id: gasto.id });
-    // Sync Servicios (Nested)
-    if (gasto.servicios && gasto.servicios.length > 0) {
-        gasto.servicios.forEach((s: any) => {
-            syncService.create('Incisos', { ...s, gastoId: gasto.id, id: s.id || crypto.randomUUID() });
-        });
+    if (!skipSync) {
+        // Sync Gasto
+        syncService.create('Gastos', { ...gasto, id: gasto.id });
+        // Sync Servicios (Nested)
+        if (gasto.servicios && gasto.servicios.length > 0) {
+            gasto.servicios.forEach((s: any) => {
+                syncService.create('Incisos', { ...s, gastoId: gasto.id, id: s.id || crypto.randomUUID() });
+            });
+        }
     }
 }
-export async function restoreTurno(turno: any): Promise<void> {
+export async function restoreTurno(turno: any, skipSync = false): Promise<void> {
     await addItem('turnos', turno.id, turno);
-    syncService.create('Turnos', { ...turno, id: turno.id });
+    if (!skipSync) syncService.create('Turnos', { ...turno, id: turno.id });
 }
-export async function restoreProveedor(proveedor: any): Promise<void> {
+export async function restoreProveedor(proveedor: any, skipSync = false): Promise<void> {
     await addItem('proveedores', proveedor.id, proveedor);
-    syncService.create('Proveedores', { ...proveedor, id: proveedor.id });
+    if (!skipSync) syncService.create('Proveedores', { ...proveedor, id: proveedor.id });
 }
-export async function restoreConcepto(concepto: any): Promise<void> {
+export async function restoreConcepto(concepto: any, skipSync = false): Promise<void> {
     await addItem('conceptos', concepto.id, concepto);
-    syncService.create('Conceptos', { ...concepto, id: concepto.id });
+    if (!skipSync) syncService.create('Conceptos', { ...concepto, id: concepto.id });
 }
-// ... existing code ...
-export async function restoreTaller(taller: any): Promise<void> {
+export async function restoreTaller(taller: any, skipSync = false): Promise<void> {
     await addItem('talleres', taller.id, taller);
-    syncService.create('Talleres', { ...taller, id: taller.id });
+    if (!skipSync) syncService.create('Talleres', { ...taller, id: taller.id });
 }
-export async function restoreValeDirectoryEntry(entry: any): Promise<void> {
+export async function restoreValeDirectoryEntry(entry: any, skipSync = false): Promise<void> {
     await addItem('vales', entry.id, entry);
-    syncService.create('Vales', { ...entry, id: entry.id });
+    if (!skipSync) syncService.create('Vales', { ...entry, id: entry.id });
 }
-export async function restoreReminder(reminder: any): Promise<void> {
+export async function restoreReminder(reminder: any, skipSync = false): Promise<void> {
     await addItem('reminders', reminder.id, reminder);
-    syncService.create('Recordatorios', { ...reminder, id: reminder.id });
+    if (!skipSync) syncService.create('Recordatorios', { ...reminder, id: reminder.id });
 }
 
 /** Statistics Helpers */
@@ -532,8 +613,13 @@ export async function getIngresosForCurrentMonth(): Promise<number> {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
-    const carreras = await getCarrerasByDateRange(startOfMonth, endOfMonth);
-    return carreras.reduce((sum, c) => sum + (c.cobrado || 0), 0);
+    const [carreras, otros] = await Promise.all([
+        getCarrerasByDateRange(startOfMonth, endOfMonth),
+        getOtrosIngresosByDateRange(startOfMonth, endOfMonth)
+    ]);
+    const taxiIngresos = carreras.reduce((sum, c) => sum + (c.cobrado || 0), 0);
+    const otrosIngresos = otros.reduce((sum, oi) => sum + (oi.importe || 0), 0);
+    return taxiIngresos + otrosIngresos;
 }
 
 export async function getGastosForCurrentMonth(): Promise<number> {
@@ -579,7 +665,7 @@ export interface DeleteProgress {
 }
 
 export async function deleteAllData(onProgress?: (progress: DeleteProgress) => void): Promise<void> {
-    const stores = ['carreras', 'gastos', 'turnos', 'proveedores', 'conceptos', 'talleres', 'reminders', 'customReports', 'settings', 'excepciones', 'vales'];
+    const stores = ['carreras', 'gastos', 'turnos', 'proveedores', 'conceptos', 'talleres', 'reminders', 'customReports', 'settings', 'excepciones', 'vales', 'otrosIngresos'];
     const total = stores.length;
 
     for (let i = 0; i < total; i++) {
@@ -667,8 +753,13 @@ export async function getTotalIngresosByDayOfWeek(startDate: Date, endDate: Date
 export async function getIngresosByMonthYear(month: number, year: number): Promise<number> {
     const start = new Date(year, month, 1);
     const end = new Date(year, month + 1, 0, 23, 59, 59, 999);
-    const carreras = await getCarrerasByDateRange(start, end);
-    return carreras.reduce((sum, c) => sum + (c.cobrado || 0), 0);
+    const [carreras, otros] = await Promise.all([
+        getCarrerasByDateRange(start, end),
+        getOtrosIngresosByDateRange(start, end)
+    ]);
+    const totalCarreras = carreras.reduce((sum, c) => sum + (c.cobrado || 0), 0);
+    const totalOtros = otros.reduce((sum, oi) => sum + (oi.importe || 0), 0);
+    return totalCarreras + totalOtros;
 }
 
 export async function getGastosByMonthYear(month: number, year: number): Promise<number> {
@@ -698,6 +789,7 @@ export async function forceCloudSync(): Promise<string | null> {
     const vales = await getValesDirectory();
     const informes = await getCustomReports();
     const breakConfig = await getBreakConfiguration();
+    const otrosIngresos = await getOtrosIngresos();
 
     return await syncService.uploadAllData(
         carreras,
@@ -711,7 +803,8 @@ export async function forceCloudSync(): Promise<string | null> {
         excepciones,
         vales,
         informes,
-        breakConfig
+        breakConfig,
+        otrosIngresos
     );
 }
 

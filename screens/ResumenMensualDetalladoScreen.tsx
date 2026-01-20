@@ -84,7 +84,7 @@ const ResumenMensualDetalladoScreen: React.FC<ResumenMensualDetalladoScreenProps
             .reduce((sum, c) => sum + (c.cobrado || 0), 0);
 
         const sumaEmisora = carreras
-            .filter(c => c.emisora)
+            .filter(c => c.emisora === true)
             .reduce((sum, c) => sum + (c.cobrado || 0), 0);
 
         const sumaVales = carreras
@@ -93,7 +93,7 @@ const ResumenMensualDetalladoScreen: React.FC<ResumenMensualDetalladoScreenProps
 
         // Contadores por forma de pago
         const countTarjeta = carreras.filter(c => c.formaPago === 'Tarjeta').length;
-        const countEmisora = carreras.filter(c => c.emisora).length;
+        const countEmisora = carreras.filter(c => c.emisora === true).length;
         const countVales = carreras.filter(c => c.formaPago === 'Vales').length;
 
         // Propinas (diferencia entre cobrado y taxímetro)
@@ -104,7 +104,7 @@ const ResumenMensualDetalladoScreen: React.FC<ResumenMensualDetalladoScreenProps
 
         // Aeropuerto
         const aeropuerto = carreras
-            .filter(c => c.aeropuerto)
+            .filter(c => c.aeropuerto === true)
             .reduce((sum, c) => sum + (c.cobrado || 0), 0);
 
         // Horas trabajadas (diferencia entre inicio y fin de turnos)

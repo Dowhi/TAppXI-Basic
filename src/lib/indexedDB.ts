@@ -12,10 +12,11 @@ interface TAppXIDB extends DBSchema {
     settings: { key: string; value: any };
     excepciones: { key: string; value: any };
     vales: { key: string; value: any };
+    otrosIngresos: { key: string; value: any };
 }
 
 const DB_NAME = 'tappxi-db';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 let dbPromise: Promise<IDBPDatabase<TAppXIDB>>;
 
@@ -29,7 +30,6 @@ export function getDB() {
                     db.createObjectStore('turnos', { keyPath: 'id' });
                 }
                 if (oldVersion < 2) {
-                    // Check if stores exist before creating to avoid errors if version mismatch occurred previously
                     if (!db.objectStoreNames.contains('proveedores')) db.createObjectStore('proveedores', { keyPath: 'id' });
                     if (!db.objectStoreNames.contains('conceptos')) db.createObjectStore('conceptos', { keyPath: 'id' });
                     if (!db.objectStoreNames.contains('talleres')) db.createObjectStore('talleres', { keyPath: 'id' });
@@ -46,9 +46,11 @@ export function getDB() {
                     if (!db.objectStoreNames.contains('vales')) {
                         db.createObjectStore('vales', { keyPath: 'id' });
                     }
-
-                    // Migrations for existing stores to ensure keyPath
-                    const stores = ['carreras', 'gastos', 'turnos', 'proveedores', 'conceptos', 'talleres', 'reminders', 'customReports', 'settings', 'excepciones', 'vales'];
+                }
+                if (oldVersion < 4) {
+                    if (!db.objectStoreNames.contains('otrosIngresos')) {
+                        db.createObjectStore('otrosIngresos', { keyPath: 'id' });
+                    }
                 }
             },
         });

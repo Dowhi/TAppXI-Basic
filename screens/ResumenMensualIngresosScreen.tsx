@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect, useMemo } from 'react';
 import ScreenTopBar from '../components/ScreenTopBar';
 import { Seccion } from '../types';
-import { getCarrerasByMonth, getGastosByMonth } from '../services/api';
+import { getCarrerasByMonth, getGastosByMonth, getOtrosIngresosByDateRange } from '../services/api';
 
 // Icons
 const ArrowLeftIcon = () => (
@@ -29,6 +29,7 @@ const ResumenMensualIngresosScreen: React.FC<ResumenMensualIngresosScreenProps> 
     const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
     const [carreras, setCarreras] = useState<any[]>([]);
+    const [otrosIngresos, setOtrosIngresos] = useState<any[]>([]);
     const [gastos, setGastos] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -36,11 +37,16 @@ const ResumenMensualIngresosScreen: React.FC<ResumenMensualIngresosScreenProps> 
         const loadData = async () => {
             try {
                 setLoading(true);
-                const [carrerasData, gastosData] = await Promise.all([
+                const startOfMonth = new Date(selectedYear, selectedMonth, 1);
+                const endOfMonth = new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59, 999);
+
+                const [carrerasData, otrosIngresosData, gastosData] = await Promise.all([
                     getCarrerasByMonth(selectedMonth, selectedYear),
+                    getOtrosIngresosByDateRange(startOfMonth, endOfMonth),
                     getGastosByMonth(selectedMonth, selectedYear)
                 ]);
                 setCarreras(carrerasData);
+                setOtrosIngresos(otrosIngresosData);
                 setGastos(gastosData);
             } catch (error) {
                 console.error("Error loading monthly data:", error);
@@ -62,7 +68,6 @@ const ResumenMensualIngresosScreen: React.FC<ResumenMensualIngresosScreenProps> 
             return isNaN(parsed.getTime()) ? new Date(0) : parsed;
         };
 
-        // Procesar carreras (ingresos)
         carreras.forEach(carrera => {
             const dateObj = parseSafeDate(carrera.fechaHora);
             const fechaKey = dateObj.toISOString().split('T')[0];
@@ -74,6 +79,20 @@ const ResumenMensualIngresosScreen: React.FC<ResumenMensualIngresosScreenProps> 
                 };
             }
             datos[fechaKey].ingresos += (carrera.cobrado || 0);
+        });
+
+        // Procesar otros ingresos (agregados a la misma columna de ingresos)
+        otrosIngresos.forEach(oi => {
+            const dateObj = parseSafeDate(oi.fecha);
+            const fechaKey = dateObj.toISOString().split('T')[0];
+            if (!datos[fechaKey]) {
+                datos[fechaKey] = {
+                    fecha: new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()),
+                    ingresos: 0,
+                    gastos: 0
+                };
+            }
+            datos[fechaKey].ingresos += (oi.importe || 0);
         });
 
         // Procesar gastos
@@ -99,9 +118,10 @@ const ResumenMensualIngresosScreen: React.FC<ResumenMensualIngresosScreenProps> 
     // Calcular total del mes
     const totalMes = useMemo(() => {
         const totalIngresos = carreras.reduce((sum, c) => sum + (c.cobrado || 0), 0);
+        const totalOtros = otrosIngresos.reduce((sum, oi) => sum + (oi.importe || 0), 0);
         const totalGastos = gastos.reduce((sum, g) => sum + (g.importe || 0), 0);
-        return totalIngresos - totalGastos;
-    }, [carreras, gastos]);
+        return (totalIngresos + totalOtros) - totalGastos;
+    }, [carreras, otrosIngresos, gastos]);
 
     const changeMonth = (months: number) => {
         let newMonth = selectedMonth + months;

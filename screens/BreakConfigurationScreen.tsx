@@ -292,8 +292,7 @@ const BreakConfigurationScreen: React.FC<BreakConfigurationScreenProps> = ({ nav
         <div className="bg-zinc-950 min-h-screen flex flex-col">
             <ScreenTopBar
                 title="Configuración Descansos"
-                navigateTo={navigateTo}
-                backTarget={Seccion.Calendario}
+                onBack={() => navigateTo(Seccion.Varios)}
                 className="rounded-none border-b border-yellow-300/40"
             />
 

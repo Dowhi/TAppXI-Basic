@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect, useMemo } from 'react';
 import { Seccion, CarreraVista } from '../types';
 import ScreenTopBar from '../components/ScreenTopBar';
-import { getCarrerasByDate, getGastosByDate, isRestDay, getCarreras } from '../services/api';
+import { getCarrerasByDate, getGastosByDate, isRestDay, getCarreras, getOtrosIngresosByDateRange } from '../services/api';
 import { analyzeZoneTimeStats, getTopHours, getTopZones, ZoneTimeAnalysis } from '../services/zoneTimeAnalysis';
 
 interface StatisticsScreenProps {
@@ -77,19 +77,25 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                                 } as DayData & { isRestDay?: boolean };
                             }
 
-                            const [carreras, gastos] = await Promise.all([
+                            const mañana = new Date(date);
+                            mañana.setDate(date.getDate() + 1);
+
+                            const [carreras, otrosIngresos, gastos] = await Promise.all([
                                 getCarrerasByDate(date),
+                                getOtrosIngresosByDateRange(date, mañana),
                                 getGastosByDate(date),
                             ]);
 
-                            const ingresos = carreras.reduce((sum, c) => sum + (c.cobrado || 0), 0);
+                            const ingresosCarreras = carreras.reduce((sum, c) => sum + (c.cobrado || 0), 0);
+                            const ingresosOtros = otrosIngresos.reduce((sum, oi) => sum + (oi.importe || 0), 0);
+                            const totalIngresos = ingresosCarreras + ingresosOtros;
                             const totalGastos = gastos.reduce((sum, g) => sum + (g.importe || 0), 0);
 
                             return {
                                 date,
-                                ingresos,
+                                ingresos: totalIngresos,
                                 gastos: totalGastos,
-                                balance: ingresos - totalGastos,
+                                balance: totalIngresos - totalGastos,
                                 numCarreras: carreras.length,
                                 isRestDay: false,
                             } as DayData;

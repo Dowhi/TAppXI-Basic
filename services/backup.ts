@@ -20,10 +20,12 @@ import {
     getValesDirectory,
     getReminders,
     restoreValeDirectoryEntry,
-    restoreReminder
+    restoreReminder,
+    getOtrosIngresos,
+    restoreOtroIngreso,
 } from './api';
 import { getCustomReports, restoreCustomReport } from './customReports';
-import { uploadFileToDrive, createSpreadsheetWithSheets, writeSheetValues, readSheetValues } from './google';
+import { uploadFileToDrive, createSpreadsheetWithSheets, writeSheetValues, readSheetValues, getSpreadsheetDetails } from './google';
 
 interface BackupPayload {
     meta: {
@@ -43,6 +45,7 @@ interface BackupPayload {
     vales: any[];
     reminders: any[];
     customReports: any[];
+    otrosIngresos: any[];
 }
 
 const safeSerializeDate = (value: any): any => {
@@ -90,6 +93,7 @@ export const buildBackupPayload = async (): Promise<BackupPayload> => {
         vales,
         reminders,
         customReports,
+        otrosIngresos,
     ] = await Promise.all([
         safeGet(() => getAjustes(), null),
         safeGet(() => getBreakConfiguration(), null),
@@ -103,6 +107,7 @@ export const buildBackupPayload = async (): Promise<BackupPayload> => {
         safeGet(() => getValesDirectory(), []),
         safeGet(() => getReminders(), []),
         safeGet(() => getCustomReports(), []),
+        safeGet(() => getOtrosIngresos(), []),
     ]);
 
     const payload: BackupPayload = {
@@ -123,6 +128,7 @@ export const buildBackupPayload = async (): Promise<BackupPayload> => {
         vales: vales ? safeSerializeDate(vales) : [],
         reminders: reminders ? safeSerializeDate(reminders) : [],
         customReports: customReports ? safeSerializeDate(customReports) : [],
+        otrosIngresos: otrosIngresos ? safeSerializeDate(otrosIngresos) : [],
     };
 
     return payload;
@@ -198,7 +204,7 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
         turnos: 0
     };
 
-    const totalSteps = 12; // Ajustes, Config, Carreras, Gastos, Turnos, Proveedores, Conceptos, Talleres, Excepciones, Vales, Reminders, Reports
+    const totalSteps = 13; // Ajustes, Config, Carreras, Gastos, Turnos, Proveedores, Conceptos, Talleres, Excepciones, Vales, Reminders, Reports, OtrosIngresos
     let currentStep = 0;
 
     const reportProgress = (msg: string) => {
@@ -212,11 +218,11 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
     reportProgress("Restaurando ajustes...");
     if (jsonData.ajustes) {
         // Enviar el objeto completo, saveAjustes ya no filtra
-        await saveAjustes(jsonData.ajustes);
+        await saveAjustes(jsonData.ajustes, true);
 
         // Mantener compatibilidad con backups antiguos que usaban "tam\u00f1oFuente"
         if (jsonData.ajustes['tam\u00f1oFuente'] && !jsonData.ajustes.tamanoFuente) {
-            await saveAjustes({ tamanoFuente: jsonData.ajustes['tam\u00f1oFuente'] });
+            await saveAjustes({ tamanoFuente: jsonData.ajustes['tam\u00f1oFuente'] }, true);
         }
     }
     currentStep++;
@@ -224,7 +230,7 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
     // Restaurar Configuración de Descansos
     reportProgress("Restaurando configuración...");
     if (jsonData.breakConfiguration) {
-        await saveBreakConfiguration(jsonData.breakConfiguration);
+        await saveBreakConfiguration(jsonData.breakConfiguration, true);
     }
     currentStep++;
 
@@ -233,7 +239,7 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
     if (jsonData.carreras && Array.isArray(jsonData.carreras)) {
         const total = jsonData.carreras.length;
         for (let i = 0; i < total; i++) {
-            await restoreCarrera(jsonData.carreras[i]);
+            await restoreCarrera(jsonData.carreras[i], true);
             stats.carreras++;
             if (i % 10 === 0 && onProgress) {
                 // Progreso granular dentro del paso de carreras (20% del total asignado a este paso)
@@ -250,7 +256,7 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
     if (jsonData.gastos && Array.isArray(jsonData.gastos)) {
         const total = jsonData.gastos.length;
         for (let i = 0; i < total; i++) {
-            await restoreGasto(jsonData.gastos[i]);
+            await restoreGasto(jsonData.gastos[i], true);
             stats.gastos++;
             if (i % 10 === 0 && onProgress) {
                 onProgress(Math.round((3 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando gastos (${i + 1}/${total})...`);
@@ -264,7 +270,7 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
     if (jsonData.turnos && Array.isArray(jsonData.turnos)) {
         const total = jsonData.turnos.length;
         for (let i = 0; i < total; i++) {
-            await restoreTurno(jsonData.turnos[i]);
+            await restoreTurno(jsonData.turnos[i], true);
             stats.turnos++;
             if (i % 10 === 0 && onProgress) {
                 onProgress(Math.round((4 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando turnos (${i + 1}/${total})...`);
@@ -278,7 +284,7 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
     if (jsonData.proveedores && Array.isArray(jsonData.proveedores)) {
         const total = jsonData.proveedores.length;
         for (let i = 0; i < total; i++) {
-            await restoreProveedor(jsonData.proveedores[i]);
+            await restoreProveedor(jsonData.proveedores[i], true);
             if (i % 10 === 0 && onProgress) {
                 onProgress(Math.round((5 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando proveedores (${i + 1}/${total})...`);
             }
@@ -291,7 +297,7 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
     if (jsonData.conceptos && Array.isArray(jsonData.conceptos)) {
         const total = jsonData.conceptos.length;
         for (let i = 0; i < total; i++) {
-            await restoreConcepto(jsonData.conceptos[i]);
+            await restoreConcepto(jsonData.conceptos[i], true);
             if (i % 10 === 0 && onProgress) {
                 onProgress(Math.round((6 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando conceptos (${i + 1}/${total})...`);
             }
@@ -304,7 +310,7 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
     if (jsonData.talleres && Array.isArray(jsonData.talleres)) {
         const total = jsonData.talleres.length;
         for (let i = 0; i < total; i++) {
-            await restoreTaller(jsonData.talleres[i]);
+            await restoreTaller(jsonData.talleres[i], true);
             if (i % 10 === 0 && onProgress) {
                 onProgress(Math.round((7 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando talleres (${i + 1}/${total})...`);
             }
@@ -317,7 +323,7 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
     if (jsonData.excepciones && Array.isArray(jsonData.excepciones)) {
         const total = jsonData.excepciones.length;
         for (let i = 0; i < total; i++) {
-            await restoreExcepcion(jsonData.excepciones[i]);
+            await restoreExcepcion(jsonData.excepciones[i], true);
             if (i % 10 === 0 && onProgress) {
                 onProgress(Math.round((8 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando excepciones (${i + 1}/${total})...`);
             }
@@ -330,7 +336,7 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
     if (jsonData.vales && Array.isArray(jsonData.vales)) {
         const total = jsonData.vales.length;
         for (let i = 0; i < total; i++) {
-            await restoreValeDirectoryEntry(jsonData.vales[i]);
+            await restoreValeDirectoryEntry(jsonData.vales[i], true);
             if (i % 10 === 0 && onProgress) {
                 onProgress(Math.round((9 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando vales (${i + 1}/${total})...`);
             }
@@ -343,7 +349,7 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
     if (jsonData.reminders && Array.isArray(jsonData.reminders)) {
         const total = jsonData.reminders.length;
         for (let i = 0; i < total; i++) {
-            await restoreReminder(jsonData.reminders[i]);
+            await restoreReminder(jsonData.reminders[i], true);
             if (i % 10 === 0 && onProgress) {
                 onProgress(Math.round((10 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando recordatorios (${i + 1}/${total})...`);
             }
@@ -356,9 +362,22 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
     if (jsonData.customReports && Array.isArray(jsonData.customReports)) {
         const total = jsonData.customReports.length;
         for (let i = 0; i < total; i++) {
-            await restoreCustomReport(jsonData.customReports[i]);
+            await restoreCustomReport(jsonData.customReports[i], true);
             if (i % 10 === 0 && onProgress) {
                 onProgress(Math.round((11 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando reportes (${i + 1}/${total})...`);
+            }
+        }
+    }
+    currentStep++;
+
+    // Restaurar Otros Ingresos
+    reportProgress("Restaurando otros ingresos...");
+    if (jsonData.otrosIngresos && Array.isArray(jsonData.otrosIngresos)) {
+        const total = jsonData.otrosIngresos.length;
+        for (let i = 0; i < total; i++) {
+            await restoreOtroIngreso(jsonData.otrosIngresos[i], true);
+            if (i % 10 === 0 && onProgress) {
+                onProgress(Math.round((12 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando otros ingresos (${i + 1}/${total})...`);
             }
         }
     }
@@ -415,26 +434,39 @@ const objectToRows = (obj: any, prefix: string = ''): (string | number | null)[]
     return rows;
 };
 
+const fmtDate = (d: Date | string) => {
+    if (!d) return '';
+    const date = d instanceof Date ? d : new Date(d);
+    return isNaN(date.getTime()) ? '' : date.toLocaleDateString('es-ES');
+};
+
+const fmtTime = (d: Date | string) => {
+    if (!d) return '';
+    const date = d instanceof Date ? d : new Date(d);
+    return isNaN(date.getTime()) ? '' : date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+};
+
 export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; url: string }> => {
     try {
         const data = await buildBackupPayload();
         const dateStr = new Date().toISOString().split('T')[0];
 
-        // Crear todas las hojas necesarias
+        // Usar exactamente los mismos nombres de hoja que syncService
         const sheetTitles = [
             'Carreras',
             'Gastos',
+            'Detalle_Servicios',
             'Turnos',
             'Proveedores',
             'Conceptos',
             'Talleres',
             'Ajustes',
-            'BreakConfiguration',
             'Excepciones',
-            'Servicios',
-            'Vales',
-            'Reminders',
-            'CustomReports'
+            'Directorio_Vales',
+            'Recordatorios',
+            'Informes_Personalizados',
+            'Otros_Ingresos',
+            'Vales_Carreras'
         ];
 
         const { spreadsheetId } = await createSpreadsheetWithSheets(`TAppXI Export ${dateStr}`, sheetTitles);
@@ -443,143 +475,193 @@ export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; u
             throw new Error("No se recibió el ID de la hoja de cálculo creada.");
         }
 
-        // Definir columnas para cada tipo de dato
-        const carrerasCols = ['id', 'taximetro', 'cobrado', 'formaPago', 'tipoCarrera', 'emisora', 'aeropuerto', 'estacion', 'fechaHora', 'turnoId', 'valeInfo', 'notas'];
-        const gastosCols = ['id', 'importe', 'fecha', 'tipo', 'categoria', 'formaPago', 'proveedor', 'nif', 'concepto', 'taller', 'numeroFactura', 'baseImponible', 'ivaImporte', 'ivaPorcentaje', 'kilometros', 'kilometrosVehiculo', 'kmParciales', 'litros', 'precioPorLitro', 'descuento', 'servicios', 'notas'];
-        const serviciosCols = ['GastoID', 'Fecha', 'Servicio', 'Referencia', 'Importe', 'Cantidad', 'Como', 'Descripcion'];
-        const turnosCols = ['id', 'fechaInicio', 'kilometrosInicio', 'fechaFin', 'kilometrosFin', 'numero'];
-        const proveedoresCols = ['id', 'nombre', 'direccion', 'telefono', 'nif', 'createdAt'];
-        const conceptosCols = ['id', 'nombre', 'descripcion', 'categoria', 'createdAt'];
-        const talleresCols = ['id', 'nombre', 'direccion', 'telefono', 'nif', 'createdAt'];
-        const excepcionesCols = ['id', 'fechaDesde', 'fechaHasta', 'tipo', 'nuevaLetra', 'nota', 'descripcion', 'aplicaPar', 'aplicaImpar', 'createdAt'];
-        const valesCols = ['id', 'empresa', 'codigoEmpresa', 'direccion', 'telefono'];
-        const remindersCols = ['id', 'titulo', 'descripcion', 'tipo', 'fechaLimite', 'horaRecordatorio', 'fechaRecordatorio', 'sonidoActivo', 'completado', 'fechaCompletado', 'kilometrosLimite', 'kilometrosActuales', 'createdAt', 'lastNotified'];
-        const customReportsCols = ['id', 'nombre', 'descripcion', 'filtros', 'tipoExportacion', 'agrupacion', 'createdAt', 'lastUsed'];
+        // Definir columnas EXACTAMENTE como en syncService.ts
+        const headers = {
+            carreras: ['Fecha', 'Hora', 'Taxímetro', 'Cobrado', 'Forma Pago', 'Tipo', 'Emisora', 'Aeropuerto', 'Estación', 'Notas', 'Empresa Vale', 'Cod. Empresa', 'Nº Despacho', 'Nº Albaran', 'Autoriza', 'ID Turno', 'ID'],
+            gastos: ['Fecha', 'Concepto', 'Proveedor', 'Taller', 'Base', 'IVA %', 'IVA €', 'Total', 'Nº Factura', 'Forma Pago', 'Km', 'Notas', 'ID'],
+            servicios: ['Gasto ID', 'Referencia', 'Descripción', 'Importe', 'Cantidad', 'Desc. %', 'ID'],
+            turnos: ['Fecha Inicio', 'Hora Inicio', 'Km Inicio', 'Fecha Fin', 'Hora Fin', 'Km Fin', 'Km Recorridos', 'ID'],
+            proveedores: ['Nombre', 'NIF', 'Dirección', 'Teléfono', 'ID'],
+            conceptos: ['Nombre', 'Descripción', 'Categoría', 'ID'],
+            talleres: ['Nombre', 'NIF', 'Dirección', 'Teléfono', 'ID'],
+            excepciones: ['Fecha Desde', 'Fecha Hasta', 'Tipo', 'Nueva Letra', 'Nota', 'Descripcion', 'ID'],
+            vales: ['Empresa', 'Código', 'Dirección', 'Teléfono', 'ID'],
+            recordatorios: ['Título', 'Tipo', 'Fecha Límite', 'Km Límite', 'Estado', 'ID'],
+            informes: ['Nombre', 'Configuración (JSON)', 'ID'],
+            ajustes: ['Clave', 'Valor'],
+            otrosIngresos: ['Fecha', 'Concepto', 'Importe', 'Forma Pago', 'Notas', 'ID'],
+            valesCarreras: ['ID Carrera', 'Empresa', 'Código', 'Despacho', 'Albarán', 'Autoriza', 'ID']
+        };
 
-        // Convertir datos a filas
-        const carrerasRows = toRows((data.carreras as any[]) || [], carrerasCols);
+        // Convertir datos a filas respetando los nuevos encabezados
+        const carrerasRows: any[][] = [headers.carreras];
+        const valesCarrerasRows: any[][] = [headers.valesCarreras];
+        (data.carreras || []).forEach((c: any) => {
+            const date = new Date(c.fechaHora);
+            carrerasRows.push([
+                fmtDate(date),
+                fmtTime(date),
+                c.taximetro || 0,
+                c.cobrado || 0,
+                c.formaPago || '',
+                c.tipoCarrera || 'Urbana',
+                c.emisora ? 'Sí' : 'No',
+                c.aeropuerto ? 'Sí' : 'No',
+                c.estacion ? 'Sí' : 'No',
+                c.notas || '',
+                c.turnoId || '',
+                c.id
+            ]);
 
-        // Filtrar gastos: Vehículo va a Servicios, pero TAMBIÉN se queda en Gastos (encabezado)
-        const allGastos = (data.gastos as any[]) || [];
-        // const gastosGenerales = allGastos.filter(g => g.tipo !== 'vehiculo'); // Ya no filtramos, queremos todos en Gastos
-        const gastosVehiculo = allGastos.filter(g => g.tipo === 'vehiculo');
-
-        const gastosRows = toRows(allGastos, gastosCols);
-
-        // Procesar gastos de vehículo para la hoja Servicios
-        const serviciosRows: (string | number | null)[][] = [serviciosCols];
-
-        gastosVehiculo.forEach(gasto => {
-            const fechaStr = gasto.fecha instanceof Date ? gasto.fecha.toISOString() : gasto.fecha;
-            // const taller = gasto.taller || '';
-            const servicioPrincipal = gasto.concepto || ''; // Usar concepto como servicio principal
-
-            // Si tiene items de servicios, crear una fila por cada uno
-            if (gasto.servicios && Array.isArray(gasto.servicios) && gasto.servicios.length > 0) {
-                gasto.servicios.forEach((item: any) => {
-                    serviciosRows.push([
-                        gasto.id,
-                        fechaStr,
-                        servicioPrincipal,
-                        item.referencia || '',
-                        item.importe || 0,
-                        item.cantidad || 1,
-                        item.descuentoPorcentaje || 0,
-                        item.descripcion || ''
-                    ]);
-                });
-            } else {
-                // Si no tiene items, crear una fila con el importe total
-                serviciosRows.push([
-                    gasto.id,
-                    fechaStr,
-                    servicioPrincipal,
-                    '', // Referencia
-                    gasto.importe || 0,
-                    1, // Cantidad
-                    gasto.descuento || 0,
-                    gasto.notas || '' // Usar notas como descripción si no hay items
+            if (c.formaPago === 'Vales' && c.valeInfo) {
+                valesCarrerasRows.push([
+                    c.id,
+                    c.valeInfo.empresa || '',
+                    c.valeInfo.codigoEmpresa || '',
+                    c.valeInfo.despacho || '',
+                    c.valeInfo.numeroAlbaran || '',
+                    c.valeInfo.autoriza || '',
+                    crypto.randomUUID()
                 ]);
             }
         });
 
-        const turnosRows = toRows((data.turnos as any[]) || [], turnosCols);
-        const proveedoresRows = toRows((data.proveedores as any[]) || [], proveedoresCols);
-        const conceptosRows = toRows((data.conceptos as any[]) || [], conceptosCols);
-        const talleresRows = toRows((data.talleres as any[]) || [], talleresCols);
-        const excepcionesRows = toRows((data.excepciones as any[]) || [], excepcionesCols);
-        const valesRows = toRows((data.vales as any[]) || [], valesCols);
-        const remindersRows = toRows((data.reminders as any[]) || [], remindersCols);
-        const customReportsRows = toRows((data.customReports as any[]) || [], customReportsCols);
+        const gastosRows: any[][] = [headers.gastos];
+        const serviciosRows: any[][] = [headers.servicios];
+        (data.gastos || []).forEach((g: any) => {
+            gastosRows.push([
+                fmtDate(g.fecha),
+                g.concepto || '',
+                g.proveedor || '',
+                g.taller || '',
+                g.baseImponible || g.importe || 0,
+                g.ivaPorcentaje || 0,
+                g.ivaImporte || 0,
+                g.importe || 0,
+                g.numeroFactura || '',
+                g.formaPago || '',
+                g.kilometros || '',
+                g.notas || '',
+                g.id
+            ]);
 
-        // Para objetos únicos (ajustes y breakConfiguration)
-        const ajustesRows = objectToRows(data.ajustes, 'ajustes');
-        const breakConfigRows = objectToRows(data.breakConfiguration, 'breakConfiguration');
+            if (g.servicios && Array.isArray(g.servicios)) {
+                g.servicios.forEach((s: any) => {
+                    serviciosRows.push([
+                        g.id,
+                        s.referencia || '',
+                        s.descripcion || '',
+                        s.importe || 0,
+                        s.cantidad || 1,
+                        s.descuentoPorcentaje || 0,
+                        s.id || crypto.randomUUID()
+                    ]);
+                });
+            }
+        });
+
+        const turnosRows: any[][] = [headers.turnos];
+        (data.turnos || []).forEach((t: any) => {
+            const kmRec = (t.kilometrosFin && t.kilometrosInicio) ? t.kilometrosFin - t.kilometrosInicio : '';
+            turnosRows.push([
+                fmtDate(t.fechaInicio),
+                fmtTime(t.fechaInicio),
+                t.kilometrosInicio,
+                t.fechaFin ? fmtDate(t.fechaFin) : '',
+                t.fechaFin ? fmtTime(t.fechaFin) : '',
+                t.kilometrosFin || '',
+                kmRec,
+                t.id
+            ]);
+        });
+
+        const proveedoresRows: any[][] = [headers.proveedores];
+        (data.proveedores || []).forEach((p: any) => {
+            proveedoresRows.push([p.nombre, p.nif || '', p.direccion || '', p.telefono || '', p.id]);
+        });
+
+        const conceptosRows: any[][] = [headers.conceptos];
+        (data.conceptos || []).forEach((co: any) => {
+            conceptosRows.push([co.nombre, co.descripcion || '', co.categoria || '', co.id]);
+        });
+
+        const talleresRows: any[][] = [headers.talleres];
+        (data.talleres || []).forEach((p: any) => {
+            talleresRows.push([p.nombre, p.nif || '', p.direccion || '', p.telefono || '', p.id]);
+        });
+
+        const excepcionesRows: any[][] = [headers.excepciones];
+        (data.excepciones || []).forEach((e: any) => {
+            excepcionesRows.push([fmtDate(e.fechaDesde), fmtDate(e.fechaHasta), e.tipo, e.nuevaLetra || '', e.nota || '', e.descripcion || '', e.id]);
+        });
+
+        const valesRows: any[][] = [headers.vales];
+        (data.vales || []).forEach((v: any) => {
+            valesRows.push([v.empresa, v.codigo || v.codigoEmpresa, v.direccion || '', v.telefono || '', v.id]);
+        });
+
+        const remindersRows: any[][] = [headers.recordatorios];
+        (data.reminders || []).forEach((r: any) => {
+            remindersRows.push([r.titulo, r.tipo, r.fechaLimite, r.kilometrosLimite || '', r.completado ? 'Completado' : 'Pendiente', r.id]);
+        });
+
+        const customReportsRows: any[][] = [headers.informes];
+        (data.customReports || []).forEach((i: any) => {
+            const config = {
+                descripcion: i.descripcion,
+                filtros: i.filtros,
+                tipoExportacion: i.tipoExportacion,
+                agrupacion: i.agrupacion,
+                createdAt: i.createdAt,
+                lastUsed: i.lastUsed
+            };
+            customReportsRows.push([i.nombre, JSON.stringify(config), i.id]);
+        });
+
+        // Ajustes incluyendo breakConfiguration
+        const ajustesRows: any[][] = [headers.ajustes];
+        const allAjustes = { ...(data.ajustes || {}) };
+        if (data.breakConfiguration) {
+            allAjustes['breakConfiguration'] = data.breakConfiguration;
+        }
+        Object.entries(allAjustes).forEach(([key, value]) => {
+            ajustesRows.push([key, JSON.stringify(value)]);
+        });
+
+        const otrosIngresosRows: any[][] = [headers.otrosIngresos];
+        (data.otrosIngresos || []).forEach((oi: any) => {
+            otrosIngresosRows.push([
+                fmtDate(oi.fecha),
+                oi.concepto || '',
+                oi.importe || 0,
+                oi.formaPago || '',
+                oi.notas || '',
+                oi.id
+            ]);
+        });
 
         // Escribir cada hoja
-        console.log(`Escribiendo ${carrerasRows.length} filas en Carreras`);
-        if (carrerasRows.length > 0) {
-            await writeSheetValues(spreadsheetId, 'Carreras', carrerasRows);
-        }
+        const writes = [
+            { title: 'Carreras', rows: carrerasRows },
+            { title: 'Gastos', rows: gastosRows },
+            { title: 'Detalle_Servicios', rows: serviciosRows },
+            { title: 'Turnos', rows: turnosRows },
+            { title: 'Proveedores', rows: proveedoresRows },
+            { title: 'Conceptos', rows: conceptosRows },
+            { title: 'Talleres', rows: talleresRows },
+            { title: 'Ajustes', rows: ajustesRows },
+            { title: 'Excepciones', rows: excepcionesRows },
+            { title: 'Directorio_Vales', rows: valesRows },
+            { title: 'Recordatorios', rows: remindersRows },
+            { title: 'Informes_Personalizados', rows: customReportsRows },
+            { title: 'Otros_Ingresos', rows: otrosIngresosRows },
+            { title: 'Vales_Carreras', rows: valesCarrerasRows }
+        ];
 
-        console.log(`Escribiendo ${gastosRows.length} filas en Gastos`);
-        if (gastosRows.length > 0) {
-            await writeSheetValues(spreadsheetId, 'Gastos', gastosRows);
-        }
-
-        console.log(`Escribiendo ${turnosRows.length} filas en Turnos`);
-        if (turnosRows.length > 0) {
-            await writeSheetValues(spreadsheetId, 'Turnos', turnosRows);
-        }
-
-        console.log(`Escribiendo ${proveedoresRows.length} filas en Proveedores`);
-        if (proveedoresRows.length > 0) {
-            await writeSheetValues(spreadsheetId, 'Proveedores', proveedoresRows);
-        }
-
-        console.log(`Escribiendo ${conceptosRows.length} filas en Conceptos`);
-        if (conceptosRows.length > 0) {
-            await writeSheetValues(spreadsheetId, 'Conceptos', conceptosRows);
-        }
-
-        console.log(`Escribiendo ${talleresRows.length} filas en Talleres`);
-        if (talleresRows.length > 0) {
-            await writeSheetValues(spreadsheetId, 'Talleres', talleresRows);
-        }
-
-        console.log(`Escribiendo ${ajustesRows.length} filas en Ajustes`);
-        if (ajustesRows.length > 0) {
-            await writeSheetValues(spreadsheetId, 'Ajustes', ajustesRows);
-        }
-
-        console.log(`Escribiendo ${breakConfigRows.length} filas en BreakConfiguration`);
-        if (breakConfigRows.length > 0) {
-            await writeSheetValues(spreadsheetId, 'BreakConfiguration', breakConfigRows);
-        }
-
-        console.log(`Escribiendo ${excepcionesRows.length} filas en Excepciones`);
-        if (excepcionesRows.length > 0) {
-            await writeSheetValues(spreadsheetId, 'Excepciones', excepcionesRows);
-        }
-
-        console.log(`Escribiendo ${serviciosRows.length} filas en Servicios`);
-        if (serviciosRows.length > 0) {
-            await writeSheetValues(spreadsheetId, 'Servicios', serviciosRows);
-        }
-
-        console.log(`Escribiendo ${valesRows.length} filas en Vales`);
-        if (valesRows.length > 0) {
-            await writeSheetValues(spreadsheetId, 'Vales', valesRows);
-        }
-
-        console.log(`Escribiendo ${remindersRows.length} filas en Reminders`);
-        if (remindersRows.length > 0) {
-            await writeSheetValues(spreadsheetId, 'Reminders', remindersRows);
-        }
-
-        console.log(`Escribiendo ${customReportsRows.length} filas en CustomReports`);
-        if (customReportsRows.length > 0) {
-            await writeSheetValues(spreadsheetId, 'CustomReports', customReportsRows);
+        for (const write of writes) {
+            if (write.rows.length >= 1) {
+                await writeSheetValues(spreadsheetId, write.title, write.rows);
+            }
         }
 
         const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
@@ -607,16 +689,74 @@ export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; u
     }
 };
 
+const normalizeHeader = (header: string): string => {
+    if (!header) return '';
+    // Mapa de traducciones específicas para TAppXI_DB
+    const mapping: Record<string, string> = {
+        'taxímetro': 'taximetro',
+        'código empresa': 'codigoEmpresa',
+        'nº despacho': 'despacho',
+        'nº albaran': 'numeroAlbaran',
+        'empresa vale': 'empresa',
+        'cod. empresa': 'codigoEmpresa',
+        'nº albarán': 'numeroAlbaran',
+        'base': 'baseImponible',
+        'iva %': 'ivaPorcentaje',
+        'iva €': 'ivaImporte',
+        'total': 'importe',
+        'nº factura': 'numeroFactura',
+        'km': 'kilometros',
+        'teléfono': 'telefono',
+        'dirección': 'direccion',
+        'categoría': 'categoria',
+        'descripción': 'descripcion',
+        'título': 'titulo',
+        'fecha límite': 'fechaLimite',
+        'km límite': 'kilometrosLimite',
+        'fecha desde': 'fechaDesde',
+        'fecha hasta': 'fechaHasta',
+        'nueva letra': 'nuevaLetra',
+        'configuración (json)': 'configuracion',
+        'nif / cif': 'nif',
+        'razón social': 'nombre',
+        'dirección fiscal': 'direccion',
+        'email': 'email',
+        'clave': 'clave',
+        'valor': 'valor',
+        'estación': 'estacion',
+        'forma pago': 'formaPago',
+        'tipo': 'tipoCarrera',
+        'dirección_vales': 'Vales',
+        'informes_personalizados': 'CustomReports',
+        'detalle_servicios': 'Servicios',
+        'vales_carreras': 'Vales_Carreras',
+        'id carrera': 'carreraId',
+        'albarán': 'numeroAlbaran',
+        'código': 'codigoEmpresa',
+        'id turno': 'turnoId',
+        'id': 'id'
+    };
 
+    const lower = header.toLowerCase().trim();
+    if (mapping[lower]) return mapping[lower];
+
+    // Si no hay mapeo, normalizamos: quitar espacios y caracteres especiales
+    return lower
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "") // Quitar tildes
+        .replace(/[^a-z0-9]/g, ''); // Quitar todo lo que no sea letras o números
+};
 
 const fromRows = (rows: any[][]): any[] => {
     if (!rows || rows.length < 2) return [];
-    const headers = rows[0];
+    const rawHeaders = rows[0];
+    const normalizedHeaders = rawHeaders.map(h => normalizeHeader(String(h)));
     const data = rows.slice(1);
 
     return data.map((row) => {
         const obj: any = {};
-        headers.forEach((header: string, index: number) => {
+        normalizedHeaders.forEach((header: string, index: number) => {
+            if (!header) return;
             let value = row[index];
             if (value === undefined) {
                 value = null;
@@ -639,43 +779,51 @@ const parseNumber = (val: any): number => {
     if (typeof val === 'number') return val;
     if (val === null || val === undefined || val === '') return 0;
     if (typeof val === 'string') {
-        // Reemplazar coma por punto y eliminar caracteres no numéricos (excepto . y -)
         const clean = val.replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, '');
         return parseFloat(clean) || 0;
     }
     return 0;
 };
 
-// Función segura para parsear fechas
 const parseDate = (val: any): Date | null => {
     if (!val) return null;
     if (val instanceof Date) {
-        // Verificar que la fecha es válida
         if (isNaN(val.getTime())) return null;
         return val;
     }
     if (typeof val === 'string') {
-        // Intentar parsear diferentes formatos
         const trimmed = val.trim();
         if (!trimmed || trimmed === '') return null;
 
-        // Intentar parsear ISO string
-        let date = new Date(trimmed);
-        if (!isNaN(date.getTime())) return date;
-
-        // Intentar parsear formato español DD/MM/YYYY
-        const spanishFormat = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(trimmed);
+        // FIRST: Try Spanish format DD/MM/YYYY or DD/MM/YY
+        const spanishFormat = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/.exec(trimmed);
         if (spanishFormat) {
-            const [, day, month, year] = spanishFormat;
-            date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-            if (!isNaN(date.getTime())) return date;
+            const [, day, month, yearStr] = spanishFormat;
+            let year = parseInt(yearStr);
+            // Handle 2-digit years: 00-50 = 2000-2050, 51-99 = 1951-1999
+            if (year < 100) {
+                year = year <= 50 ? 2000 + year : 1900 + year;
+            }
+            const date = new Date(year, parseInt(month) - 1, parseInt(day));
+            // Validate the date is real (e.g., not Feb 31)
+            if (date.getFullYear() === year &&
+                date.getMonth() === parseInt(month) - 1 &&
+                date.getDate() === parseInt(day)) {
+                return date;
+            }
+            console.warn(`Invalid Spanish date: ${trimmed} parsed to ${date.toISOString()}`);
         }
 
-        // Si no se puede parsear, retornar null
+        // SECOND: Try ISO format or other standard formats
+        const date = new Date(trimmed);
+        if (!isNaN(date.getTime())) {
+            return date;
+        }
+
+        console.warn(`Failed to parse date: "${trimmed}"`);
         return null;
     }
     if (typeof val === 'number') {
-        // Timestamp
         const date = new Date(val);
         if (!isNaN(date.getTime())) return date;
         return null;
@@ -688,232 +836,234 @@ export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?
         console.log(`Iniciando restauración desde Sheet ID: ${spreadsheetId}`);
         if (onProgress) onProgress(0, "Descargando datos de Google Sheets...");
 
+        const details = await getSpreadsheetDetails(spreadsheetId);
+        const existingSheets = details.sheets.map((s: any) => s.properties.title);
+
+        const safeRead = async (title: string, range: string = 'A:Z') => {
+            if (existingSheets.includes(title)) {
+                return readSheetValues(spreadsheetId, `${title}!${range}`).catch(() => []);
+            }
+            return [];
+        };
+
         const [
             carrerasRows,
             gastosRows,
+            serviciosRows,
             turnosRows,
             proveedoresRows,
             conceptosRows,
             talleresRows,
             ajustesRows,
-            breakConfigRows,
             excepcionesRows,
             valesRows,
             remindersRows,
-            customReportsRows
+            customReportsRows,
+            otrosIngresosRows,
+            valesCarrerasRows
         ] = await Promise.all([
-            readSheetValues(spreadsheetId, 'Carreras!A:Z').catch(() => []),
-            readSheetValues(spreadsheetId, 'Gastos!A:Z').catch(() => []),
-            readSheetValues(spreadsheetId, 'Turnos!A:Z').catch(() => []),
-            readSheetValues(spreadsheetId, 'Proveedores!A:Z').catch(() => []),
-            readSheetValues(spreadsheetId, 'Conceptos!A:Z').catch(() => []),
-            readSheetValues(spreadsheetId, 'Talleres!A:Z').catch(() => []),
-            readSheetValues(spreadsheetId, 'Ajustes!A:B').catch(() => []),
-            readSheetValues(spreadsheetId, 'BreakConfiguration!A:B').catch(() => []),
-            readSheetValues(spreadsheetId, 'Excepciones!A:Z').catch(() => []),
-            readSheetValues(spreadsheetId, 'Vales!A:Z').catch(() => []),
-            readSheetValues(spreadsheetId, 'Reminders!A:Z').catch(() => []),
-            readSheetValues(spreadsheetId, 'CustomReports!A:Z').catch(() => []),
+            safeRead('Carreras'),
+            safeRead('Gastos'),
+            safeRead('Detalle_Servicios'),
+            safeRead('Turnos'),
+            safeRead('Proveedores'),
+            safeRead('Conceptos'),
+            safeRead('Talleres'),
+            safeRead('Ajustes', 'A:B'),
+            safeRead('Excepciones'),
+            safeRead('Directorio_Vales'),
+            safeRead('Recordatorios'),
+            safeRead('Informes_Personalizados'),
+            safeRead('Otros_Ingresos'),
+            safeRead('Vales_Carreras')
         ]);
 
         if (onProgress) onProgress(10, "Procesando datos...");
 
-        console.log(`Leídas filas: Carreras=${carrerasRows.length}, Gastos=${gastosRows.length}, Turnos=${turnosRows.length}, Proveedores=${proveedoresRows.length}, Conceptos=${conceptosRows.length}, Talleres=${talleresRows.length}, Excepciones=${excepcionesRows.length}`);
+        // Usamos alias para compatibilidad si el archivo tiene nombres antiguos
+        const getRows = (rows: any[][]) => fromRows(rows);
 
-        const carrerasRaw = fromRows(carrerasRows);
-        const gastosRaw = fromRows(gastosRows);
-        const turnosRaw = fromRows(turnosRows);
-        const proveedoresRaw = fromRows(proveedoresRows);
-        const conceptosRaw = fromRows(conceptosRows);
-        const talleresRaw = fromRows(talleresRows);
-        const excepcionesRaw = fromRows(excepcionesRows);
-        const valesRaw = fromRows(valesRows);
-        const remindersRaw = fromRows(remindersRows);
-        const customReportsRaw = fromRows(customReportsRows);
+        const carrerasRaw = getRows(carrerasRows);
+        const gastosRaw = getRows(gastosRows);
+        const serviciosRaw = getRows(serviciosRows);
+        const turnosRaw = getRows(turnosRows);
+        const proveedoresRaw = getRows(proveedoresRows);
+        const conceptosRaw = getRows(conceptosRows);
+        const talleresRaw = getRows(talleresRows);
+        const excepcionesRaw = getRows(excepcionesRows);
+        const valesRaw = getRows(valesRows);
+        const remindersRaw = getRows(remindersRows);
+        const customReportsRaw = getRows(customReportsRows);
+        const otrosIngresosRaw = getRows(otrosIngresosRows);
+        const valesCarrerasRaw = getRows(valesCarrerasRows);
 
-        // Procesar tipos de datos (números, fechas si es necesario)
+        const processDateWithTime = (item: any, dateKey: string = 'fecha', timeKey: string = 'hora'): Date | null => {
+            const dateStr = item[dateKey];
+            const timeStr = item[timeKey];
+            if (!dateStr) return null;
+            const date = parseDate(dateStr);
+            if (!date) return null;
+            if (timeStr && typeof timeStr === 'string' && timeStr.includes(':')) {
+                const [hours, minutes] = timeStr.split(':').map(n => parseInt(n, 10));
+                if (!isNaN(hours) && !isNaN(minutes)) {
+                    date.setHours(hours, minutes, 0, 0);
+                }
+            }
+            return date;
+        };
+
         const carreras = carrerasRaw.map(c => {
-            const fechaHora = parseDate(c.fechaHora);
+            const fechaHora = c.fechahora ? parseDate(c.fechahora) : processDateWithTime(c, 'fecha', 'hora');
+            let valeInfo = c.valeinfo;
+
+            // 1. Intentar reconstruir desde columnas individuales (backups antiguos)
+            if (!valeInfo && (c.empresa || c.empresavale)) {
+                valeInfo = {
+                    empresa: c.empresa || c.empresavale,
+                    codigoEmpresa: c.codigoEmpresa || c.codempresa || c.codigo,
+                    despacho: c.despacho || c.ndespacho,
+                    numeroAlbaran: c.numeroAlbaran || c.nalbaran,
+                    autoriza: c.autoriza
+                };
+            }
+
+            // 2. Intentar buscar en la nueva hoja Vales_Carreras
+            if (!valeInfo) {
+                const associatedVale = valesCarrerasRaw.find(v => v.carreraId === c.id);
+                if (associatedVale) {
+                    valeInfo = {
+                        empresa: associatedVale.empresa,
+                        codigoEmpresa: associatedVale.codigoEmpresa,
+                        despacho: associatedVale.despacho,
+                        numeroAlbaran: associatedVale.numeroAlbaran,
+                        autoriza: associatedVale.autoriza
+                    };
+                }
+            }
+
             return {
                 ...c,
+                id: c.id || crypto.randomUUID(),
                 taximetro: parseNumber(c.taximetro),
                 cobrado: parseNumber(c.cobrado),
-                fechaHora: fechaHora || new Date(), // Si no se puede parsear, usar fecha actual
+                fechaHora: fechaHora, // No fallback to new Date()
+                valeInfo,
+                turnoId: c.turnoId || c.idturno || undefined,
+                emisora: c.emisora === 'Sí' || c.emisora === true,
+                aeropuerto: c.aeropuerto === 'Sí' || c.aeropuerto === true,
+                estacion: c.estacion === 'Sí' || c.estacion === true,
             };
+        }).filter(c => {
+            // Skip carreras with invalid dates
+            if (!c.fechaHora) {
+                console.warn(`Skipping carrera ${c.id}: invalid date`);
+                return false;
+            }
+            return true;
         });
 
         const gastos = gastosRaw.map(g => {
-            const fecha = parseDate(g.fecha);
+            // Reconstruir servicios si existen en la hoja Detalle_Servicios
+            const servicios = serviciosRaw
+                .filter(s => s.gastoid === g.id)
+                .map(s => ({
+                    id: s.id || crypto.randomUUID(),
+                    referencia: s.referencia,
+                    descripcion: s.descripcion,
+                    importe: parseNumber(s.importe),
+                    cantidad: parseNumber(s.cantidad),
+                    descuentoPorcentaje: parseNumber(s.descuentoPorcentaje || s['desc. %'])
+                }));
+
             return {
                 ...g,
-                importe: parseNumber(g.importe),
-                baseImponible: parseNumber(g.baseImponible),
-                ivaImporte: parseNumber(g.ivaImporte),
-                ivaPorcentaje: parseNumber(g.ivaPorcentaje),
-                kilometros: parseNumber(g.kilometros),
-                kilometrosVehiculo: parseNumber(g.kilometrosVehiculo),
-                kmParciales: parseNumber(g.kmParciales),
-                litros: parseNumber(g.litros),
-                precioPorLitro: parseNumber(g.precioPorLitro),
-                descuento: parseNumber(g.descuento),
-                fecha: fecha || new Date(), // Si no se puede parsear, usar fecha actual
+                id: g.id || crypto.randomUUID(), // Asegurar que siempre hay ID
+                importe: parseNumber(g.importe || g.total),
+                baseImponible: parseNumber(g.baseimponible || g.base),
+                ivaImporte: parseNumber(g.ivaimporte || g.ivae),
+                ivaPorcentaje: parseNumber(g.ivaporcentaje || g.ivaporc),
+                kilometros: parseNumber(g.kilometros || g.km),
+                fecha: parseDate(g.fecha) || new Date(),
+                servicios: servicios.length > 0 ? servicios : (g.servicios || [])
             };
         });
 
         const turnos = turnosRaw.map(t => {
-            const fechaInicio = parseDate(t.fechaInicio);
-            const fechaFin = parseDate(t.fechaFin);
+            const fechaInicio = t.fechainicio ? parseDate(t.fechainicio) : processDateWithTime(t, 'fechainicio', 'horainicio');
+            const fechaFin = t.fechafin ? parseDate(t.fechafin) : processDateWithTime(t, 'fechafin', 'horafin');
             return {
                 ...t,
-                kilometrosInicio: parseNumber(t.kilometrosInicio),
-                kilometrosFin: t.kilometrosFin ? parseNumber(t.kilometrosFin) : null,
-                fechaInicio: fechaInicio || new Date(), // Si no se puede parsear, usar fecha actual
+                id: t.id || crypto.randomUUID(), // Asegurar que siempre hay ID
+                kilometrosInicio: parseNumber(t.kilometrosinicio || t.kminicio),
+                kilometrosFin: (t.kilometrosfin || t.kmfin) ? parseNumber(t.kilometrosfin || t.kmfin) : null,
+                fechaInicio: fechaInicio || new Date(),
                 fechaFin: fechaFin || null,
             };
         });
 
-        // Función auxiliar para limpiar objetos y convertir undefined a null
         const cleanObject = (obj: any): any => {
             if (obj === null || obj === undefined) return null;
-            if (Array.isArray(obj)) {
-                return obj.map(cleanObject);
-            }
+            if (Array.isArray(obj)) return obj.map(cleanObject);
             if (typeof obj === 'object') {
                 const cleaned: any = {};
                 for (const key in obj) {
-                    if (obj[key] !== undefined) {
-                        cleaned[key] = cleanObject(obj[key]);
-                    }
+                    if (obj[key] !== undefined) cleaned[key] = cleanObject(obj[key]);
                 }
                 return cleaned;
             }
             return obj;
         };
 
-        // Procesar ajustes (formato clave-valor)
         let ajustes = null;
         if (ajustesRows.length > 1) {
             ajustes = {};
             for (let i = 1; i < ajustesRows.length; i++) {
                 const [key, value] = ajustesRows[i];
-                if (key && value !== null && value !== undefined && value !== '') {
-                    // Reconstruir estructura anidada
+                if (key) {
                     const keys = key.split('.');
                     let current = ajustes;
                     for (let j = 0; j < keys.length - 1; j++) {
                         if (!current[keys[j]]) current[keys[j]] = {};
                         current = current[keys[j]];
                     }
-                    // Intentar parsear JSON si es necesario
                     let finalValue = value;
                     if (typeof value === 'string' && (value.startsWith('{') || value.startsWith('['))) {
-                        try {
-                            finalValue = JSON.parse(value);
-                        } catch {
-                            // Dejar como string
-                        }
+                        try { finalValue = JSON.parse(value); } catch { }
                     }
                     current[keys[keys.length - 1]] = finalValue;
                 }
             }
-            // Limpiar el objeto ajustes para eliminar undefined y asegurar valores por defecto
             ajustes = cleanObject(ajustes);
-            // Asegurar valores por defecto para campos críticos, pero permitir otros campos
-            if (ajustes) {
-                ajustes.temaOscuro = ajustes.temaOscuro ?? false;
-                ajustes.tamanoFuente = ajustes.tamanoFuente ?? ajustes['tam\u00f1oFuente'] ?? 14;
-                ajustes.letraDescanso = ajustes.letraDescanso ?? '';
-                ajustes.objetivoDiario = ajustes.objetivoDiario ?? 100;
-
-                // Nuevos campos opcionales defaults
-                ajustes.temaColor = ajustes.temaColor ?? 'azul';
-                ajustes.altoContraste = ajustes.altoContraste ?? false;
-
-                // Eliminar la clave con tilde si existe
-                if (ajustes['tam\u00f1oFuente'] !== undefined) {
-                    delete ajustes['tam\u00f1oFuente'];
-                }
-            }
         }
 
-        // Procesar breakConfiguration (formato clave-valor)
-        let breakConfiguration = null;
-        if (breakConfigRows.length > 1) {
-            breakConfiguration = {};
-            for (let i = 1; i < breakConfigRows.length; i++) {
-                const [key, value] = breakConfigRows[i];
-                if (key && value !== null && value !== undefined && value !== '') {
-                    const keys = key.split('.');
-                    let current = breakConfiguration;
-                    for (let j = 0; j < keys.length - 1; j++) {
-                        if (!current[keys[j]]) current[keys[j]] = {};
-                        current = current[keys[j]];
-                    }
-                    let finalValue = value;
-                    if (typeof value === 'string' && (value.startsWith('{') || value.startsWith('['))) {
-                        try {
-                            finalValue = JSON.parse(value);
-                        } catch {
-                            // Dejar como string
-                        }
-                    }
-                    current[keys[keys.length - 1]] = finalValue;
-                }
-            }
-            // Limpiar el objeto breakConfiguration
-            breakConfiguration = cleanObject(breakConfiguration);
-            // Asegurar valores por defecto
-            if (breakConfiguration) {
-                breakConfiguration.startDate = breakConfiguration.startDate ?? '';
-                breakConfiguration.startDayLetter = breakConfiguration.startDayLetter ?? 'A';
-                breakConfiguration.weekendPattern = breakConfiguration.weekendPattern ?? 'Sabado: AC / Domingo: BD';
-                breakConfiguration.userBreakLetter = breakConfiguration.userBreakLetter ?? 'A';
-            }
+        let breakConfiguration = ajustes?.breakConfiguration || null;
+        if (ajustes && ajustes.breakConfiguration) {
+            delete ajustes.breakConfiguration;
         }
 
-        // Procesar excepciones con validación de fechas
-        const excepciones = excepcionesRaw.map(e => {
-            const fechaDesde = parseDate(e.fechaDesde);
-            const fechaHasta = parseDate(e.fechaHasta);
-            const createdAt = parseDate(e.createdAt);
+        const excepciones = excepcionesRaw.map(e => ({
+            ...e,
+            id: e.id || crypto.randomUUID(), // Asegurar que siempre hay ID
+            fechaDesde: parseDate(e.fechadesde) || new Date(),
+            fechaHasta: parseDate(e.fechahasta) || new Date(),
+            createdAt: parseDate(e.createdat) || new Date(),
+        }));
 
-            // Si alguna fecha es inválida, usar valores por defecto
-            return {
-                ...e,
-                fechaDesde: fechaDesde || new Date(),
-                fechaHasta: fechaHasta || new Date(),
-                createdAt: createdAt || new Date(),
-            };
-        });
-
-        // Procesar proveedores, conceptos y talleres con validación de fechas
-        const proveedores = proveedoresRaw.map(p => {
-            const createdAt = parseDate(p.createdAt);
-            return {
-                ...p,
-                createdAt: createdAt || new Date(),
-            };
-        });
-
-        const conceptos = conceptosRaw.map(c => {
-            const createdAt = parseDate(c.createdAt);
-            return {
-                ...c,
-                createdAt: createdAt || new Date(),
-            };
-        });
-
-        const talleres = talleresRaw.map(t => {
-            const createdAt = parseDate(t.createdAt);
-            return {
-                ...t,
-                createdAt: createdAt || new Date(),
-            };
-        });
+        const proveedores = proveedoresRaw.map(p => ({ ...p, id: p.id || crypto.randomUUID(), createdAt: parseDate(p.createdat) || new Date() }));
+        const conceptos = conceptosRaw.map(c => ({ ...c, id: c.id || crypto.randomUUID(), createdAt: parseDate(c.createdat) || new Date() }));
+        const talleres = talleresRaw.map(t => ({ ...t, id: t.id || crypto.randomUUID(), createdAt: parseDate(t.createdat) || new Date() }));
+        const vales = valesRaw.map(v => ({ ...v, id: v.id || crypto.randomUUID() }));
+        const reminders = remindersRaw.map(r => ({ ...r, id: r.id || crypto.randomUUID() }));
+        const customReports = customReportsRaw.map(cr => ({ ...cr, id: cr.id || crypto.randomUUID() }));
+        const otrosIngresos = otrosIngresosRaw.map(oi => ({
+            ...oi,
+            id: oi.id || crypto.randomUUID(),
+            fecha: parseDate(oi.fecha) || new Date(),
+            importe: parseNumber(oi.importe)
+        }));
 
         if (onProgress) onProgress(90, "Guardando datos...");
 
-        // Restaurar en lote usando restoreBackup logic
         const fullPayload = {
             meta: { app: 'TAppXI', version: '1.0', createdAt: new Date().toISOString() },
             ajustes,
@@ -925,9 +1075,10 @@ export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?
             proveedores,
             conceptos,
             talleres,
-            vales: valesRaw,
-            reminders: remindersRaw,
-            customReports: customReportsRaw
+            vales,
+            reminders,
+            customReports,
+            otrosIngresos
         };
 
         const stats = await restoreBackup(fullPayload, onProgress);

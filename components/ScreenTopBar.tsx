@@ -4,7 +4,8 @@ import { Seccion } from '../types';
 
 interface ScreenTopBarProps {
     title: string;
-    navigateTo: (page: Seccion) => void;
+    navigateTo?: (page: Seccion) => void;
+    onBack?: () => void;
     backTarget?: Seccion;
     showBack?: boolean;
     rightSlot?: React.ReactNode;
@@ -14,11 +15,20 @@ interface ScreenTopBarProps {
 const ScreenTopBar: React.FC<ScreenTopBarProps> = ({
     title,
     navigateTo,
+    onBack,
     backTarget = Seccion.Home,
     showBack = true,
     rightSlot,
     className = '',
 }) => {
+    const handleBack = () => {
+        if (onBack) {
+            onBack();
+        } else if (navigateTo) {
+            navigateTo(backTarget);
+        }
+    };
+
     const rightContent = rightSlot ?? <div className="w-6" />;
 
     return (
@@ -27,8 +37,7 @@ const ScreenTopBar: React.FC<ScreenTopBarProps> = ({
         >
             {showBack ? (
                 <BackButton
-                    navigateTo={navigateTo}
-                    targetPage={backTarget}
+                    onClick={handleBack}
                     className="p-1.5 text-zinc-900 hover:text-zinc-700 transition-colors"
                 />
             ) : (

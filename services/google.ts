@@ -5,8 +5,8 @@ const GOOGLE_API_SRC = "https://apis.google.com/js/api.js";
 const GIS_API_SRC = "https://accounts.google.com/gsi/client";
 
 // Credenciales desde variables de entorno
-const CLIENT_ID = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || "";
-const API_KEY = (import.meta as any).env?.VITE_GOOGLE_API_KEY || "";
+const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || "";
 
 const DISCOVERY_DOCS = [
     "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest",

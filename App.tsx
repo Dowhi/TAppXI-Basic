@@ -26,6 +26,8 @@ import ResumenGastosMensualScreen from './screens/ResumenGastosMensualScreen';
 import ResumenMensualIngresosScreen from './screens/ResumenMensualIngresosScreen';
 import AjustesScreen from './screens/AjustesScreen';
 import MasterDataScreen from './screens/MasterDataScreen';
+import OtherIncomeScreen from './screens/OtherIncomeScreen';
+import VariosScreen from './screens/VariosScreen';
 import StatisticsScreen from './screens/StatisticsScreen';
 import CalendarScreen from './screens/CalendarScreen';
 import BreakConfigurationScreen from './screens/BreakConfigurationScreen';
@@ -43,6 +45,7 @@ import { LoginScreen } from './screens/LoginScreen';
 import BottomNavBar from './components/BottomNavBar';
 import { ActivationService } from './services/activation';
 import { LockScreen } from './screens/LockScreen';
+import { SplashScreen } from './components/SplashScreen';
 
 
 const App: React.FC = () => {
@@ -61,6 +64,7 @@ const App: React.FC = () => {
     const [refreshGastosKey, setRefreshGastosKey] = useState(0);
     const { isDark } = useTheme();
     const [isActivated, setIsActivated] = useState<boolean>(ActivationService.isActivated());
+    const [isInitializing, setIsInitializing] = useState(true);
 
     const handleLoginComplete = () => {
         setSetupComplete(true);
@@ -73,7 +77,19 @@ const App: React.FC = () => {
 
     // Preload Google Scripts (Critical for iOS popup handling)
     useEffect(() => {
-        initGoogleClient().catch(console.error);
+        const init = async () => {
+            try {
+                await initGoogleClient();
+            } catch (err) {
+                console.error(err);
+            } finally {
+                // Dar un tiempo mínimo para el splash screen si la carga es muy rápida (3 segundos)
+                setTimeout(() => {
+                    setIsInitializing(false);
+                }, 3000);
+            }
+        };
+        init();
     }, []);
 
     // Iniciar verificación de sonidos
@@ -204,6 +220,9 @@ const App: React.FC = () => {
         },
     ]);
 
+    if (isInitializing) {
+        return <SplashScreen />;
+    }
 
     // Show login screen for first-time users or until they login/skip
     if (!setupComplete) {
@@ -256,7 +275,13 @@ const App: React.FC = () => {
             case Seccion.AjustesGenerales:
                 return <AjustesScreen navigateTo={navigateTo} />;
             case Seccion.GestionDatos:
-                return <MasterDataScreen navigateTo={navigateTo} />;
+                return <MasterDataScreen navigateTo={navigateTo} initialTab="proveedores" />;
+            case Seccion.Vales:
+                return <MasterDataScreen navigateTo={navigateTo} initialTab="vales" />;
+            case Seccion.OtrosIngresos:
+                return <OtherIncomeScreen navigateTo={navigateTo} />;
+            case Seccion.Varios:
+                return <VariosScreen navigateTo={navigateTo} />;
             case Seccion.Estadisticas:
                 return <StatisticsScreen navigateTo={navigateTo} />;
             case Seccion.Calendario:

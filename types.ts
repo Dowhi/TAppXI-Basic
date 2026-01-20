@@ -28,6 +28,10 @@ export enum Seccion {
     EstacionTren = "Estación Tren",
     Aeropuerto = "Aeropuerto",
     GestionDatos = "Gestión de Datos",
+    OtrosIngresos = "Otros Ingresos",
+    EditarOtroIngreso = "Editar Otro Ingreso",
+    Varios = "Otros",
+    Vales = "Vales",
 }
 
 export interface Ajustes {
@@ -139,6 +143,14 @@ export interface Proveedor {
     nif?: string | null;
 }
 
+export interface ValeDirectoryEntry {
+    id: string;
+    empresa: string;
+    codigoEmpresa: string;
+    direccion?: string | null;
+    telefono?: string | null;
+}
+
 export interface Concepto {
     id: string;
     nombre: string;
@@ -153,6 +165,15 @@ export interface Turno {
     fechaFin?: Date;
     kilometrosFin?: number;
     numero?: number;
+}
+
+export interface OtroIngreso {
+    id: string;
+    fecha: Date;
+    concepto: string;
+    importe: number;
+    formaPago: string;
+    notas?: string;
 }
 
 export interface Reminder {

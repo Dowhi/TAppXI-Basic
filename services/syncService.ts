@@ -26,7 +26,7 @@ const STORAGE_KEY_SPREADSHEET_ID = 'tappxi_google_sheet_id';
 const SHEETS = {
     Carreras: {
         title: 'Carreras',
-        headers: ['Fecha', 'Hora', 'Taxímetro', 'Cobrado', 'Forma Pago', 'Tipo', 'Emisora', 'Aeropuerto', 'Estación', 'Notas', 'Empresa Vale', 'Cod. Empresa', 'Nº Despacho', 'Nº Albaran', 'Autoriza', 'ID']
+        headers: ['Fecha', 'Hora', 'Taxímetro', 'Cobrado', 'Forma Pago', 'Tipo', 'Emisora', 'Aeropuerto', 'Estación', 'Notas', 'ID Turno', 'ID']
     },
     Gastos: {
         title: 'Gastos',
@@ -71,6 +71,14 @@ const SHEETS = {
     Ajustes: {
         title: 'Ajustes',
         headers: ['Clave', 'Valor']
+    },
+    OtrosIngresos: {
+        title: 'Otros_Ingresos',
+        headers: ['Fecha', 'Concepto', 'Importe', 'Forma Pago', 'Notas', 'ID']
+    },
+    Vales_Carreras: {
+        title: 'Vales_Carreras',
+        headers: ['ID Carrera', 'Empresa', 'Código', 'Despacho', 'Albarán', 'Autoriza', 'ID']
     }
 };
 
@@ -242,7 +250,8 @@ class SyncService {
         excepciones: any[],
         vales: any[],
         informes: any[],
-        breakConfig: any
+        breakConfig: any,
+        otrosIngresos: any[]
     ): Promise<string | null> {
         try {
             await this.init();
@@ -259,6 +268,15 @@ class SyncService {
             const excepcionesRows = excepciones.map(e => this.mapDataToRow('Excepciones', e));
             const valesRows = vales.map(v => this.mapDataToRow('Vales', v));
             const informesRows = informes.map(i => this.mapDataToRow('Informes', i));
+            const otrosIngresosRows = otrosIngresos.map(oi => this.mapDataToRow('OtrosIngresos', oi));
+
+            // Vales_Carreras: Extraer de carreras
+            const valesCarrerasRows: any[] = [];
+            carreras.forEach(c => {
+                if (c.formaPago === 'Vales' && c.valeInfo) {
+                    valesCarrerasRows.push(this.mapDataToRow('Vales_Carreras', { ...c.valeInfo, carreraId: c.id, id: crypto.randomUUID() }));
+                }
+            });
 
             // Ajustes: Merge ajustes generales + breakConfig
             const allAjustes = { ...(ajustes || {}) };
@@ -294,6 +312,13 @@ class SyncService {
             await clearRange(this.spreadsheetId, `${SHEETS.Vales.title}!A2:Z`);
             await clearRange(this.spreadsheetId, `${SHEETS.Informes.title}!A2:Z`);
             await clearRange(this.spreadsheetId, `${SHEETS.Ajustes.title}!A2:Z`);
+            await clearRange(this.spreadsheetId, `${SHEETS.OtrosIngresos.title}!A2:Z`);
+            await clearRange(this.spreadsheetId, `${SHEETS.Vales_Carreras.title}!A2:Z`);
+
+            // 2.5 Asegurar que los headers estén actualizados (por si cambiaron)
+            for (const sheetDef of Object.values(SHEETS)) {
+                await updateValues(this.spreadsheetId, `${sheetDef.title}!A1`, [sheetDef.headers]);
+            }
 
             // 3. Subir en batch (appendValues)
             if (carrerasRows.length) await appendValues(this.spreadsheetId, SHEETS.Carreras.title, carrerasRows);
@@ -308,6 +333,8 @@ class SyncService {
             if (valesRows.length) await appendValues(this.spreadsheetId, SHEETS.Vales.title, valesRows);
             if (informesRows.length) await appendValues(this.spreadsheetId, SHEETS.Informes.title, informesRows);
             if (ajustesRows.length) await appendValues(this.spreadsheetId, SHEETS.Ajustes.title, ajustesRows);
+            if (otrosIngresosRows.length) await appendValues(this.spreadsheetId, SHEETS.OtrosIngresos.title, otrosIngresosRows);
+            if (valesCarrerasRows.length) await appendValues(this.spreadsheetId, SHEETS.Vales_Carreras.title, valesCarrerasRows);
 
             console.log("Upload All Data Completed Successfully");
             return this.spreadsheetId;
@@ -409,11 +436,7 @@ class SyncService {
                     c.aeropuerto ? 'Sí' : 'No',
                     c.estacion ? 'Sí' : 'No',
                     c.notas || '',
-                    c.valeInfo?.empresa || '',
-                    c.valeInfo?.codigoEmpresa || '',
-                    c.valeInfo?.despacho || '',
-                    c.valeInfo?.numeroAlbaran || '',
-                    c.valeInfo?.autoriza || '',
+                    c.turnoId || '',
                     c.id
                 ];
             case 'Gastos':
@@ -488,6 +511,25 @@ class SyncService {
             case 'Ajustes':
                 // data es { clave, valor }
                 return [data.clave, JSON.stringify(data.valor)];
+            case 'OtrosIngresos':
+                return [
+                    fmtDate(data.fecha),
+                    data.concepto || '',
+                    data.importe || 0,
+                    data.formaPago || '',
+                    data.notas || '',
+                    data.id
+                ];
+            case 'Vales_Carreras':
+                return [
+                    data.carreraId,
+                    data.empresa || '',
+                    data.codigoEmpresa || '',
+                    data.despacho || '',
+                    data.numeroAlbaran || '',
+                    data.autoriza || '',
+                    data.id || crypto.randomUUID()
+                ];
             default:
                 return [];
         }

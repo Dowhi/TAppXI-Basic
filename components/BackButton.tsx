@@ -9,19 +9,29 @@ const ArrowBackIcon = () => (
 );
 
 interface BackButtonProps {
-    navigateTo: (page: Seccion) => void;
+    navigateTo?: (page: Seccion) => void;
+    onClick?: () => void;
     targetPage?: Seccion;
     className?: string;
 }
 
-const BackButton: React.FC<BackButtonProps> = ({ 
-    navigateTo, 
+const BackButton: React.FC<BackButtonProps> = ({
+    navigateTo,
+    onClick,
     targetPage = Seccion.Home,
     className = "p-2 text-zinc-300 hover:text-white transition-colors"
 }) => {
+    const handleClick = () => {
+        if (onClick) {
+            onClick();
+        } else if (navigateTo) {
+            navigateTo(targetPage);
+        }
+    };
+
     return (
-        <button 
-            onClick={() => navigateTo(targetPage)} 
+        <button
+            onClick={handleClick}
             className={className}
             aria-label="Volver"
         >

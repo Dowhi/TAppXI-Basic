@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Seccion, Proveedor, Concepto, Taller } from '../types';
+import { Seccion, Proveedor, Concepto, Taller, ValeDirectoryEntry } from '../types';
 import ScreenTopBar from '../components/ScreenTopBar';
 import {
     getProveedores,
@@ -10,31 +10,37 @@ import {
     deleteConcepto,
     getTalleres,
     updateTaller,
-    deleteTaller
+    deleteTaller,
+    getValesDirectory,
+    addValeDirectoryEntry,
+    updateValeDirectoryEntry,
+    deleteValeDirectoryEntry,
 } from '../services/api';
 import { useToast } from '../components/Toast';
 
 interface MasterDataScreenProps {
     navigateTo: (page: Seccion) => void;
+    initialTab?: Tab;
 }
 
-type Tab = 'proveedores' | 'conceptos' | 'talleres';
+type Tab = 'proveedores' | 'conceptos' | 'talleres' | 'vales';
 
-export const MasterDataScreen: React.FC<MasterDataScreenProps> = ({ navigateTo }) => {
+export const MasterDataScreen: React.FC<MasterDataScreenProps> = ({ navigateTo, initialTab = 'proveedores' }) => {
     const { showToast } = useToast();
-    const [activeTab, setActiveTab] = useState<Tab>('proveedores');
+    const [activeTab, setActiveTab] = useState<Tab>(initialTab);
     const [isLoading, setIsLoading] = useState(true);
 
     // Data lists
     const [proveedores, setProveedores] = useState<Proveedor[]>([]);
     const [conceptos, setConceptos] = useState<Concepto[]>([]);
     const [talleres, setTalleres] = useState<Taller[]>([]);
+    const [vales, setVales] = useState<ValeDirectoryEntry[]>([]);
 
     // Edit Modal State
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [currentItem, setCurrentItem] = useState<any>(null); // Proveedor or Concepto
+    const [currentItem, setCurrentItem] = useState<any>(null);
     const [itemName, setItemName] = useState('');
-    const [itemDetails, setItemDetails] = useState<any>({}); // Optional additional fields
+    const [itemDetails, setItemDetails] = useState<any>({});
 
     // Loading data
     const loadData = async () => {
@@ -46,9 +52,12 @@ export const MasterDataScreen: React.FC<MasterDataScreenProps> = ({ navigateTo }
             } else if (activeTab === 'conceptos') {
                 const data = await getConceptos();
                 setConceptos(data.sort((a, b) => a.nombre.localeCompare(b.nombre)));
-            } else {
+            } else if (activeTab === 'talleres') {
                 const data = await getTalleres();
                 setTalleres(data.sort((a, b) => a.nombre.localeCompare(b.nombre)));
+            } else if (activeTab === 'vales') {
+                const data = await getValesDirectory();
+                setVales(data.sort((a, b) => a.empresa.localeCompare(b.empresa)));
             }
         } catch (error) {
             console.error('Error loading data:', error);
@@ -63,26 +72,59 @@ export const MasterDataScreen: React.FC<MasterDataScreenProps> = ({ navigateTo }
     }, [activeTab]);
 
     // Handlers
-    const handleEdit = (item: any) => {
-        setCurrentItem(item);
-        setItemName(item.nombre);
-        if (activeTab === 'proveedores') {
+    const handleAdd = () => {
+        setCurrentItem(null);
+        setItemName('');
+        if (activeTab === 'vales') {
             setItemDetails({
-                direccion: item.direccion || '',
-                telefono: item.telefono || '',
-                nif: item.nif || ''
+                codigoEmpresa: '',
+                direccion: '',
+                telefono: ''
+            });
+        } else if (activeTab === 'proveedores' || activeTab === 'talleres') {
+            setItemDetails({
+                direccion: '',
+                telefono: '',
+                nif: ''
             });
         } else if (activeTab === 'conceptos') {
             setItemDetails({
-                descripcion: item.descripcion || '',
-                categoria: item.categoria || ''
+                descripcion: '',
+                categoria: ''
+            });
+        }
+        setIsEditModalOpen(true);
+    };
+
+    const handleEdit = (item: any) => {
+        setCurrentItem(item);
+        if (activeTab === 'vales') {
+            setItemName(item.empresa);
+            setItemDetails({
+                codigoEmpresa: item.codigoEmpresa || '',
+                direccion: item.direccion || '',
+                telefono: item.telefono || ''
             });
         } else {
-            setItemDetails({
-                direccion: item.direccion || '',
-                telefono: item.telefono || '',
-                nif: item.nif || ''
-            });
+            setItemName(item.nombre);
+            if (activeTab === 'proveedores') {
+                setItemDetails({
+                    direccion: item.direccion || '',
+                    telefono: item.telefono || '',
+                    nif: item.nif || ''
+                });
+            } else if (activeTab === 'conceptos') {
+                setItemDetails({
+                    descripcion: item.descripcion || '',
+                    categoria: item.categoria || ''
+                });
+            } else if (activeTab === 'talleres') {
+                setItemDetails({
+                    direccion: item.direccion || '',
+                    telefono: item.telefono || '',
+                    nif: item.nif || ''
+                });
+            }
         }
         setIsEditModalOpen(true);
     };
@@ -97,8 +139,10 @@ export const MasterDataScreen: React.FC<MasterDataScreenProps> = ({ navigateTo }
                 await deleteProveedor(id);
             } else if (activeTab === 'conceptos') {
                 await deleteConcepto(id);
-            } else {
+            } else if (activeTab === 'talleres') {
                 await deleteTaller(id);
+            } else {
+                await deleteValeDirectoryEntry(id);
             }
             showToast('Elemento eliminado correctamente', 'success');
             loadData();
@@ -109,104 +153,134 @@ export const MasterDataScreen: React.FC<MasterDataScreenProps> = ({ navigateTo }
     };
 
     const handleSave = async () => {
+        const isCreating = !currentItem;
+
         if (!itemName.trim()) {
-            showToast('El nombre es obligatorio', 'error');
+            showToast(activeTab === 'vales' ? 'El nombre de la empresa es obligatorio' : 'El nombre es obligatorio', 'error');
+            return;
+        }
+
+        if (activeTab === 'vales' && !itemDetails.codigoEmpresa.trim()) {
+            showToast('El código de empresa es obligatorio', 'error');
             return;
         }
 
         try {
-            if (activeTab === 'proveedores') {
-                await updateProveedor(currentItem.id, {
-                    nombre: itemName,
-                    direccion: itemDetails.direccion || null,
-                    telefono: itemDetails.telefono || null,
-                    nif: itemDetails.nif || null
-                });
-            } else if (activeTab === 'conceptos') {
-                await updateConcepto(currentItem.id, {
-                    nombre: itemName,
-                    descripcion: itemDetails.descripcion || null,
-                    categoria: itemDetails.categoria || null
-                });
+            if (isCreating) {
+                // Creating new entry
+                if (activeTab === 'vales') {
+                    await addValeDirectoryEntry({
+                        empresa: itemName,
+                        codigoEmpresa: itemDetails.codigoEmpresa,
+                        direccion: itemDetails.direccion || undefined,
+                        telefono: itemDetails.telefono || undefined
+                    });
+                }
+                showToast('Elemento creado correctamente', 'success');
             } else {
-                await updateTaller(currentItem.id, {
-                    nombre: itemName,
-                    direccion: itemDetails.direccion || null,
-                    telefono: itemDetails.telefono || null,
-                    nif: itemDetails.nif || null
-                });
+                // Updating existing entry
+                if (activeTab === 'proveedores') {
+                    await updateProveedor(currentItem.id, {
+                        nombre: itemName,
+                        direccion: itemDetails.direccion || null,
+                        telefono: itemDetails.telefono || null,
+                        nif: itemDetails.nif || null
+                    });
+                } else if (activeTab === 'conceptos') {
+                    await updateConcepto(currentItem.id, {
+                        nombre: itemName,
+                        descripcion: itemDetails.descripcion || null,
+                        categoria: itemDetails.categoria || null
+                    });
+                } else if (activeTab === 'talleres') {
+                    await updateTaller(currentItem.id, {
+                        nombre: itemName,
+                        direccion: itemDetails.direccion || null,
+                        telefono: itemDetails.telefono || null,
+                        nif: itemDetails.nif || null
+                    });
+                } else if (activeTab === 'vales') {
+                    await updateValeDirectoryEntry(currentItem.id, {
+                        empresa: itemName,
+                        codigoEmpresa: itemDetails.codigoEmpresa || '',
+                        direccion: itemDetails.direccion || null,
+                        telefono: itemDetails.telefono || null
+                    });
+                }
+                showToast('Cambios guardados', 'success');
             }
-            showToast('Cambios guardados', 'success');
             setIsEditModalOpen(false);
             loadData();
         } catch (error) {
             console.error('Error saving item:', error);
-            showToast('Error al guardar los cambios', 'error');
+            showToast('Error al guardar', 'error');
         }
     };
 
+    const currentList = activeTab === 'proveedores'
+        ? proveedores
+        : activeTab === 'conceptos'
+            ? conceptos
+            : activeTab === 'talleres'
+                ? talleres
+                : vales;
+
     return (
         <div className="min-h-screen bg-zinc-950 text-zinc-100 pb-20">
-            <ScreenTopBar title="Gestión de Datos" onBack={() => navigateTo(Seccion.AjustesGenerales)} />
+            <ScreenTopBar
+                title={activeTab === 'vales' ? "Gestión de Vales / Empresas" : "Gestión de Prov., Talleres y Conc."}
+                onBack={() => navigateTo(Seccion.Varios)}
+            />
 
             <div className="p-4 space-y-4 max-w-2xl mx-auto">
                 {/* Tabs */}
-                <div className="flex border-b border-zinc-800">
-                    <button
-                        className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'proveedores'
-                            ? 'border-blue-500 text-blue-400'
-                            : 'border-transparent text-zinc-400 hover:text-zinc-200'
-                            }`}
-                        onClick={() => setActiveTab('proveedores')}
-                    >
-                        Proveedores ({proveedores.length})
-                    </button>
-                    <button
-                        className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'conceptos'
-                            ? 'border-blue-500 text-blue-400'
-                            : 'border-transparent text-zinc-400 hover:text-zinc-200'
-                            }`}
-                        onClick={() => setActiveTab('conceptos')}
-                    >
-                        Conceptos ({conceptos.length})
-                    </button>
-                    <button
-                        className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'talleres'
-                            ? 'border-blue-500 text-blue-400'
-                            : 'border-transparent text-zinc-400 hover:text-zinc-200'
-                            }`}
-                        onClick={() => setActiveTab('talleres')}
-                    >
-                        Talleres ({talleres.length})
-                    </button>
-                </div>
+                {((initialTab === 'vales' ? ['vales'] : ['proveedores', 'conceptos', 'talleres']) as Tab[]).length > 1 && (
+                    <div className="flex border-b border-zinc-800 overflow-x-auto scroller-hidden">
+                        {(['proveedores', 'conceptos', 'talleres'] as Tab[]).map((tab) => (
+                            <button
+                                key={tab}
+                                className={`flex-1 min-w-[100px] py-3 text-sm font-medium border-b-2 transition-colors capitalize ${activeTab === tab
+                                    ? 'border-blue-500 text-blue-400'
+                                    : 'border-transparent text-zinc-400 hover:text-zinc-200'
+                                    }`}
+                                onClick={() => setActiveTab(tab)}
+                            >
+                                {tab} ({
+                                    tab === 'proveedores' ? proveedores.length :
+                                        tab === 'conceptos' ? conceptos.length :
+                                            talleres.length
+                                })
+                            </button>
+                        ))}
+                    </div>
+                )}
 
                 {/* List */}
                 {isLoading ? (
                     <div className="text-center py-8 text-zinc-500">Cargando...</div>
                 ) : (
                     <div className="space-y-2">
-                        {(activeTab === 'proveedores' ? proveedores : activeTab === 'conceptos' ? conceptos : talleres).length === 0 && (
+                        {currentList.length === 0 && (
                             <div className="text-center py-8 text-zinc-500 bg-zinc-900/50 rounded-lg border border-zinc-800 border-dashed">
-                                No hay elementos registrados.
+                                No hay elementos registrados en {activeTab}.
                             </div>
                         )}
 
-                        {(activeTab === 'proveedores' ? proveedores : activeTab === 'conceptos' ? conceptos : talleres).map((item) => (
+                        {currentList.map((item: any) => (
                             <div
                                 key={item.id}
                                 className="flex items-center justify-between p-3 bg-zinc-900 border border-zinc-800 rounded-lg hover:bg-zinc-800/80 transition-colors"
                             >
                                 <div>
-                                    <div className="font-semibold">{item.nombre}</div>
+                                    <div className="font-semibold">{activeTab === 'vales' ? item.empresa : item.nombre}</div>
                                     <div className="text-xs text-zinc-500">
-                                        {'tipo' in item // Check if it's not a generic object
-                                            ? ''
+                                        {activeTab === 'vales'
+                                            ? item.codigoEmpresa || 'Sin código'
                                             : activeTab === 'proveedores'
-                                                ? (item as Proveedor).nif || (item as Proveedor).telefono || 'Sin detalles'
+                                                ? item.nif || item.telefono || 'Sin detalles'
                                                 : activeTab === 'conceptos'
-                                                    ? (item as Concepto).categoria || 'Sin categoría'
-                                                    : (item as Taller).nif || (item as Taller).telefono || 'Sin detalles'
+                                                    ? item.categoria || 'Sin categoría'
+                                                    : item.nif || item.telefono || 'Sin detalles'
                                         }
                                     </div>
                                 </div>
@@ -219,7 +293,7 @@ export const MasterDataScreen: React.FC<MasterDataScreenProps> = ({ navigateTo }
                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
                                     </button>
                                     <button
-                                        onClick={() => handleDelete(item.id, item.nombre)}
+                                        onClick={() => handleDelete(item.id, activeTab === 'vales' ? item.empresa : item.nombre)}
                                         className="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-400/10 rounded-full transition-colors"
                                         title="Eliminar"
                                     >
@@ -229,6 +303,20 @@ export const MasterDataScreen: React.FC<MasterDataScreenProps> = ({ navigateTo }
                             </div>
                         ))}
                     </div>
+                )}
+
+                {/* Floating Add Button (only for vales tab) */}
+                {activeTab === 'vales' && (
+                    <button
+                        onClick={handleAdd}
+                        className="fixed bottom-20 right-6 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-2xl shadow-blue-900/50 transition-all hover:scale-110 active:scale-95 z-40"
+                        title="Añadir nueva empresa"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </button>
                 )}
             </div>
 
@@ -243,11 +331,16 @@ export const MasterDataScreen: React.FC<MasterDataScreenProps> = ({ navigateTo }
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                         </button>
 
-                        <h3 className="text-lg font-bold">Editar {activeTab === 'proveedores' ? 'Proveedor' : activeTab === 'conceptos' ? 'Concepto' : 'Taller'}</h3>
+                        <h3 className="text-lg font-bold">{currentItem ? 'Editar' : 'Añadir'} {
+                            activeTab === 'proveedores' ? 'Proveedor' :
+                                activeTab === 'conceptos' ? 'Concepto' :
+                                    activeTab === 'vales' ? 'Empresa de Vale' :
+                                        'Taller'
+                        }</h3>
 
                         <div className="space-y-3">
                             <div>
-                                <label className="block text-sm font-medium text-zinc-400 mb-1">Nombre</label>
+                                <label className="block text-sm font-medium text-zinc-400 mb-1">Nombre / Empresa</label>
                                 <input
                                     type="text"
                                     value={itemName}
@@ -267,6 +360,11 @@ export const MasterDataScreen: React.FC<MasterDataScreenProps> = ({ navigateTo }
                                             className="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                                         />
                                     </div>
+                                </>
+                            )}
+
+                            {(activeTab === 'proveedores' || activeTab === 'talleres' || activeTab === 'vales') && (
+                                <>
                                     <div>
                                         <label className="block text-sm font-medium text-zinc-400 mb-1">Dirección (Opcional)</label>
                                         <input
@@ -286,6 +384,21 @@ export const MasterDataScreen: React.FC<MasterDataScreenProps> = ({ navigateTo }
                                         />
                                     </div>
                                 </>
+                            )}
+
+                            {activeTab === 'vales' && (
+                                <div>
+                                    <label className="block text-sm font-medium text-zinc-400 mb-1">
+                                        Código Empresa <span className="text-red-400">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={itemDetails.codigoEmpresa || ''}
+                                        onChange={(e) => setItemDetails({ ...itemDetails, codigoEmpresa: e.target.value })}
+                                        className="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                        placeholder="Ej: UBER, CABIFY, etc."
+                                    />
+                                </div>
                             )}
 
                             {activeTab === 'conceptos' && (
@@ -323,7 +436,7 @@ export const MasterDataScreen: React.FC<MasterDataScreenProps> = ({ navigateTo }
                                 onClick={handleSave}
                                 className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-lg shadow-blue-900/20"
                             >
-                                Guardar Cambios
+                                {currentItem ? 'Guardar Cambios' : 'Crear'}
                             </button>
                         </div>
                     </div>

@@ -48,6 +48,11 @@ export const exportToExcel = (
             'Aeropuerto': c.aeropuerto ? 'Sí' : 'No',
             'Estación': c.estacion ? 'Sí' : 'No',
             'Notas': c.notas || '',
+            'Empresa Vale': c.valeInfo?.empresa || '',
+            'Cod. Empresa': c.valeInfo?.codigoEmpresa || '',
+            'Albarán': c.valeInfo?.numeroAlbaran || '',
+            'Despacho': c.valeInfo?.despacho || '',
+            'Autoriza': c.valeInfo?.autoriza || '',
         }));
 
         const wsCarreras = XLSX.utils.json_to_sheet(carrerasData);
@@ -56,7 +61,8 @@ export const exportToExcel = (
         wsCarreras['!cols'] = [
             { wch: 12 }, { wch: 8 }, { wch: 10 }, { wch: 10 },
             { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 10 },
-            { wch: 10 }, { wch: 30 }
+            { wch: 10 }, { wch: 30 }, { wch: 20 }, { wch: 15 },
+            { wch: 15 }, { wch: 15 }, { wch: 15 }
         ];
 
         XLSX.utils.book_append_sheet(workbook, wsCarreras, 'Carreras');
@@ -171,7 +177,7 @@ export const exportToCSV = (
     // Carreras
     if (data.carreras && data.carreras.length > 0) {
         lines.push('=== CARRERAS ===');
-        lines.push('Fecha,Hora,Taxímetro,Cobrado,Forma Pago,Tipo Carrera,Emisora,Aeropuerto,Estación');
+        lines.push('Fecha,Hora,Taxímetro,Cobrado,Forma Pago,Tipo Carrera,Emisora,Aeropuerto,Estación,Empresa Vale,Código Vale,Albarán');
         data.carreras.forEach(c => {
             const fecha = c.fechaHora instanceof Date ? c.fechaHora : new Date(c.fechaHora);
             lines.push([
@@ -184,6 +190,9 @@ export const exportToCSV = (
                 c.emisora ? 'Sí' : 'No',
                 c.aeropuerto ? 'Sí' : 'No',
                 c.estacion ? 'Sí' : 'No',
+                c.valeInfo?.empresa || '',
+                c.valeInfo?.codigoEmpresa || '',
+                c.valeInfo?.numeroAlbaran || ''
             ].join(','));
         });
         lines.push('');

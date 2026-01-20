@@ -184,8 +184,8 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                 setCobrado(race.cobrado.toFixed(2));
                 setFormaPago(race.formaPago);
                 setTipoCarrera(race.tipoCarrera || 'Urbana');
-                setEsEmisora(race.formaPago === 'Vales' ? true : race.emisora);
-                setEsAeropuerto(race.aeropuerto);
+                setEsEmisora(race.emisora || false);
+                setEsAeropuerto(race.aeropuerto || false);
                 setEsEstacion(race.estacion || false);
                 setNotas(race.notas || '');
                 if (race.formaPago === 'Vales' && race.valeInfo) {
@@ -242,7 +242,6 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
 
     const handlePaymentSelection = (option: CarreraVista['formaPago']) => {
         setFormaPago(option);
-        setEsEmisora(prev => (option === 'Vales' ? true : prev));
         if (option === 'Vales') {
             setValeFormTouched(false);
             setShowValeModal(true);

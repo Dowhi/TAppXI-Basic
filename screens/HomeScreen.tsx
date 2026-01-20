@@ -10,6 +10,7 @@ import {
   getAjustes,
   getCarrerasByDate,
   getWorkingDays,
+  getOtrosIngresosByDateRange,
 } from '../services/api';
 import { filterRemindersForToday, checkMaintenanceReminders } from '../services/reminders';
 import PredictionWidget from '../components/PredictionWidget';
@@ -168,6 +169,14 @@ const PlaneIcon = () => (
   </svg>
 );
 
+const MoreIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="12" r="1" />
+    <circle cx="12" cy="5" r="1" />
+    <circle cx="12" cy="19" r="1" />
+  </svg>
+);
+
 // --- COMPONENTE PRINCIPAL (REPLICADO DE LA FOTO) ---
 
 import QuickActionsWidget from '../components/QuickActionsWidget';
@@ -245,11 +254,18 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction }) =>
         const objetivo = ajustes?.objetivoDiario || parseFloat(localStorage.getItem('objetivoDiario') || '100');
         setObjetivoDiario(objetivo);
 
-        // Calcular ingresos de hoy
         const hoy = new Date();
         hoy.setHours(0, 0, 0, 0);
-        const carrerasHoy = await getCarrerasByDate(hoy);
-        const ingresosHoyValue = carrerasHoy.reduce((sum, c) => sum + (c.cobrado || 0), 0);
+        const mañana = new Date(hoy);
+        mañana.setDate(hoy.getDate() + 1);
+
+        const [carrerasHoy, otrosIngresosHoy] = await Promise.all([
+          getCarrerasByDate(hoy),
+          getOtrosIngresosByDateRange(hoy, mañana)
+        ]);
+
+        const ingresosHoyValue = carrerasHoy.reduce((sum, c) => sum + (c.cobrado || 0), 0) +
+          otrosIngresosHoy.reduce((sum, oi) => sum + (oi.importe || 0), 0);
         setIngresosHoy(ingresosHoyValue);
 
         // Calcular promedio de últimos 7 días trabajados (excluyendo hoy)
@@ -347,6 +363,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction }) =>
     // { label: 'Estación', icon: <TrainIcon />, action: () => navigateTo(Seccion.EstacionTren) },
     // { label: 'Aeropuerto', icon: <PlaneIcon />, action: () => navigateTo(Seccion.Aeropuerto) },
     { label: 'Ajustes', icon: <SettingsIcon />, action: () => navigateTo(Seccion.AjustesGenerales) },
+    { label: 'Otros', icon: <MoreIcon />, action: () => navigateTo(Seccion.Varios) },
   ];
 
   const formatCurrency = (value: any): string => `${(Number(value) || 0).toFixed(2).replace('.', ',')} €`;
