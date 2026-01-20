@@ -141,7 +141,10 @@ const loadGis = (): Promise<void> => {
  * Inicializa los clientes de Google (gapi y GIS)
  */
 export const initGoogleClient = async (): Promise<void> => {
-    assertEnvConfigured();
+    if (!CLIENT_ID || !API_KEY) {
+        console.warn("Google configuration missing. Cloud features will be unavailable.");
+        return;
+    }
     await Promise.all([loadGapi(), loadGis()]);
 };
 
@@ -149,6 +152,7 @@ export const initGoogleClient = async (): Promise<void> => {
  * Asegura que el usuario esté autenticado y tenga un token válido
  */
 export const ensureGoogleSignIn = async (): Promise<void> => {
+    assertEnvConfigured();
     await initGoogleClient();
 
     const gapi = (window as any).gapi;
