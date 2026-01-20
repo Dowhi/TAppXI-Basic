@@ -1,12 +1,21 @@
 ﻿// services/api.ts - Reimplemented using IndexedDB
-import { addItem, getAllItems, getItem, deleteItem } from '../src/lib/indexedDB';
+import { addItem, getAllItems, getItem, deleteItem, clearStore } from '../src/lib/indexedDB';
 import { syncService } from './syncService';
 
 // Types (import from types.ts)
 import type { CarreraVista, Gasto, Turno, Proveedor, Concepto, Taller, Reminder, Ajustes, OtroIngreso } from '../types';
 import { getCustomReports } from './customReports';
 
-// Helper functions to map data structures if needed (currently identity)
+/** General DB operations */
+export async function clearAllData(): Promise<void> {
+    const stores: (any)[] = [
+        'carreras', 'gastos', 'turnos', 'proveedores', 'conceptos',
+        'talleres', 'reminders', 'customReports', 'excepciones', 'vales', 'otrosIngresos'
+    ];
+    for (const store of stores) {
+        await clearStore(store);
+    }
+}
 
 /** Carreras */
 export async function getCarreras(): Promise<CarreraVista[]> {

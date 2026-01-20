@@ -77,3 +77,10 @@ export async function deleteItem(storeName: keyof TAppXIDB, key: string) {
     const db = await getDB();
     return db.delete(storeName as any, key);
 }
+
+export async function clearStore(storeName: keyof TAppXIDB) {
+    const db = await getDB();
+    const tx = db.transaction(storeName as any, 'readwrite');
+    await tx.objectStore(storeName as any).clear();
+    await tx.done;
+}

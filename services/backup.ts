@@ -23,6 +23,7 @@ import {
     restoreReminder,
     getOtrosIngresos,
     restoreOtroIngreso,
+    clearAllData
 } from './api';
 import { getCustomReports, restoreCustomReport } from './customReports';
 import { uploadFileToDrive, createSpreadsheetWithSheets, writeSheetValues, readSheetValues, getSpreadsheetDetails } from './google';
@@ -213,6 +214,10 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
             onProgress(percent, msg);
         }
     };
+
+    // LIMPIAR BASE DE DATOS ACTUAL antes de restaurar
+    reportProgress("Limpiando base de datos actual...");
+    await clearAllData();
 
     // Restaurar Ajustes
     reportProgress("Restaurando ajustes...");
