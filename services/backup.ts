@@ -988,9 +988,15 @@ export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?
                 ivaImporte: parseNumber(g.ivaimporte || g.ivae),
                 ivaPorcentaje: parseNumber(g.ivaporcentaje || g.ivaporc),
                 kilometros: parseNumber(g.kilometros || g.km),
-                fecha: parseDate(g.fecha) || new Date(),
+                fecha: parseDate(g.fecha), // No fallback
                 servicios: servicios.length > 0 ? servicios : (g.servicios || [])
             };
+        }).filter(g => {
+            if (!g.fecha) {
+                console.warn(`Skipping gasto ${g.id}: invalid date`);
+                return false;
+            }
+            return true;
         });
 
         const turnos = turnosRaw.map(t => {
@@ -1001,9 +1007,15 @@ export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?
                 id: t.id || crypto.randomUUID(), // Asegurar que siempre hay ID
                 kilometrosInicio: parseNumber(t.kilometrosinicio || t.kminicio),
                 kilometrosFin: (t.kilometrosfin || t.kmfin) ? parseNumber(t.kilometrosfin || t.kmfin) : null,
-                fechaInicio: fechaInicio || new Date(),
+                fechaInicio: fechaInicio, // No fallback
                 fechaFin: fechaFin || null,
             };
+        }).filter(t => {
+            if (!t.fechaInicio) {
+                console.warn(`Skipping turno ${t.id}: invalid start date`);
+                return false;
+            }
+            return true;
         });
 
         const cleanObject = (obj: any): any => {
@@ -1049,10 +1061,16 @@ export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?
         const excepciones = excepcionesRaw.map(e => ({
             ...e,
             id: e.id || crypto.randomUUID(), // Asegurar que siempre hay ID
-            fechaDesde: parseDate(e.fechadesde) || new Date(),
-            fechaHasta: parseDate(e.fechahasta) || new Date(),
+            fechaDesde: parseDate(e.fechadesde),
+            fechaHasta: parseDate(e.fechahasta) || parseDate(e.fechadesde),
             createdAt: parseDate(e.createdat) || new Date(),
-        }));
+        })).filter(e => {
+            if (!e.fechaDesde) {
+                console.warn(`Skipping excepcion ${e.id}: invalid date`);
+                return false;
+            }
+            return true;
+        });
 
         const proveedores = proveedoresRaw.map(p => ({ ...p, id: p.id || crypto.randomUUID(), createdAt: parseDate(p.createdat) || new Date() }));
         const conceptos = conceptosRaw.map(c => ({ ...c, id: c.id || crypto.randomUUID(), createdAt: parseDate(c.createdat) || new Date() }));
@@ -1063,9 +1081,15 @@ export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?
         const otrosIngresos = otrosIngresosRaw.map(oi => ({
             ...oi,
             id: oi.id || crypto.randomUUID(),
-            fecha: parseDate(oi.fecha) || new Date(),
+            fecha: parseDate(oi.fecha),
             importe: parseNumber(oi.importe)
-        }));
+        })).filter(oi => {
+            if (!oi.fecha) {
+                console.warn(`Skipping otro ingreso ${oi.id}: invalid date`);
+                return false;
+            }
+            return true;
+        });
 
         if (onProgress) onProgress(90, "Guardando datos...");
 
