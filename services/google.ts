@@ -4,9 +4,31 @@
 const GOOGLE_API_SRC = "https://apis.google.com/js/api.js";
 const GIS_API_SRC = "https://accounts.google.com/gsi/client";
 
-// Credenciales desde variables de entorno
-const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
-const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || "";
+// Obtener credenciales (primero de localStorage, luego de variables de entorno)
+const getGoogleConfig = () => {
+    const storedClient = localStorage.getItem('tappxi_google_client_id');
+    const storedKey = localStorage.getItem('tappxi_google_api_key');
+
+    return {
+        clientId: storedClient || import.meta.env.VITE_GOOGLE_CLIENT_ID || "",
+        apiKey: storedKey || import.meta.env.VITE_GOOGLE_API_KEY || ""
+    };
+};
+
+let { clientId: CLIENT_ID, apiKey: API_KEY } = getGoogleConfig();
+
+/**
+ * Actualiza las credenciales en tiempo de ejecución
+ */
+export const updateGoogleCredentials = (clientId: string, apiKey: string) => {
+    localStorage.setItem('tappxi_google_client_id', clientId);
+    localStorage.setItem('tappxi_google_api_key', apiKey);
+    CLIENT_ID = clientId;
+    API_KEY = apiKey;
+    // Forzar reinicio de clientes en la próxima llamada
+    gapiInited = false;
+    gisInited = false;
+};
 
 const DISCOVERY_DOCS = [
     "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest",
@@ -141,6 +163,11 @@ const loadGis = (): Promise<void> => {
  * Inicializa los clientes de Google (gapi y GIS)
  */
 export const initGoogleClient = async (): Promise<void> => {
+    // Refrescar de storage por si cambiaron en Ajustes
+    const config = getGoogleConfig();
+    CLIENT_ID = config.clientId;
+    API_KEY = config.apiKey;
+
     if (!CLIENT_ID || !API_KEY) {
         console.warn("Google configuration missing. Cloud features will be unavailable.");
         return;

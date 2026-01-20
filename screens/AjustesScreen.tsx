@@ -5,7 +5,7 @@ import ScreenTopBar from "../components/ScreenTopBar";
 import { Seccion } from "../types";
 import { saveAjustes, getAjustes, deleteAllData, DeleteProgress, removeDuplicates, forceCloudSync } from "../services/api";
 import { downloadBackupJson, uploadBackupToGoogleDrive, exportToGoogleSheets, restoreBackup, restoreFromGoogleSheets } from "../services/backup";
-import { listFiles, getFileContent } from "../services/google";
+import { listFiles, getFileContent, updateGoogleCredentials } from "../services/google";
 import { archiveOperationalDataOlderThan, getRelativeCutoffDate } from "../services/maintenance";
 import { exportToExcel, exportToCSV, exportToPDFAdvanced, exportToHacienda, ExportFilter } from "../services/exports";
 import { getCarreras, getGastos, getRecentTurnos } from "../services/api";
@@ -151,6 +151,17 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
     const [alertMessage, setAlertMessage] = useState<string | null>(null);
     const [confirmMessage, setConfirmMessage] = useState<string | null>(null);
     const [onConfirmAction, setOnConfirmAction] = useState<(() => void) | null>(null);
+
+    // Configuración de Google
+    const [showGoogleConfig, setShowGoogleConfig] = useState(false);
+    const [tempGoogleClientId, setTempGoogleClientId] = useState(localStorage.getItem('tappxi_google_client_id') || '');
+    const [tempGoogleApiKey, setTempGoogleApiKey] = useState(localStorage.getItem('tappxi_google_api_key') || '');
+
+    const handleSaveGoogleConfig = () => {
+        updateGoogleCredentials(tempGoogleClientId, tempGoogleApiKey);
+        showAlert("Configuración de Google guardada correctamente.");
+        setShowGoogleConfig(false);
+    };
 
     const showAlert = (message: string) => {
         setAlertMessage(message);
@@ -1451,6 +1462,50 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                                 </>
                             )}
                         </button>
+                    </div>
+
+                    {/* Nueva sección: Configuración de Google API */}
+                    <div className="mt-3 pt-3 border-t border-zinc-700/50">
+                        <button
+                            onClick={() => setShowGoogleConfig(!showGoogleConfig)}
+                            className="text-xs text-blue-400 hover:text-blue-300 font-medium flex items-center gap-1 transition-colors"
+                        >
+                            {showGoogleConfig ? '▼ Cerrar configuración de Google' : '▶ Configurar Google API (si falla el backup)'}
+                        </button>
+
+                        {showGoogleConfig && (
+                            <div className="mt-3 space-y-3 bg-zinc-900/50 p-3 rounded-lg border border-zinc-700 animate-in fade-in slide-in-from-top-2 duration-200">
+                                <div>
+                                    <label className="block text-[10px] uppercase tracking-wider text-zinc-500 mb-1">Google Client ID</label>
+                                    <input
+                                        type="text"
+                                        value={tempGoogleClientId}
+                                        onChange={(e) => setTempGoogleClientId(e.target.value)}
+                                        placeholder="Tu Client ID de Google"
+                                        className="w-full bg-zinc-800 text-zinc-200 border border-zinc-700 rounded px-2 py-1.5 text-xs focus:ring-1 focus:ring-blue-500 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] uppercase tracking-wider text-zinc-500 mb-1">Google API Key</label>
+                                    <input
+                                        type="password"
+                                        value={tempGoogleApiKey}
+                                        onChange={(e) => setTempGoogleApiKey(e.target.value)}
+                                        placeholder="Tu API Key de Google"
+                                        className="w-full bg-zinc-800 text-zinc-200 border border-zinc-700 rounded px-2 py-1.5 text-xs focus:ring-1 focus:ring-blue-500 outline-none"
+                                    />
+                                </div>
+                                <button
+                                    onClick={handleSaveGoogleConfig}
+                                    className="w-full bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 font-bold py-1.5 rounded transition-colors text-xs border border-blue-600/30"
+                                >
+                                    Guardar Configuración
+                                </button>
+                                <p className="text-[10px] text-zinc-500 italic">
+                                    Necesario para que funcione Google Drive en la web de GitHub Pages.
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </div>
 
