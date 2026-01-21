@@ -163,36 +163,36 @@ export const downloadBackupJson = async () => {
     URL.revokeObjectURL(url);
 };
 
-export const uploadBackupToGoogleDrive = async (): Promise<void> => {
-    try {
-        const data = await buildBackupPayload();
-        const json = JSON.stringify(data, null, 2);
-        const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
-        const dateStr = new Date().toISOString().replace(/[:.]/g, '-');
-        const fileName = `tappxi-backup-${dateStr}.json`;
-
-        const result = await uploadFileToDrive({
-            name: fileName,
-            mimeType: 'application/json',
-            content: blob,
-        });
-
-        if (!result || !result.id) {
-            throw new Error("No se recibió confirmación de que el archivo se subió correctamente a Drive.");
-        }
-
-        console.log(`Backup subido exitosamente a Drive. ID: ${result.id}, Nombre: ${result.name || fileName}`);
-    } catch (error: any) {
-        const errorMsg = error?.message || String(error);
-        throw new Error(
-            `Error al subir backup a Google Drive: ${errorMsg}\n\n` +
-            `Asegúrate de:\n` +
-            `1. Tener conexión a internet\n` +
-            `2. Haber autorizado el acceso a Google Drive\n` +
-            `3. Tener espacio disponible en tu cuenta de Google Drive`
-        );
-    }
-};
+// export const uploadBackupToGoogleDrive = async (): Promise<void> => {
+//     try {
+//         const data = await buildBackupPayload();
+//         const json = JSON.stringify(data, null, 2);
+//         const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+//         const dateStr = new Date().toISOString().replace(/[:.]/g, '-');
+//         const fileName = `tappxi-backup-${dateStr}.json`;
+// 
+//         const result = await uploadFileToDrive({
+//             name: fileName,
+//             mimeType: 'application/json',
+//             content: blob,
+//         });
+// 
+//         if (!result || !result.id) {
+//             throw new Error("No se recibió confirmación de que el archivo se subió correctamente a Drive.");
+//         }
+// 
+//         console.log(`Backup subido exitosamente a Drive. ID: ${result.id}, Nombre: ${result.name || fileName}`);
+//     } catch (error: any) {
+//         const errorMsg = error?.message || String(error);
+//         throw new Error(
+//             `Error al subir backup a Google Drive: ${errorMsg}\n\n` +
+//             `Asegúrate de:\n` +
+//             `1. Tener conexión a internet\n` +
+//             `2. Haber autorizado el acceso a Google Drive\n` +
+//             `3. Tener espacio disponible en tu cuenta de Google Drive`
+//         );
+//     }
+// };
 
 export const restoreBackup = async (jsonData: any, onProgress?: (progress: number, message: string) => void): Promise<{ carreras: number; gastos: number; turnos: number }> => {
     if (!jsonData || !jsonData.meta || !jsonData.meta.app) {

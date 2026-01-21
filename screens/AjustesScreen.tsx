@@ -3,9 +3,9 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useFontSize } from "../contexts/FontSizeContext";
 import ScreenTopBar from "../components/ScreenTopBar";
 import { Seccion } from "../types";
-import { saveAjustes, getAjustes, deleteAllData, DeleteProgress, removeDuplicates, forceCloudSync } from "../services/api";
-import { downloadBackupJson, uploadBackupToGoogleDrive, exportToGoogleSheets, restoreBackup, restoreFromGoogleSheets } from "../services/backup";
-import { listFiles, getFileContent, updateGoogleCredentials } from "../services/google";
+import { saveAjustes, getAjustes, deleteAllData, DeleteProgress, removeDuplicates } from "../services/api";
+import { downloadBackupJson, restoreBackup, restoreFromGoogleSheets, exportToGoogleSheets } from "../services/backup";
+import { listFiles, getFileContent, isGoogleLoggedIn, signOutGoogle, ensureGoogleSignIn } from "../services/google";
 import { archiveOperationalDataOlderThan, getRelativeCutoffDate } from "../services/maintenance";
 import { exportToExcel, exportToCSV, exportToPDFAdvanced, exportToHacienda, ExportFilter } from "../services/exports";
 import { getCarreras, getGastos, getRecentTurnos } from "../services/api";
@@ -139,6 +139,8 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
     // Progress state
     const [restoreProgress, setRestoreProgress] = useState<number>(0);
     const [restoreMessage, setRestoreMessage] = useState<string>("");
+    const [showRestoreProgress, setShowRestoreProgress] = useState<boolean>(false);
+
 
     // Deletion progress state
     const [isDeleting, setIsDeleting] = useState<boolean>(false);
@@ -152,15 +154,86 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
     const [confirmMessage, setConfirmMessage] = useState<string | null>(null);
     const [onConfirmAction, setOnConfirmAction] = useState<(() => void) | null>(null);
 
-    // Configuración de Google
-    const [showGoogleConfig, setShowGoogleConfig] = useState(false);
-    const [tempGoogleClientId, setTempGoogleClientId] = useState(localStorage.getItem('tappxi_google_client_id') || '');
-    const [tempGoogleApiKey, setTempGoogleApiKey] = useState(localStorage.getItem('tappxi_google_api_key') || '');
+    // Estado de sesión de Google
+    const [isLoggedIn, setIsLoggedIn] = useState(isGoogleLoggedIn());
 
-    const handleSaveGoogleConfig = () => {
-        updateGoogleCredentials(tempGoogleClientId, tempGoogleApiKey);
-        showAlert("Configuración de Google guardada correctamente.");
-        setShowGoogleConfig(false);
+    const handleGoogleLogin = async () => {
+        try {
+            await ensureGoogleSignIn();
+            setIsLoggedIn(true);
+            showAlert("✅ Conectado con Google correctamente.");
+        } catch (error: any) {
+            console.error("Error login Google:", error);
+            showAlert(`❌ Error al conectar con Google: ${error.message || error}`);
+        }
+    };
+
+    const handleGoogleLogout = () => {
+        signOutGoogle();
+        setIsLoggedIn(false);
+        showAlert("Sesión de Google cerrada.");
+    };
+
+    // Handler para descargar backup JSON local
+    const handleDownloadBackupJSON = async () => {
+        try {
+            await downloadBackupJson();
+            showAlert("✅ Backup JSON descargado correctamente.");
+        } catch (error: any) {
+            console.error("Error descargando backup JSON:", error);
+            showAlert(`❌ Error al descargar backup: ${error.message || error}`);
+        }
+    };
+
+    // Handler para restaurar desde archivo JSON local
+    const handleRestoreFromJSONFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        try {
+            const text = await file.text();
+            const jsonData = JSON.parse(text);
+
+            showConfirm(
+                `¿Estás seguro de que quieres restaurar desde "${file.name}"?\n\n` +
+                `⚠️ ADVERTENCIA: Esto eliminará todos los datos locales actuales y los reemplazará con los del archivo.`,
+                async () => {
+                    setRestoring(true);
+                    setShowRestoreProgress(true);
+                    try {
+                        const stats = await restoreBackup(jsonData, (progress, message) => {
+                            setRestoreProgress(progress);
+                            setRestoreMessage(message);
+                        });
+
+                        setRestoreProgress(100);
+                        setRestoreMessage("Restauración completada");
+
+                        setTimeout(() => {
+                            showAlert(
+                                `✅ Restauración completada exitosamente.\n\n` +
+                                `Carreras restauradas: ${stats.carreras}\n` +
+                                `Gastos restaurados: ${stats.gastos}\n` +
+                                `Turnos restaurados: ${stats.turnos}`
+                            );
+                            setShowRestoreProgress(false);
+                            window.location.reload();
+                        }, 1500);
+                    } catch (err: any) {
+                        console.error("Error restaurando backup:", err);
+                        showAlert(`❌ Error al restaurar: ${err.message || err}`);
+                        setShowRestoreProgress(false);
+                    } finally {
+                        setRestoring(false);
+                        event.target.value = ''; // Resetear input file
+                    }
+                }
+            );
+        } catch (error: any) {
+            console.error("Error leyendo archivo:", error);
+            showAlert(`❌ Error al leer el archivo: ${error.message || error}`);
+            event.target.value = ''; // Resetear input file
+        }
     };
 
     const showAlert = (message: string) => {
@@ -390,197 +463,35 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
         );
     };
 
-    const handleBackupGoogleDrive = async () => {
-        if (uploadingToDrive) return;
+    // Funciones deshabilitadas (syncService eliminado)
 
-        setUploadingToDrive(true);
-        try {
-            await uploadBackupToGoogleDrive();
-            showAlert("✅ Copia de seguridad subida a Google Drive correctamente.\n\nEl archivo está disponible en tu Google Drive.");
-        } catch (e: any) {
-            console.error("Error realizando backup:", e);
-            const msg = e?.message || e?.error || String(e);
-            let errorMessage = "❌ Error al subir a Google Drive.\n\n";
-
-            if (typeof msg === 'string') {
-                if (msg.includes('Configuración de Google faltante') || msg.includes('VITE_GOOGLE')) {
-                    errorMessage += "❌ Faltan credenciales de Google.\n\n";
-                    errorMessage += "Pasos para solucionarlo:\n";
-                    errorMessage += "1. Crea un archivo .env en la raíz del proyecto\n";
-                    errorMessage += "2. Añade estas líneas:\n";
-                    errorMessage += "   VITE_GOOGLE_CLIENT_ID=tu_client_id\n";
-                    errorMessage += "   VITE_GOOGLE_API_KEY=tu_api_key\n";
-                    errorMessage += "3. Reinicia el servidor (npm run dev)\n\n";
-                    errorMessage += "📖 Consulta el archivo SOLUCION_BACKUP_GOOGLE.md para instrucciones detalladas.";
-                } else if (msg.includes('origin') || msg.includes('idpiframe_initialization_failed')) {
-                    errorMessage += "❌ El origen no está permitido en Google Cloud Console.\n\n";
-                    errorMessage += `Tu origen actual: ${window.location.origin}\n\n`;
-                    errorMessage += "Pasos para solucionarlo:\n";
-                    errorMessage += "1. Ve a: https://console.cloud.google.com/apis/credentials\n";
-                    errorMessage += "2. Click en tu OAuth 2.0 Client ID\n";
-                    errorMessage += "3. En 'Orígenes autorizados de JavaScript', añade:\n";
-                    errorMessage += `   ${window.location.origin}\n`;
-                    errorMessage += "4. Guarda y espera 5-15 minutos\n\n";
-                    errorMessage += "📖 Consulta SOLUCION_BACKUP_GOOGLE.md para más ayuda.";
-                } else if (msg.includes('popup_closed_by_user')) {
-                    errorMessage += "❌ Inicio de sesión cancelado.\n\n";
-                    errorMessage += "Por favor, completa el proceso de autorización cuando se abra la ventana de Google.";
-                } else if (msg.includes('insufficientPermissions') || msg.includes('permission')) {
-                    errorMessage += "❌ Error de permisos.\n\n";
-                    errorMessage += "Asegúrate de haber autorizado el acceso a Google Drive cuando se te solicitó.";
-                } else if (msg.includes('quota') || msg.includes('storage')) {
-                    errorMessage += "❌ Sin espacio en Google Drive.\n\n";
-                    errorMessage += "Libera espacio en tu cuenta de Google Drive e intenta de nuevo.";
-                } else {
-                    errorMessage += `Detalles del error:\n${msg}\n\n`;
-                    errorMessage += "📖 Consulta SOLUCION_BACKUP_GOOGLE.md para más ayuda.";
-                }
-            } else {
-                errorMessage += "Revisa la consola del navegador (F12) para más detalles.\n\n";
-                errorMessage += "📖 Consulta SOLUCION_BACKUP_GOOGLE.md para más ayuda.";
-            }
-
-            showAlert(errorMessage);
-
-            // Ofrecer descarga local como alternativa
-            showConfirm("¿Quieres descargar el backup JSON localmente como alternativa?", async () => {
-                try {
-                    await downloadBackupJson();
-                    showAlert("✅ Backup descargado localmente correctamente.");
-                } catch (downloadError) {
-                    console.error("Error descargando backup:", downloadError);
-                    showAlert("❌ Error al descargar el backup localmente.");
-                }
-            });
-        } finally {
-            setUploadingToDrive(false);
-        }
-    };
-
-    const handleForceCloudSync = async () => {
-        if (syncingCloud) return;
-
-        showConfirm(
-            "¿Quieres sincronizar TODOS los datos locales con la hoja de cálculo de Google?\n\n" +
-            "⚠️ ESTO SOBREESCRIBIRÁ EL CONTENIDO DE LA HOJA 'TAppXI_DB' EN LA NUBE.",
-            async () => {
-                setSyncingCloud(true);
-                try {
-                    const sheetId = await forceCloudSync();
-                    if (sheetId) {
-                        const url = `https://docs.google.com/spreadsheets/d/${sheetId}`;
-                        showConfirm(
-                            "✅ Sincronización completa.\n\n" +
-                            "La hoja 'TAppXI_DB' se ha actualizado correctamente en Google Drive.\n\n" +
-                            "¿Quieres abrirla para verificar?",
-                            () => window.open(url, '_blank')
-                        );
-                    } else {
-                        showAlert("✅ Sincronización completa (ID desconocido).");
-                    }
-                } catch (e: any) {
-                    console.error("Error en Force Sync:", e);
-                    showAlert(`❌ Error al sincronizar: ${e.message || e}`);
-                } finally {
-                    setSyncingCloud(false);
-                }
-            }
-        );
-    };
-
-    const handleExportGoogleSheets = async () => {
-        if (exportingToSheets) return;
-
-        setExportingToSheets(true);
-        try {
-            const { spreadsheetId, url } = await exportToGoogleSheets();
-            showConfirm(
-                `✅ Exportación a Google Sheets completada.\n\n` +
-                `ID: ${spreadsheetId}\n\n` +
-                `¿Quieres abrir la hoja de cálculo ahora?`,
-                () => {
-                    window.open(url, '_blank');
-                }
-            );
-        } catch (e: any) {
-            console.error("Error exportando a Google Sheets:", e);
-            const msg = e?.message || e?.error || String(e);
-            let errorMessage = "❌ Error al exportar a Google Sheets.\n\n";
-
-            if (typeof msg === 'string') {
-                if (msg.includes('Configuración de Google faltante') || msg.includes('VITE_GOOGLE')) {
-                    errorMessage += "❌ Faltan credenciales de Google.\n\n";
-                    errorMessage += "Pasos para solucionarlo:\n";
-                    errorMessage += "1. Crea un archivo .env en la raíz del proyecto\n";
-                    errorMessage += "2. Añade estas líneas:\n";
-                    errorMessage += "   VITE_GOOGLE_CLIENT_ID=tu_client_id\n";
-                    errorMessage += "   VITE_GOOGLE_API_KEY=tu_api_key\n";
-                    errorMessage += "3. Reinicia el servidor (npm run dev)\n\n";
-                    errorMessage += "📖 Consulta el archivo SOLUCION_BACKUP_GOOGLE.md para instrucciones detalladas.";
-                } else if (msg.includes('origin') || msg.includes('idpiframe_initialization_failed')) {
-                    errorMessage += "❌ El origen no está permitido en Google Cloud Console.\n\n";
-                    errorMessage += `Tu origen actual: ${window.location.origin}\n\n`;
-                    errorMessage += "Pasos para solucionarlo:\n";
-                    errorMessage += "1. Ve a: https://console.cloud.google.com/apis/credentials\n";
-                    errorMessage += "2. Click en tu OAuth 2.0 Client ID\n";
-                    errorMessage += "3. En 'Orígenes autorizados de JavaScript', añade:\n";
-                    errorMessage += `   ${window.location.origin}\n`;
-                    errorMessage += "4. Guarda y espera 5-15 minutos\n\n";
-                    errorMessage += "📖 Consulta SOLUCION_BACKUP_GOOGLE.md para más ayuda.";
-                } else if (msg.includes('popup_closed_by_user')) {
-                    errorMessage += "❌ Inicio de sesión cancelado.\n\n";
-                    errorMessage += "Por favor, completa el proceso de autorización cuando se abra la ventana de Google.";
-                } else if (msg.includes('insufficientPermissions') || msg.includes('permission')) {
-                    errorMessage += "❌ Error de permisos.\n\n";
-                    errorMessage += "Asegúrate de haber autorizado el acceso a Google Sheets cuando se te solicitó.";
-                } else if (msg.includes('not found') || msg.includes('does not exist')) {
-                    errorMessage += "❌ La hoja no se encontró.\n\n";
-                    errorMessage += "Esto puede ser un error temporal. Intenta exportar de nuevo.";
-                } else {
-                    errorMessage += `Detalles del error:\n${msg}\n\n`;
-                    errorMessage += "📖 Consulta SOLUCION_BACKUP_GOOGLE.md para más ayuda.";
-                }
-            } else {
-                errorMessage += "Revisa la consola del navegador (F12) para más detalles.\n\n";
-                errorMessage += "📖 Consulta SOLUCION_BACKUP_GOOGLE.md para más ayuda.";
-            }
-
-            showAlert(errorMessage);
-        } finally {
-            setExportingToSheets(false);
-        }
-    };
-
-    const handleListBackups = async () => {
-        setLoadingBackups(true);
-        setShowRestoreModal(true);
-        setBackupsList([]);
-        try {
-            const query = "(name contains 'tappxi' or name contains 'TAppXI') and trashed = false";
-            console.log("Buscando backups con query:", query);
-
-            const files = await listFiles(query);
-            console.log("Archivos encontrados (raw):", files);
-
-            const validFiles = files.filter(f =>
-                f.mimeType === 'application/json' ||
-                f.mimeType === 'application/vnd.google-apps.spreadsheet'
-            );
-            console.log("Archivos válidos tras filtrar:", validFiles);
-
-            setBackupsList(validFiles);
-        } catch (e) {
-            console.error("Error listando backups:", e);
-            showAlert("Error al buscar copias de seguridad en Google Drive. Revisa la consola.");
-            setShowRestoreModal(false);
-        } finally {
-            setLoadingBackups(false);
-        }
-    };
+    // handleForceCloudSync eliminado
 
 
 
     // START NEW CODE
+    const handleExportToSheets = async () => {
+        if (!isLoggedIn) {
+            showAlert("⚠️ Debes conectar tu cuenta de Google primero.");
+            return;
+        }
+
+        setExporting(true);
+        try {
+            const result = await exportToGoogleSheets();
+            showAlert(`✅ Exportación completada con éxito.\n\nSe ha creado una hoja de cálculo en tu Google Drive.`);
+            // Opcionalmente abrir la URL
+            if (result.url) {
+                window.open(result.url, '_blank');
+            }
+        } catch (error: any) {
+            console.error("Error exportando a Sheets:", error);
+            showAlert(`❌ Error al exportar: ${error.message || error}`);
+        } finally {
+            setExporting(false);
+        }
+    };
+
     const handleAdminTrigger = () => {
         if (adminMode) return;
         setAdminTriggerCount(prev => {
@@ -599,6 +510,24 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
         setGeneratedCode(code);
     };
     // END NEW CODE
+    const handleListBackups = async () => {
+        setLoadingBackups(true);
+        setShowRestoreModal(true);
+        setBackupsList([]);
+        try {
+            const query = "(name contains 'tappxi' or name contains 'TAppXI') and trashed = false";
+            console.log("Buscando backups con query:", query);
+
+            const files = await listFiles(query);
+            console.log("Archivos encontrados (raw):", files);
+            setBackupsList(files);
+        } catch (e: any) {
+            console.error("Error cargando backups:", e);
+            showAlert(`❌ Error al cargar backups: ${e.message || e}`);
+        } finally {
+            setLoadingBackups(false);
+        }
+    };
 
     const handleRestoreBackup = async (fileId: string, fileName: string, mimeType: string) => {
         showConfirm(
@@ -1387,161 +1316,124 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                     </button>
                 </div>
 
+                {/* Sección: Backup Local (Sin Google) */}
                 <div className="bg-zinc-800 rounded-lg p-2.5 border border-zinc-700">
-                    <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                            <h3 className="text-zinc-100 font-bold text-base mb-0.5">Copia de seguridad</h3>
-                            <p className="text-zinc-400 text-sm">Sube el backup a Drive o exporta a Google Sheets</p>
-                        </div>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={handleBackupGoogleDrive}
-                                disabled={uploadingToDrive || exportingToSheets}
-                                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                            >
-                                {uploadingToDrive ? (
-                                    <>
-                                        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        <span>Subiendo...</span>
-                                    </>
-                                ) : (
-                                    <span>Subir a Drive</span>
-                                )}
-                            </button>
-                            <button
-                                onClick={handleExportGoogleSheets}
-                                disabled={uploadingToDrive || exportingToSheets}
-                                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                            >
-                                {exportingToSheets ? (
-                                    <>
-                                        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        <span>Exportando...</span>
-                                    </>
-                                ) : (
-                                    <span>Google Sheets</span>
-                                )}
-                            </button>
-                        </div>
+                    <h3 className="text-zinc-100 font-bold text-base mb-1">Backup Local</h3>
+                    <p className="text-zinc-400 text-sm mb-3">Descarga o restaura tus datos en formato JSON desde este dispositivo.</p>
+
+                    <div className="flex gap-2 flex-wrap">
+                        <button
+                            onClick={handleDownloadBackupJSON}
+                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded-lg transition-colors flex items-center gap-2 text-sm"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="7 10 12 15 17 10" />
+                                <line x1="12" y1="15" x2="12" y2="3" />
+                            </svg>
+                            Descargar JSON
+                        </button>
+
+                        <label className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-3 rounded-lg transition-colors flex items-center gap-2 cursor-pointer text-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="3" x2="12" y2="15" />
+                            </svg>
+                            Restaurar JSON
+                            <input
+                                type="file"
+                                accept=".json"
+                                onChange={handleRestoreFromJSONFile}
+                                className="hidden"
+                            />
+                        </label>
                     </div>
                 </div>
 
+                {/* Sección: Google Cloud (Importar/Exportar) */}
                 <div className="bg-zinc-800 rounded-lg p-2.5 border border-zinc-700">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mb-3">
                         <div className="flex-1">
-                            <h3 className="text-zinc-100 font-bold text-base mb-0.5">Restaurar Datos</h3>
-                            <p className="text-zinc-400 text-sm">Recupera una copia de seguridad desde Drive</p>
+                            <h3 className="text-zinc-100 font-bold text-base mb-0.5">Google Cloud</h3>
+                            <p className="text-zinc-400 text-sm">Respalda tus datos en Google Sheets y Drive.</p>
                         </div>
+                        {isLoggedIn ? (
+                            <button
+                                onClick={handleGoogleLogout}
+                                className="bg-zinc-700 hover:bg-zinc-600 text-zinc-100 py-1.5 px-3 rounded-lg text-xs font-bold transition-colors"
+                            >
+                                Desconectar
+                            </button>
+                        ) : (
+                            <button
+                                onClick={handleGoogleLogin}
+                                className="bg-blue-600 hover:bg-blue-700 text-white py-1.5 px-3 rounded-lg text-xs font-bold transition-colors"
+                            >
+                                Conectar
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="flex gap-2">
                         <button
                             onClick={handleListBackups}
-                            disabled={restoring}
-                            className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            disabled={!isLoggedIn || restoring || exporting}
+                            className={`flex-1 font-bold py-2.5 px-3 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm ${isLoggedIn && !restoring && !exporting
+                                ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                                : 'bg-zinc-700 text-zinc-500 cursor-not-allowed'
+                                }`}
                         >
                             {restoring ? (
                                 <>
-                                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                     </svg>
-                                    <span>Restaurando...</span>
+                                    <span>Importando...</span>
                                 </>
                             ) : (
                                 <>
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                                         <polyline points="7 10 12 15 17 10" />
                                         <line x1="12" y1="15" x2="12" y2="3" />
                                     </svg>
-                                    <span>Restaurar desde Drive</span>
+                                    <span>Importar (Sheets/Drive)</span>
                                 </>
                             )}
                         </button>
-                    </div>
 
-                    {/* Nueva sección: Configuración de Google API */}
-                    <div className="mt-3 pt-3 border-t border-zinc-700/50">
                         <button
-                            onClick={() => setShowGoogleConfig(!showGoogleConfig)}
-                            className="text-xs text-blue-400 hover:text-blue-300 font-medium flex items-center gap-1 transition-colors"
+                            onClick={handleExportToSheets}
+                            disabled={!isLoggedIn || restoring || exporting}
+                            className={`flex-1 font-bold py-2.5 px-3 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm ${isLoggedIn && !restoring && !exporting
+                                ? 'bg-green-600 hover:bg-green-700 text-white'
+                                : 'bg-zinc-700 text-zinc-500 cursor-not-allowed'
+                                }`}
                         >
-                            {showGoogleConfig ? '▼ Cerrar configuración de Google' : '▶ Configurar Google API (si falla el backup)'}
-                        </button>
-
-                        {showGoogleConfig && (
-                            <div className="mt-3 space-y-3 bg-zinc-900/50 p-3 rounded-lg border border-zinc-700 animate-in fade-in slide-in-from-top-2 duration-200">
-                                <div>
-                                    <label className="block text-[10px] uppercase tracking-wider text-zinc-500 mb-1">Google Client ID</label>
-                                    <input
-                                        type="text"
-                                        value={tempGoogleClientId}
-                                        onChange={(e) => setTempGoogleClientId(e.target.value)}
-                                        placeholder="Tu Client ID de Google"
-                                        className="w-full bg-zinc-800 text-zinc-200 border border-zinc-700 rounded px-2 py-1.5 text-xs focus:ring-1 focus:ring-blue-500 outline-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] uppercase tracking-wider text-zinc-500 mb-1">Google API Key</label>
-                                    <input
-                                        type="password"
-                                        value={tempGoogleApiKey}
-                                        onChange={(e) => setTempGoogleApiKey(e.target.value)}
-                                        placeholder="Tu API Key de Google"
-                                        className="w-full bg-zinc-800 text-zinc-200 border border-zinc-700 rounded px-2 py-1.5 text-xs focus:ring-1 focus:ring-blue-500 outline-none"
-                                    />
-                                </div>
-                                <button
-                                    onClick={handleSaveGoogleConfig}
-                                    className="w-full bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 font-bold py-1.5 rounded transition-colors text-xs border border-blue-600/30"
-                                >
-                                    Guardar Configuración
-                                </button>
-                                <p className="text-[10px] text-zinc-500 italic">
-                                    Necesario para que funcione Google Drive en la web de GitHub Pages.
-                                </p>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                <div className="bg-zinc-800 rounded-lg p-2.5 border border-zinc-700">
-                    <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                            <h3 className="text-zinc-100 font-bold text-base mb-0.5">Sincronización Nube</h3>
-                            <p className="text-zinc-400 text-sm">Forzar subida de datos a Google Sheets (TAppXI_DB)</p>
-                        </div>
-                        <button
-                            onClick={handleForceCloudSync}
-                            disabled={syncingCloud || uploadingToDrive}
-                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                        >
-                            {syncingCloud ? (
+                            {exporting ? (
                                 <>
-                                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                     </svg>
-                                    <span>Sync</span>
+                                    <span>Exportando...</span>
                                 </>
                             ) : (
                                 <>
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-                                        <line x1="21" y1="2" x2="9" y2="14" />
-                                        <line x1="21" y1="2" x2="21" y2="8" />
-                                        <line x1="21" y1="2" x2="15" y2="2" />
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                        <polyline points="17 8 12 3 7 8" />
+                                        <line x1="12" y1="3" x2="12" y2="15" />
                                     </svg>
-                                    <span>Forzar Subida</span>
+                                    <span>Exportar (Sheets)</span>
                                 </>
                             )}
                         </button>
                     </div>
                 </div>
+
 
                 {/* Modal de Selección de Backup */}
                 {

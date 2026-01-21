@@ -1,34 +1,9 @@
-// Google Identity Services (GIS) - Implementación desde cero
-// Usa Google Identity Services SDK para autenticación OAuth 2.0
-
 const GOOGLE_API_SRC = "https://apis.google.com/js/api.js";
 const GIS_API_SRC = "https://accounts.google.com/gsi/client";
 
-// Obtener credenciales (primero de localStorage, luego de variables de entorno)
-const getGoogleConfig = () => {
-    const storedClient = localStorage.getItem('tappxi_google_client_id');
-    const storedKey = localStorage.getItem('tappxi_google_api_key');
-
-    return {
-        clientId: storedClient || import.meta.env.VITE_GOOGLE_CLIENT_ID || "",
-        apiKey: storedKey || import.meta.env.VITE_GOOGLE_API_KEY || ""
-    };
-};
-
-let { clientId: CLIENT_ID, apiKey: API_KEY } = getGoogleConfig();
-
-/**
- * Actualiza las credenciales en tiempo de ejecución
- */
-export const updateGoogleCredentials = (clientId: string, apiKey: string) => {
-    localStorage.setItem('tappxi_google_client_id', clientId);
-    localStorage.setItem('tappxi_google_api_key', apiKey);
-    CLIENT_ID = clientId;
-    API_KEY = apiKey;
-    // Forzar reinicio de clientes en la próxima llamada
-    gapiInited = false;
-    gisInited = false;
-};
+// Credenciales desde variables de entorno
+const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || "";
 
 const DISCOVERY_DOCS = [
     "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest",
@@ -47,17 +22,32 @@ let gisInited = false;
 let currentToken: any = null;
 
 /**
- * Verifica que las credenciales estén configuradas
+ * Verifica si hay una sesión activa de Google
+ */
+export const isGoogleLoggedIn = (): boolean => {
+    return !!currentToken;
+};
+
+/**
+ * Cierra sesión en Google
+ */
+export const signOutGoogle = (): void => {
+    const gapi = (window as any).gapi;
+    if (gapi?.client) {
+        gapi.client.setToken(null);
+    }
+    currentToken = null;
+    console.log("Sesión de Google cerrada");
+};
+
+/**
+ * Verifica que las credenciales estén configuradas internamente
  */
 const assertEnvConfigured = (): void => {
     if (!CLIENT_ID || !API_KEY) {
         throw new Error(
-            "Configuración de Google faltante.\n\n" +
-            "Pasos:\n" +
-            "1. Crea un archivo .env en la raíz del proyecto\n" +
-            "2. Añade: VITE_GOOGLE_CLIENT_ID=tu_client_id\n" +
-            "3. Añade: VITE_GOOGLE_API_KEY=tu_api_key\n" +
-            "4. Reinicia el servidor (npm run dev)"
+            "Configuración de Google incompleta en el servidor.\n\n" +
+            "Asegúrate de configurar VITE_GOOGLE_CLIENT_ID y VITE_GOOGLE_API_KEY en el entorno de desarrollo."
         );
     }
 };
@@ -163,11 +153,6 @@ const loadGis = (): Promise<void> => {
  * Inicializa los clientes de Google (gapi y GIS)
  */
 export const initGoogleClient = async (): Promise<void> => {
-    // Refrescar de storage por si cambiaron en Ajustes
-    const config = getGoogleConfig();
-    CLIENT_ID = config.clientId;
-    API_KEY = config.apiKey;
-
     if (!CLIENT_ID || !API_KEY) {
         console.warn("Google configuration missing. Cloud features will be unavailable.");
         return;
