@@ -24,6 +24,7 @@ import ResumenMensualScreen from './screens/ResumenMensualScreen';
 import ResumenMensualDetalladoScreen from './screens/ResumenMensualDetalladoScreen';
 import ResumenGastosMensualScreen from './screens/ResumenGastosMensualScreen';
 import ResumenMensualIngresosScreen from './screens/ResumenMensualIngresosScreen';
+import ResumenAnualDetalladoScreen from './screens/ResumenAnualDetalladoScreen';
 import AjustesScreen from './screens/AjustesScreen';
 import MasterDataScreen from './screens/MasterDataScreen';
 import OtherIncomeScreen from './screens/OtherIncomeScreen';
@@ -272,6 +273,8 @@ const App: React.FC = () => {
                 return <ResumenGastosMensualScreen key={`gastos-${refreshGastosKey}`} navigateTo={navigateTo} navigateToEditGasto={navigateToEditGasto} />;
             case Seccion.ResumenMensualIngresos:
                 return <ResumenMensualIngresosScreen navigateTo={navigateTo} />;
+            case Seccion.ResumenAnualDetallado:
+                return <ResumenAnualDetalladoScreen navigateTo={navigateTo} />;
             case Seccion.AjustesGenerales:
                 return <AjustesScreen navigateTo={navigateTo} />;
             case Seccion.GestionDatos:

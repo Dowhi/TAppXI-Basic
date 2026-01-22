@@ -915,6 +915,34 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigateTo }) => {
             <ScreenTopBar title="Informes" navigateTo={navigateTo} backTarget={Seccion.Home} />
 
             <div className="space-y-4">
+                {/* Resúmenes Especiales */}
+                <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800 bg-gradient-to-r from-zinc-900 to-zinc-800/50">
+                    <h2 className="text-cyan-400 text-sm font-bold uppercase tracking-wider mb-3">Resúmenes Consolidados</h2>
+                    <button
+                        onClick={() => navigateTo(Seccion.ResumenAnualDetallado)}
+                        className="w-full bg-zinc-800 border border-cyan-500/30 hover:border-cyan-500/60 rounded-xl p-4 flex items-center justify-between transition-all group active:scale-[0.98]"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="bg-cyan-500/10 p-2 rounded-lg group-hover:bg-cyan-500/20 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="3" y1="9" x2="21" y2="9"></line>
+                                    <line x1="3" y1="15" x2="21" y2="15"></line>
+                                    <line x1="9" y1="3" x2="9" y2="21"></line>
+                                    <line x1="15" y1="3" x2="15" y2="21"></line>
+                                </svg>
+                            </div>
+                            <div className="text-left">
+                                <span className="block text-white font-bold">Resumen Anual Detallado</span>
+                                <span className="text-zinc-500 text-xs">Tabla completa desglosada por meses (Estilo Excel)</span>
+                            </div>
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500 group-hover:text-cyan-400 transform group-hover:translate-x-1 transition-all">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </button>
+                </div>
+
                 {/* Selector de Fechas */}
                 <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
                     <h2 className="text-cyan-400 text-lg font-bold mb-4">Período del Informe</h2>

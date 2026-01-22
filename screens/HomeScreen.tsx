@@ -386,7 +386,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction }) =>
   }) => (
     <button
       onClick={onClick}
-      className={`flex flex-col items-center justify-center py-3 rounded-xl transition-colors duration-200 group ${isDark
+      className={`flex flex-col items-center justify-center py-1.5 rounded-xl transition-colors duration-200 group ${isDark
         ? 'bg-zinc-800 hover:bg-zinc-700 border border-zinc-700'
         : 'bg-zinc-200 hover:bg-zinc-300 border border-zinc-300'
         }`}
@@ -428,7 +428,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction }) =>
           <LoadingSpinner text="Cargando datos..." size="lg" />
         </div>
       ) : (
-        <div className="space-y-6 max-w-xl mx-auto">
+        <div className="space-y-3 max-w-xl mx-auto">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className={`flex items-center gap-2 ${isDark ? 'text-cyan-400' : 'text-blue-600'}`}>
@@ -572,7 +572,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction }) =>
 
             return (
               <div
-                className="rounded-2xl p-4 shadow-xl"
+                className="rounded-2xl p-3 shadow-xl"
                 style={{
                   backgroundColor: cardBg,
                   borderColor: cardBorder,
@@ -599,7 +599,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction }) =>
                 </div>
 
                 {/* Barra de progreso */}
-                <div className="mb-3">
+                <div className="mb-2">
                   <div className="flex justify-between items-center mb-1">
                     <span className={`text-xs ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>
                       {formatCurrency(ingresosHoy)} / {formatCurrency(objetivoDiario)}
@@ -654,7 +654,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction }) =>
 
                 {/* Estado del turno integrado */}
                 {turnoActivo && (
-                  <div className="mt-4 pt-4 border-t" style={{ borderColor: cardBorder }}>
+                  <div className="mt-2 pt-2 border-t" style={{ borderColor: cardBorder }}>
                     <div className="flex justify-between items-start mb-3">
                       <div>
                         <h2 className={`text-sm font-bold tracking-wide uppercase ${isDark ? 'text-cyan-400' : 'text-blue-600'
@@ -720,7 +720,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction }) =>
           {/* Estado cuando no hay turno activo */}
           {!turnoActivo && (
             <div
-              className="rounded-2xl p-4 shadow-xl text-center"
+              className="rounded-2xl p-3 shadow-xl text-center"
               style={{
                 backgroundColor: cardBg,
                 borderColor: cardBorder,

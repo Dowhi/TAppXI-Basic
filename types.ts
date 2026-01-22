@@ -32,6 +32,7 @@ export enum Seccion {
     EditarOtroIngreso = "Editar Otro Ingreso",
     Varios = "Otros",
     Vales = "Vales",
+    ResumenAnualDetallado = "Resumen Anual Detallado",
 }
 
 export interface Ajustes {

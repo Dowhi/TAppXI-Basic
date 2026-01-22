@@ -26,9 +26,9 @@ const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({ onQuickAction }
             <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={() => onQuickAction('minima')}
-                className="glass-card p-3 rounded-xl flex items-center space-x-3 hover:bg-white/5 transition-colors group"
+                className="glass-card py-2 px-3 rounded-xl flex items-center space-x-3 hover:bg-white/5 transition-colors group"
             >
-                <div className="bg-yellow-500/20 p-2 rounded-lg text-yellow-400 group-hover:text-yellow-300">
+                <div className="bg-yellow-500/20 p-1.5 rounded-lg text-yellow-400 group-hover:text-yellow-300">
                     <BoltIcon />
                 </div>
                 <div className="text-left">
@@ -39,9 +39,9 @@ const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({ onQuickAction }
             <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={() => onQuickAction('aeropuerto')}
-                className="glass-card p-3 rounded-xl flex items-center space-x-3 hover:bg-white/5 transition-colors group"
+                className="glass-card py-2 px-3 rounded-xl flex items-center space-x-3 hover:bg-white/5 transition-colors group"
             >
-                <div className="bg-blue-500/20 p-2 rounded-lg text-blue-400 group-hover:text-blue-300">
+                <div className="bg-blue-500/20 p-1.5 rounded-lg text-blue-400 group-hover:text-blue-300">
                     <PlaneIcon />
                 </div>
                 <div className="text-left">
