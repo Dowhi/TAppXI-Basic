@@ -348,6 +348,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction }) =>
 
   const balance = ingresos - gastos;
 
+  const activeBreak = useMemo(() => {
+    return turnoActivo?.descansos?.find(d => !d.fechaFin);
+  }, [turnoActivo]);
+
   const quickActions = [
     { label: 'Ingresos', icon: <TrendingUpIcon />, action: () => navigateTo(turnoActivo ? Seccion.VistaCarreras : Seccion.Turnos) },
     { label: 'Gastos', icon: <TrendingDownIcon />, action: () => navigateTo(Seccion.Gastos) },
@@ -657,10 +661,14 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction }) =>
                   <div className="mt-2 pt-2 border-t" style={{ borderColor: cardBorder }}>
                     <div className="flex justify-between items-start mb-3">
                       <div>
-                        <h2 className={`text-sm font-bold tracking-wide uppercase ${isDark ? 'text-cyan-400' : 'text-blue-600'
-                          }`}>
-                          {`Turno ${turnoActivo.numero ?? 1}`}
-                        </h2>
+                        <div className="flex items-center gap-2">
+                          <h2 className={`text-sm font-bold tracking-wide uppercase ${isDark ? 'text-cyan-400' : 'text-blue-600'}`}>
+                            {`Turno ${turnoActivo.numero ?? 1}`}
+                          </h2>
+                          {activeBreak && (
+                            <span className="text-[8px] bg-orange-500 text-white px-1.5 py-0.5 rounded-full font-black animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.4)]">EN PAUSA</span>
+                          )}
+                        </div>
                         <p className={`uppercase tracking-wide text-xs ${isDark ? 'text-zinc-400' : 'text-zinc-600'
                           }`}>
                           {parseSafeDate(turnoActivo.fechaInicio).toLocaleDateString('es-ES', {

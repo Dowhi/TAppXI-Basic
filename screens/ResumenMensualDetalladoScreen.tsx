@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import ScreenTopBar from '../components/ScreenTopBar';
 import { Seccion } from '../types';
-import { getCarrerasByMonth, getGastosByMonth, getTurnosByMonth } from '../services/api';
+import { getCarrerasByMonth, getGastosByMonth, getTurnosByMonth, cleanN, parseDate } from '../services/api';
 
 // Icons
 const ArrowLeftIcon = () => (
@@ -54,14 +54,7 @@ const ResumenMensualDetalladoScreen: React.FC<ResumenMensualDetalladoScreenProps
         loadData();
     }, [selectedMonth, selectedYear]);
 
-    const parseSafeDate = (dateAny: any): Date => {
-        if (!dateAny) return new Date();
-        if (dateAny instanceof Date) {
-            return isNaN(dateAny.getTime()) ? new Date() : dateAny;
-        }
-        const parsed = new Date(dateAny);
-        return isNaN(parsed.getTime()) ? new Date() : parsed;
-    };
+    const parseSafeDate = parseDate;
 
     // Calcular métricas
     const metrics = useMemo(() => {
@@ -81,71 +74,88 @@ const ResumenMensualDetalladoScreen: React.FC<ResumenMensualDetalladoScreenProps
         // Sumas por forma de pago
         const sumaTarjeta = carreras
             .filter(c => c.formaPago === 'Tarjeta')
-            .reduce((sum, c) => sum + (c.cobrado || 0), 0);
+            .reduce((sum, c) => sum + (Number(c.cobrado) || 0), 0);
 
         const sumaEmisora = carreras
-            .filter(c => c.emisora === true)
-            .reduce((sum, c) => sum + (c.cobrado || 0), 0);
+            .filter(c => !!c.emisora)
+            .reduce((sum, c) => sum + (Number(c.cobrado) || 0), 0);
 
         const sumaVales = carreras
             .filter(c => c.formaPago === 'Vales')
-            .reduce((sum, c) => sum + (c.cobrado || 0), 0);
+            .reduce((sum, c) => sum + (Number(c.cobrado) || 0), 0);
 
         // Contadores por forma de pago
         const countTarjeta = carreras.filter(c => c.formaPago === 'Tarjeta').length;
-        const countEmisora = carreras.filter(c => c.emisora === true).length;
+        const countEmisora = carreras.filter(c => !!c.emisora).length;
         const countVales = carreras.filter(c => c.formaPago === 'Vales').length;
 
         // Propinas (diferencia entre cobrado y taxímetro)
         const propinas = carreras.reduce((sum, c) => {
-            const propina = Math.max(0, (c.cobrado || 0) - (c.taximetro || 0));
+            const propina = Math.max(0, (Number(c.cobrado) || 0) - (Number(c.taximetro) || 0));
             return sum + propina;
         }, 0);
 
         // Aeropuerto
         const aeropuerto = carreras
-            .filter(c => c.aeropuerto === true)
-            .reduce((sum, c) => sum + (c.cobrado || 0), 0);
+            .filter(c => !!c.aeropuerto)
+            .reduce((sum, c) => sum + (Number(c.cobrado) || 0), 0);
 
-        // Horas trabajadas (diferencia entre inicio y fin de turnos)
-        let horas = 0;
+        // Los helpers cleanN y parseDate ahora se importan de api.ts
+
+        // Horas trabajadas
+        let totalMs = 0;
         turnos.forEach(t => {
-            if (t.fechaFin && t.fechaInicio) {
-                const inicio = parseSafeDate(t.fechaInicio);
-                const fin = parseSafeDate(t.fechaFin);
-                const diffMs = fin.getTime() - inicio.getTime();
-                const diffHours = diffMs / (1000 * 60 * 60);
-                horas += diffHours;
+            const start = parseDate(t.fechaInicio);
+            const end = parseDate(t.fechaFin);
+            if (start && end) {
+                const diff = end.getTime() - start.getTime();
+                if (diff > 0) totalMs += diff;
             }
         });
-        horas = Math.round(horas * 10) / 10; // Redondear a 1 decimal
+        const horas = Math.round((totalMs / (1000 * 60 * 60)) * 10) / 10;
 
-        // Kilómetros (diferencia entre fin e inicio de turnos)
-        // Si hay múltiples turnos, sumar las diferencias
+        // Kilómetros
         let kilometros = 0;
         turnos.forEach(t => {
-            if (t.kilometrosFin !== undefined && t.kilometrosInicio !== undefined) {
-                kilometros += ((t.kilometrosFin || 0) - (t.kilometrosInicio || 0));
+            const ini = cleanN(t.kilometrosInicio);
+            const fin = cleanN(t.kilometrosFin);
+            if (fin > ini) {
+                kilometros += (fin - ini);
             }
         });
 
-        // Ingresos Varios (gastos con tipo específico, si existe)
-        const ingresosVarios = 0; // Por ahora 0, se puede expandir
+        // Ingresos Varios
+        const ingresosVarios = 0;
 
-        // Combustible (gastos de combustible del mes)
-        const combustible = gastos.reduce((sum, g) => {
-            // Si el concepto es "Combustible" o similar
-            if (g.concepto && g.concepto.toLowerCase().includes('combustible')) {
-                return sum + (g.importe || 0);
-            }
-            return sum;
-        }, 0);
+        // Combustible (Detección mejorada: concepto, litros o kmParciales)
+        const combustibleGasto = gastos.filter(g => {
+            const concepto = g.concepto?.toLowerCase() || '';
+            const isFuelConcept =
+                concepto.includes('combustible') ||
+                concepto.includes('carburante') ||
+                concepto.includes('gasolin') ||
+                concepto.includes('gasoil') ||
+                concepto.includes('diésel') ||
+                concepto.includes('diesel') ||
+                concepto.includes('repost');
+            const hasFuelData = cleanN(g.litros) > 0 || cleanN(g.kmParciales) > 0;
+            return isFuelConcept || hasFuelData;
+        });
+        const combustible = combustibleGasto.reduce((sum, g) => sum + cleanN(g.importe), 0);
+        const litrosTotal = combustibleGasto.reduce((sum, g) => sum + cleanN(g.litros), 0);
 
-        // Total ingresos (suma de todas las carreras)
-        const neto = carreras.reduce((sum, c) => sum + (c.cobrado || 0), 0);
+        // Kms para el cálculo de consumo (prioridad turnos, respaldo kmParciales de gastos)
+        let kmsParaConsumo = kilometros;
+        if (kmsParaConsumo <= 0) {
+            kmsParaConsumo = combustibleGasto.reduce((sum, g) => sum + cleanN(g.kmParciales), 0);
+        }
+        const litros100 = (kmsParaConsumo > 0 && litrosTotal > 0) ? (litrosTotal / kmsParaConsumo) * 100 : 0;
+
+        // Total ingresos (suma de todas las carreras usando cleanN)
+        const neto = carreras.reduce((sum, c) => sum + cleanN(c.cobrado), 0);
 
         // Total gastos
-        const totalGastos = gastos.reduce((sum, g) => sum + (g.importe || 0), 0);
+        const totalGastos = gastos.reduce((sum, g) => sum + (Number(g.importe) || 0), 0);
 
         // Total general
         const total = neto - totalGastos;
@@ -166,6 +176,7 @@ const ResumenMensualDetalladoScreen: React.FC<ResumenMensualDetalladoScreenProps
             kilometros,
             ingresosVarios,
             combustible,
+            litros100,
             neto,
             gastos: totalGastos,
             total
@@ -189,11 +200,12 @@ const ResumenMensualDetalladoScreen: React.FC<ResumenMensualDetalladoScreenProps
     };
 
     const formatCurrency = (value: number): string => {
+        if (value === 0) return ' ';
         return value.toFixed(2).replace('.', ',');
     };
 
     const formatNumber = (value: number): string => {
-        if (value === 0) return '0';
+        if (value === 0) return ' ';
         return value.toString();
     };
 
@@ -251,19 +263,19 @@ const ResumenMensualDetalladoScreen: React.FC<ResumenMensualDetalladoScreenProps
                         <DataBox label="S.Vales" value={formatCurrency(metrics.sumaVales)} />
 
                         {/* Fila 3 */}
-                        <DataBox label="C. Tarjeta" value={metrics.countTarjeta > 0 ? formatNumber(metrics.countTarjeta) : ''} />
-                        <DataBox label="C. Emisora" value={metrics.countEmisora > 0 ? formatNumber(metrics.countEmisora) : ''} />
-                        <DataBox label="C.Vales" value={metrics.countVales > 0 ? formatNumber(metrics.countVales) : ''} />
+                        <DataBox label="C. Tarjeta" value={formatNumber(metrics.countTarjeta)} />
+                        <DataBox label="C. Emisora" value={formatNumber(metrics.countEmisora)} />
+                        <DataBox label="C.Vales" value={formatNumber(metrics.countVales)} />
 
                         {/* Fila 4 */}
                         <DataBox label="Propinas" value={formatCurrency(metrics.propinas)} />
                         <DataBox label="Aeropuertos" value={formatCurrency(metrics.aeropuerto)} />
-                        <DataBox label="Horas" value={metrics.horas > 0 ? formatNumber(metrics.horas) : ''} />
+                        <DataBox label="Horas" value={formatNumber(metrics.horas)} />
 
                         {/* Fila 5 */}
                         <DataBox label="Kilometros" value={formatNumber(metrics.kilometros)} />
-                        <DataBox label="Ing. Varios" value={formatCurrency(metrics.ingresosVarios)} />
-                        <DataBox label="Combustible" value={metrics.combustible > 0 ? formatCurrency(metrics.combustible) : '0.0'} />
+                        <DataBox label="L/100" value={metrics.litros100 > 0 ? metrics.litros100.toFixed(2).replace('.', ',') : ' '} />
+                        <DataBox label="Combustible" value={formatCurrency(metrics.combustible)} />
 
                         {/* Fila 6 - Totales */}
                         <DataBox label="NETO" value={formatCurrency(metrics.neto)} />

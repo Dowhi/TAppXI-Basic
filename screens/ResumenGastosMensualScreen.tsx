@@ -89,6 +89,7 @@ const ResumenGastosMensualScreen: React.FC<ResumenGastosMensualScreenProps> = ({
     };
 
     const formatCurrency = (value: number): string => {
+        if (value === 0) return ' ';
         return value.toFixed(2).replace('.', ',');
     };
 

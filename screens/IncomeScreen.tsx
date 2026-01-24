@@ -2,7 +2,8 @@
 import { Seccion, CarrerasResumen, CarreraVista, Turno } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
 import ScreenTopBar from '../components/ScreenTopBar';
-import { subscribeToCarreras, subscribeToGastos, subscribeToActiveTurno, getAjustes } from '../services/api';
+import { subscribeToCarreras, subscribeToGastos, subscribeToActiveTurno, getAjustes, startBreak, endBreak } from '../services/api';
+import { useToast } from '../components/Toast';
 
 // Icons
 const VisibilityIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5zm0 12.5c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" /></svg>;
@@ -65,6 +66,21 @@ const RoadIcon: React.FC<{ className?: string }> = ({ className }) => (
 const AccessTimeIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" /></svg>;
 const AddIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg>;
 const ExitToAppIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z" /></svg>;
+const PauseIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>;
+const PlayArrowIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M8 5v14l11-7z" /></svg>;
+
+const CustomTextField: React.FC<React.InputHTMLAttributes<HTMLInputElement> & { label: string }> = ({ label, ...props }) => {
+    const { isDark } = useTheme();
+    return (
+        <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1">{label}</label>
+            <input
+                {...props}
+                className={`w-full py-2 px-3 border transition-all rounded-xl text-sm font-bold ${isDark ? 'bg-zinc-800 border-zinc-700 text-cyan-400 focus:border-cyan-500' : 'bg-zinc-100 border-zinc-200 text-blue-600 focus:border-blue-400'} outline-none`}
+            />
+        </div>
+    );
+};
 
 const ResumenBox: React.FC<{ title: string; value: string; }> = ({ title, value }) => (
     <div className="flex-1 text-center">
@@ -130,6 +146,37 @@ const IncomeScreen: React.FC<IncomeScreenProps> = ({ navigateTo, navigateToEditR
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [objetivoDiario, setObjetivoDiario] = useState<number>(100);
+    const { showToast } = useToast();
+
+    // Pause state logic
+    const [showBreakModal, setShowBreakModal] = useState(false);
+    const [kmsBreak, setKmsBreak] = useState('');
+    const [isStartingBreak, setIsStartingBreak] = useState(true);
+
+    const handleBreakAction = async () => {
+        if (!kmsBreak) return;
+        const kms = parseFloat(kmsBreak);
+        if (isNaN(kms)) {
+            showToast("Ingresa un valor numérico válido", "warning");
+            return;
+        }
+
+        try {
+            if (isStartingBreak) {
+                await startBreak(turnoActivo!.id, kms);
+                showToast("Pausa iniciada", "success");
+            } else {
+                await endBreak(turnoActivo!.id, kms);
+                showToast("Pausa terminada", "success");
+            }
+            setShowBreakModal(false);
+            setKmsBreak('');
+        } catch (err) {
+            showToast("Error al procesar la pausa", "error");
+        }
+    };
+
+    const activeBreak = turnoActivo?.descansos?.find(d => !d.fechaFin);
 
     const parseSafeDate = (dateAny: any): Date => {
         if (!dateAny) return new Date();
@@ -281,14 +328,29 @@ const IncomeScreen: React.FC<IncomeScreenProps> = ({ navigateTo, navigateToEditR
             }
         }
 
-        // Calcular horaTrabajo: diferencia entre ahora y horaInicio, o entre primera y última carrera del día
+        // Calcular horaTrabajo: diferencia entre ahora y horaInicio, restando descansos
         let horaTrabajo = "00:00";
         if (turnoActivo) {
             const fechaInicio = parseSafeDate(turnoActivo.fechaInicio);
-            const ahora = currentTime; // Use currentTime state to force updates
-            const diffMs = ahora.getTime() - fechaInicio.getTime();
-            const diffHoras = Math.floor(diffMs / (1000 * 60 * 60));
-            const diffMinutos = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+            const ahora = currentTime;
+            let diffMs = ahora.getTime() - fechaInicio.getTime();
+
+            // Restar descansos finalizados
+            (turnoActivo.descansos || []).forEach(d => {
+                if (d.fechaInicio && d.fechaFin) {
+                    const startD = parseSafeDate(d.fechaInicio);
+                    const endD = parseSafeDate(d.fechaFin);
+                    diffMs -= (endD.getTime() - startD.getTime());
+                } else if (d.fechaInicio && !d.fechaFin) {
+                    // Si hay un descanso activo, el tiempo de trabajo se para en el inicio del descanso
+                    const startD = parseSafeDate(d.fechaInicio);
+                    const pauseDuration = ahora.getTime() - startD.getTime();
+                    diffMs -= pauseDuration;
+                }
+            });
+
+            const diffHoras = Math.floor(Math.max(0, diffMs) / (1000 * 60 * 60));
+            const diffMinutos = Math.floor((Math.max(0, diffMs) % (1000 * 60 * 60)) / (1000 * 60));
             horaTrabajo = `${String(diffHoras).padStart(2, '0')}:${String(diffMinutos).padStart(2, '0')}`;
         } else if (carreras.length > 0) {
             const today = new Date();
@@ -439,20 +501,82 @@ const IncomeScreen: React.FC<IncomeScreenProps> = ({ navigateTo, navigateToEditR
                 )}
             </section>
 
-            <div className="fixed bottom-2 left-6 z-20">
+            <div className="fixed bottom-2 left-6 z-20 flex gap-2">
                 <button
                     onClick={() => navigateTo(Seccion.CerrarTurno)}
-                    className={`${isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700' : 'bg-zinc-200 border-zinc-300 text-zinc-700 hover:bg-zinc-300'} border w-6 h-6 rounded-full flex items-center justify-center shadow-lg transition-colors`}
+                    className={`${isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700' : 'bg-zinc-200 border-zinc-300 text-zinc-700 hover:bg-zinc-300'} border w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-colors`}
                     title="Cerrar Turno"
                 >
-                    <ExitToAppIcon className="w-4 h-4" />
+                    <ExitToAppIcon className="w-5 h-5" />
                 </button>
+                {turnoActivo && (
+                    <button
+                        onClick={() => {
+                            setIsStartingBreak(!activeBreak);
+                            setShowBreakModal(true);
+                        }}
+                        className={`border w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-colors ${activeBreak
+                            ? 'bg-orange-500 text-white border-orange-400 animate-pulse'
+                            : (isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700' : 'bg-zinc-200 border-zinc-300 text-zinc-700 hover:bg-zinc-300')
+                            }`}
+                        title={activeBreak ? "Reanudar Turno" : "Pausar Turno"}
+                    >
+                        {activeBreak ? <PlayArrowIcon className="w-6 h-6" /> : <PauseIcon className="w-5 h-5" />}
+                    </button>
+                )}
             </div>
             <div className="fixed bottom-2 right-6 z-20">
-                <button onClick={() => navigateTo(Seccion.IntroducirCarrera)} className="bg-zinc-50 text-zinc-900 w-6 h-6 rounded-full flex items-center justify-center shadow-lg hover:bg-zinc-200 transition-colors">
-                    <AddIcon className="w-4 h-4" />
+                <button
+                    onClick={() => {
+                        if (activeBreak) {
+                            showToast("Turno en pausa. Reanuda para añadir carreras.", "warning");
+                            return;
+                        }
+                        navigateTo(Seccion.IntroducirCarrera);
+                    }}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-colors ${activeBreak ? 'bg-zinc-700 text-zinc-500 cursor-not-allowed' : 'bg-zinc-50 text-zinc-900 hover:bg-zinc-200'}`}
+                >
+                    <AddIcon className="w-6 h-6" />
                 </button>
             </div>
+
+            {/* Modal de Kilómetros para Pausa/Reanudación */}
+            {showBreakModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className={`w-full max-w-sm rounded-3xl p-6 ${isDark ? 'bg-zinc-900 border border-zinc-800' : 'bg-white border border-zinc-200'} shadow-2xl space-y-4`}>
+                        <div className="text-center">
+                            <h3 className={`text-xl font-black ${isDark ? 'text-zinc-100' : 'text-zinc-900'}`}>{isStartingBreak ? 'Iniciar Pausa' : 'Terminar Pausa'}</h3>
+                            <p className="text-zinc-500 text-sm mt-1">Ingresa los kilómetros del vehículo</p>
+                        </div>
+
+                        <div className="space-y-4">
+                            <CustomTextField
+                                label="Kilómetros Actuales"
+                                type="number"
+                                value={kmsBreak}
+                                onChange={(e) => setKmsBreak(e.target.value)}
+                                placeholder="Ej: 154231"
+                                autoFocus
+                            />
+
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    onClick={() => setShowBreakModal(false)}
+                                    className={`flex-1 py-3 rounded-xl font-bold ${isDark ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}
+                                >
+                                    CANCELAR
+                                </button>
+                                <button
+                                    onClick={handleBreakAction}
+                                    className={`flex-1 py-3 rounded-xl font-bold text-white shadow-lg ${isStartingBreak ? 'bg-orange-500 shadow-orange-500/20' : 'bg-blue-600 shadow-blue-600/20'}`}
+                                >
+                                    CONFIRMAR
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

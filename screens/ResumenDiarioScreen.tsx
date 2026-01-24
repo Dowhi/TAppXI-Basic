@@ -184,6 +184,16 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
         });
     };
 
+    const formatCurrency = (value: number): string => {
+        if (value === 0) return ' ';
+        return value.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    const formatNumber = (value: number): string => {
+        if (value === 0) return ' ';
+        return value.toString();
+    };
+
     const dateInputRef = useRef<HTMLInputElement>(null);
 
     const handleCalendarClick = () => {
@@ -264,34 +274,34 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
                             <div className="space-y-1.5 text-white text-sm">
                                 <div className="flex justify-between">
                                     <span>Carreras:</span>
-                                    <span className="font-semibold">{turno.carreras}</span>
+                                    <span className="font-semibold">{formatNumber(turno.carreras)}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span>C. Tarjeta:</span>
-                                    <span className="font-semibold">{turno.cTarjeta}</span>
+                                    <span className="font-semibold">{formatNumber(turno.cTarjeta)}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span>C. Emisora:</span>
-                                    <span className="font-semibold">{turno.cEmisora}</span>
+                                    <span className="font-semibold">{formatNumber(turno.cEmisora)}</span>
                                 </div>
                                 {turno.cVales > 0 && (
                                     <div className="flex justify-between">
                                         <span>C. Vales:</span>
-                                        <span className="font-semibold">{turno.cVales}</span>
+                                        <span className="font-semibold">{formatNumber(turno.cVales)}</span>
                                     </div>
                                 )}
                                 <div className="flex justify-between">
                                     <span>Suma Tarjetas:</span>
-                                    <span className="font-semibold">{turno.sumaTarjetas.toFixed(2)}</span>
+                                    <span className="font-semibold">{formatCurrency(turno.sumaTarjetas)}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span>Suma Emisora:</span>
-                                    <span className="font-semibold">{turno.sumaEmisora.toFixed(2)}</span>
+                                    <span className="font-semibold">{formatCurrency(turno.sumaEmisora)}</span>
                                 </div>
                                 {turno.cVales > 0 && (
                                     <div className="flex justify-between">
                                         <span>Suma Vales:</span>
-                                        <span className="font-semibold">{turno.sumaVales.toFixed(2)}</span>
+                                        <span className="font-semibold">{formatCurrency(turno.sumaVales)}</span>
                                     </div>
                                 )}
                                 <div className="flex justify-between">
@@ -304,7 +314,7 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
                                 </div>
                                 <div className="flex justify-between text-emerald-300">
                                     <span>Km Total:</span>
-                                    <span className="font-semibold">{turno.kmTotal} km</span>
+                                    <span className="font-semibold">{formatNumber(turno.kmTotal)} km</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span>Hora Inicio:</span>
@@ -323,7 +333,7 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
                             <div className="mt-2 bg-white rounded border border-blue-900 p-2">
                                 <div className="flex justify-between items-center">
                                     <span className="text-blue-900 font-bold">TOTAL</span>
-                                    <span className="text-blue-900 font-bold">{turno.total.toFixed(2)}</span>
+                                    <span className="text-blue-900 font-bold">{formatCurrency(turno.total)}</span>
                                 </div>
                             </div>
                         </div>
@@ -334,9 +344,9 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
                             <div className="flex justify-between items-center">
                                 <span className="text-white font-bold">TOTAL DÍA</span>
                                 <div className="flex gap-4">
-                                    <span className="text-white font-semibold">{totalDia.ingresos.toFixed(2)}</span>
-                                    <span className="text-red-300 font-semibold">{totalDia.gastos.toFixed(2)}</span>
-                                    <span className="text-white font-semibold">{totalDia.balance.toFixed(2)}</span>
+                                    <span className="text-white font-semibold">{formatCurrency(totalDia.ingresos)}</span>
+                                    <span className="text-red-300 font-semibold">{formatCurrency(totalDia.gastos)}</span>
+                                    <span className="text-white font-semibold">{formatCurrency(totalDia.balance)}</span>
                                 </div>
                             </div>
                         </div>

@@ -23,7 +23,9 @@ import {
     restoreReminder,
     getOtrosIngresos,
     restoreOtroIngreso,
-    clearAllData
+    clearAllData,
+    cleanN,
+    parseDate as apiParseDate
 } from './api';
 import { getCustomReports, restoreCustomReport } from './customReports';
 import { uploadFileToDrive, createSpreadsheetWithSheets, writeSheetValues, readSheetValues, getSpreadsheetDetails } from './google';
@@ -244,12 +246,16 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
     if (jsonData.carreras && Array.isArray(jsonData.carreras)) {
         const total = jsonData.carreras.length;
         for (let i = 0; i < total; i++) {
-            await restoreCarrera(jsonData.carreras[i], true);
+            const raw = jsonData.carreras[i];
+            const normalized = {
+                ...raw,
+                fechaHora: apiParseDate(raw.fechaHora),
+                taximetro: cleanN(raw.taximetro),
+                cobrado: cleanN(raw.cobrado)
+            };
+            await restoreCarrera(normalized, true);
             stats.carreras++;
             if (i % 10 === 0 && onProgress) {
-                // Progreso granular dentro del paso de carreras (20% del total asignado a este paso)
-                const stepBase = (2 / totalSteps) * 100; // paso 2 (0-indexed) es el 3ro
-                // Mejor simplificamos: solo actualizamos mensaje
                 onProgress(Math.round((2 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando carreras (${i + 1}/${total})...`);
             }
         }
@@ -261,7 +267,20 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
     if (jsonData.gastos && Array.isArray(jsonData.gastos)) {
         const total = jsonData.gastos.length;
         for (let i = 0; i < total; i++) {
-            await restoreGasto(jsonData.gastos[i], true);
+            const raw = jsonData.gastos[i];
+            const normalized = {
+                ...raw,
+                fecha: apiParseDate(raw.fecha),
+                importe: cleanN(raw.importe),
+                baseImponible: cleanN(raw.baseImponible),
+                ivaImporte: cleanN(raw.ivaImporte),
+                ivaPorcentaje: cleanN(raw.ivaPorcentaje),
+                kilometros: cleanN(raw.kilometros),
+                kmParciales: cleanN(raw.kmParciales),
+                litros: cleanN(raw.litros),
+                descuento: cleanN(raw.descuento)
+            };
+            await restoreGasto(normalized, true);
             stats.gastos++;
             if (i % 10 === 0 && onProgress) {
                 onProgress(Math.round((3 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando gastos (${i + 1}/${total})...`);
@@ -275,7 +294,15 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
     if (jsonData.turnos && Array.isArray(jsonData.turnos)) {
         const total = jsonData.turnos.length;
         for (let i = 0; i < total; i++) {
-            await restoreTurno(jsonData.turnos[i], true);
+            const raw = jsonData.turnos[i];
+            const normalized = {
+                ...raw,
+                fechaInicio: apiParseDate(raw.fechaInicio),
+                fechaFin: raw.fechaFin ? apiParseDate(raw.fechaFin) : undefined,
+                kilometrosInicio: cleanN(raw.kilometrosInicio),
+                kilometrosFin: raw.kilometrosFin ? cleanN(raw.kilometrosFin) : undefined
+            };
+            await restoreTurno(normalized, true);
             stats.turnos++;
             if (i % 10 === 0 && onProgress) {
                 onProgress(Math.round((4 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando turnos (${i + 1}/${total})...`);
@@ -780,15 +807,7 @@ const fromRows = (rows: any[][]): any[] => {
     });
 };
 
-const parseNumber = (val: any): number => {
-    if (typeof val === 'number') return val;
-    if (val === null || val === undefined || val === '') return 0;
-    if (typeof val === 'string') {
-        const clean = val.replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, '');
-        return parseFloat(clean) || 0;
-    }
-    return 0;
-};
+const parseNumber = cleanN;
 
 const parseDate = (val: any): Date | null => {
     if (!val) return null;
@@ -1072,9 +1091,9 @@ export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?
             return true;
         });
 
-        const proveedores = proveedoresRaw.map(p => ({ ...p, id: p.id || crypto.randomUUID(), createdAt: parseDate(p.createdat) || new Date() }));
-        const conceptos = conceptosRaw.map(c => ({ ...c, id: c.id || crypto.randomUUID(), createdAt: parseDate(c.createdat) || new Date() }));
-        const talleres = talleresRaw.map(t => ({ ...t, id: t.id || crypto.randomUUID(), createdAt: parseDate(t.createdat) || new Date() }));
+        const proveedores = proveedoresRaw.map(p => ({ ...p, id: p.id || crypto.randomUUID(), createdAt: apiParseDate(p.createdat) }));
+        const conceptos = conceptosRaw.map(c => ({ ...c, id: c.id || crypto.randomUUID(), createdAt: apiParseDate(c.createdat) }));
+        const talleres = talleresRaw.map(t => ({ ...t, id: t.id || crypto.randomUUID(), createdAt: apiParseDate(t.createdat) }));
         const vales = valesRaw.map(v => ({ ...v, id: v.id || crypto.randomUUID() }));
         const reminders = remindersRaw.map(r => ({ ...r, id: r.id || crypto.randomUUID() }));
         const customReports = customReportsRaw.map(cr => ({ ...cr, id: cr.id || crypto.randomUUID() }));

@@ -13,8 +13,10 @@ import {
     getTalleres,
     addProveedor,
     addConcepto,
-    addTaller
+    addTaller,
+    cleanN
 } from '../services/api';
+const safeParse = cleanN;
 import {
     getTemplates,
     saveTemplate,
@@ -135,12 +137,21 @@ const ExpensesScreen: React.FC<{ navigateTo: (page: Seccion) => void; gastoId?: 
         }
     }, [importeTotal, ivaPorcentaje, soportaIVA, descuento]);
 
+    // Los helpers cleanN y safeParse ahora se importan/calculan de api.ts
+
     useEffect(() => {
-        const l = parseFloat(litros) || 0;
-        const total = parseFloat(importeTotal) || 0;
+        const l = safeParse(litros);
+        const total = safeParse(importeTotal);
         if (l > 0 && total > 0) setPrecioPorLitro((total / l).toFixed(3));
         else setPrecioPorLitro('');
     }, [litros, importeTotal]);
+
+    const instantConsumo = useMemo(() => {
+        const l = safeParse(litros);
+        const km = safeParse(kmParciales);
+        if (l > 0 && km > 0) return ((l / km) * 100).toFixed(2);
+        return null;
+    }, [litros, kmParciales]);
 
     // -- Data Loading --
     const loadInitialData = useCallback(async () => {
@@ -192,7 +203,7 @@ const ExpensesScreen: React.FC<{ navigateTo: (page: Seccion) => void; gastoId?: 
 
     // -- Handlers --
     const saveExpense = async () => {
-        const total = parseFloat(importeTotal) || 0;
+        const total = safeParse(importeTotal);
         if (total <= 0) {
             setError('El importe total debe ser mayor a 0');
             return;
@@ -207,27 +218,32 @@ const ExpensesScreen: React.FC<{ navigateTo: (page: Seccion) => void; gastoId?: 
                 formaPago,
                 tipo: activeTab,
                 numeroFactura: numeroFactura.trim() || null,
-                baseImponible: parseFloat(baseImponible) || null,
-                ivaImporte: parseFloat(ivaImporte) || null,
-                ivaPorcentaje: parseFloat(ivaPorcentaje) || null,
-                descuento: parseFloat(descuento) || null,
+                baseImponible: safeParse(baseImponible) || null,
+                ivaImporte: safeParse(ivaImporte) || null,
+                ivaPorcentaje: safeParse(ivaPorcentaje) || null,
+                descuento: safeParse(descuento) || null,
                 notas: notas.trim() || null,
-                kilometros: parseFloat(kilometros) || null,
+                kilometros: safeParse(kilometros) || null,
             };
 
             if (activeTab === 'actividad') {
                 data.proveedor = proveedorName.trim() || null;
                 data.concepto = conceptoName.trim() || null;
-                data.kmParciales = parseFloat(kmParciales) || null;
-                data.litros = parseFloat(litros) || null;
-                data.precioPorLitro = parseFloat(precioPorLitro) || null;
+                data.kmParciales = safeParse(kmParciales) || null;
+                data.litros = safeParse(litros) || null;
+                data.precioPorLitro = safeParse(precioPorLitro) || null;
             } else {
                 data.taller = tallerName.trim() || null;
                 data.concepto = conceptoName.trim() || null;
-                data.servicios = services.filter(s => s.referencia || s.importe || s.descripcion);
+                data.servicios = (services || []).filter(s => s.referencia || s.importe || s.descripcion).map(s => ({
+                    ...s,
+                    importe: safeParse(String(s.importe)),
+                    cantidad: safeParse(String(s.cantidad)),
+                    descuentoPorcentaje: safeParse(String(s.descuentoPorcentaje))
+                }));
                 // Si el concepto es combustible en pestaña vehículo, también guardar kms específicos
                 if (conceptoName.toLowerCase().includes('carburante') || conceptoName.toLowerCase().includes('combustible')) {
-                    data.kilometrosVehiculo = parseFloat(kilometros) || null;
+                    data.kilometrosVehiculo = safeParse(kilometros) || null;
                 }
             }
 
@@ -379,26 +395,44 @@ const ExpensesScreen: React.FC<{ navigateTo: (page: Seccion) => void; gastoId?: 
                             )}
                         </div>
 
-                        {/* Bloque Combustible */}
-                        {(conceptoName.toLowerCase().includes('combustible') || conceptoName.toLowerCase().includes('carburante')) && (
-                            <div className="pt-4 mt-2 border-t border-zinc-800 space-y-4">
-                                <h3 className="text-xs font-black text-blue-500 uppercase">Datos de Repostaje</h3>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <FormField label="KM Parciales">
-                                        <TextInput type="number" placeholder="Ej: 450" value={kmParciales} onChange={e => setKmParciales(e.target.value)} />
-                                    </FormField>
-                                    <FormField label="Litros">
-                                        <TextInput type="number" placeholder="0.00" value={litros} onChange={e => setLitros(e.target.value)} />
-                                    </FormField>
-                                </div>
-                                {precioPorLitro && (
-                                    <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg flex justify-between items-center">
-                                        <span className="text-xs text-blue-400 font-bold">PRECIO CALCULADO:</span>
-                                        <span className="text-lg font-black text-blue-100">{precioPorLitro} €/L</span>
+                        {/* Bloque Combustible (Detección ampliada) */}
+                        {(
+                            conceptoName.toLowerCase().includes('combustible') ||
+                            conceptoName.toLowerCase().includes('carburante') ||
+                            conceptoName.toLowerCase().includes('gasolin') ||
+                            conceptoName.toLowerCase().includes('gasoil') ||
+                            conceptoName.toLowerCase().includes('diésel') ||
+                            conceptoName.toLowerCase().includes('diesel') ||
+                            conceptoName.toLowerCase().includes('repost') ||
+                            safeParse(litros) > 0 ||
+                            safeParse(kmParciales) > 0
+                        ) && (
+                                <div className="pt-4 mt-2 border-t border-zinc-800 space-y-4">
+                                    <h3 className="text-xs font-black text-blue-500 uppercase">Datos de Repostaje</h3>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <FormField label="KM Parciales">
+                                            <TextInput type="number" placeholder="Ej: 450" value={kmParciales} onChange={e => setKmParciales(e.target.value)} />
+                                        </FormField>
+                                        <FormField label="Litros">
+                                            <TextInput type="number" placeholder="0.00" value={litros} onChange={e => setLitros(e.target.value)} />
+                                        </FormField>
                                     </div>
-                                )}
-                            </div>
-                        )}
+                                    {precioPorLitro && (
+                                        <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg flex justify-between items-center">
+                                            <div className="flex flex-col">
+                                                <span className="text-[10px] text-blue-400 font-black uppercase">Precio/L</span>
+                                                <span className="text-lg font-black text-blue-100">{precioPorLitro} €/L</span>
+                                            </div>
+                                            {instantConsumo && (
+                                                <div className="flex flex-col items-end border-l border-blue-500/20 pl-4">
+                                                    <span className="text-[10px] text-emerald-400 font-black uppercase">Consumo</span>
+                                                    <span className="text-lg font-black text-emerald-100">{instantConsumo} L/100</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                     </FormCard>
                 ) : (
                     <FormCard title="Detalles del Vehículo">

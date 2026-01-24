@@ -24,6 +24,12 @@ const CloseTurnScreen: React.FC<CloseTurnScreenProps> = ({ navigateTo }) => {
         return isNaN(parsed.getTime()) ? new Date() : parsed;
     };
 
+    const safeParse = (val: string): number => {
+        if (!val) return 0;
+        const cleaned = val.replace(',', '.').replace(/[^\d.-]/g, '');
+        return parseFloat(cleaned) || 0;
+    };
+
     useEffect(() => {
         // Cargar turno activo
         const loadTurno = async () => {
@@ -54,8 +60,8 @@ const CloseTurnScreen: React.FC<CloseTurnScreenProps> = ({ navigateTo }) => {
             return;
         }
 
-        const kmsFin = parseFloat(kilometrosFin);
-        if (!kilometrosFin || isNaN(kmsFin) || kmsFin <= 0) {
+        const kmsFin = safeParse(kilometrosFin);
+        if (!kilometrosFin || kmsFin <= 0) {
             setError("Por favor, ingresa un valor válido de kilómetros finales");
             return;
         }

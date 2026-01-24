@@ -159,6 +159,14 @@ export interface Concepto {
     categoria?: string | null;
 }
 
+export interface Descanso {
+    id: string;
+    fechaInicio: Date;
+    fechaFin?: Date;
+    kilometrosInicio: number;
+    kilometrosFin?: number;
+}
+
 export interface Turno {
     id: string;
     fechaInicio: Date;
@@ -166,6 +174,7 @@ export interface Turno {
     fechaFin?: Date;
     kilometrosFin?: number;
     numero?: number;
+    descansos?: Descanso[];
 }
 
 export interface OtroIngreso {

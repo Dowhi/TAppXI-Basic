@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import ScreenTopBar from '../components/ScreenTopBar';
 import { Seccion } from '../types';
-import { getCarreras, getGastos, getTurnos, getOtrosIngresos } from '../services/api';
+import { getCarreras, getGastos, getTurnos, getOtrosIngresos, cleanN, parseDate } from '../services/api';
 
 interface ResumenAnualDetalladoScreenProps {
     navigateTo: (page: Seccion) => void;
@@ -50,35 +50,59 @@ const ResumenAnualDetalladoScreen: React.FC<ResumenAnualDetalladoScreenProps> = 
                         return d.getFullYear() === selectedYear && d.getMonth() === index;
                     });
 
+                    // Los helpers cleanN y parseDate ahora se importan de api.ts
+
                     // Cálculos
-                    const ingresoTaxi = mesCarreras.reduce((sum, c) => sum + (c.cobrado || 0), 0);
-                    const otrosIngresos = mesOtros.reduce((sum, oi) => sum + (oi.importe || 0), 0);
+                    const ingresoTaxi = mesCarreras.reduce((sum, c) => sum + cleanN(c.cobrado), 0);
+                    const otrosIngresos = mesOtros.reduce((sum, oi) => sum + cleanN(oi.importe), 0);
                     const ingreso = ingresoTaxi + otrosIngresos;
 
-                    const egreso = mesGastos.reduce((sum, g) => sum + (g.importe || 0), 0);
+                    const egreso = mesGastos.reduce((sum, g) => sum + cleanN(g.importe), 0);
                     const total = ingreso - egreso;
 
                     const diasUnicos = new Set();
-                    mesCarreras.forEach(c => diasUnicos.add(new Date(c.fechaHora).getDate()));
-                    mesTurnos.forEach(t => diasUnicos.add(new Date(t.fechaInicio).getDate()));
+                    mesCarreras.forEach(c => {
+                        const d = parseDate(c.fechaHora);
+                        if (d) diasUnicos.add(d.getDate());
+                    });
+                    mesTurnos.forEach(t => {
+                        const d = parseDate(t.fechaInicio);
+                        if (d) diasUnicos.add(d.getDate());
+                    });
 
-                    const kilometros = mesTurnos.reduce((sum, t) => sum + ((t.kilometrosFin || 0) - (t.kilometrosInicio || 0)), 0);
+                    const kilometros = mesTurnos.reduce((sum, t) => {
+                        const ini = cleanN(t.kilometrosInicio);
+                        const fin = cleanN(t.kilometrosFin);
+                        return sum + Math.max(0, fin - ini);
+                    }, 0);
                     const carreras = mesCarreras.length;
 
-                    const sTarjeta = mesCarreras.filter(c => c.formaPago === 'Tarjeta').reduce((sum, c) => sum + (c.cobrado || 0), 0);
-                    const sEmisora = mesCarreras.filter(c => c.emisora).reduce((sum, c) => sum + (c.cobrado || 0), 0);
-                    const sVales = mesCarreras.filter(c => c.formaPago === 'Vales').reduce((sum, c) => sum + (c.cobrado || 0), 0);
+                    const sTarjeta = mesCarreras.filter(c => c.formaPago === 'Tarjeta').reduce((sum, c) => sum + cleanN(c.cobrado), 0);
+                    const sEmisora = mesCarreras.filter(c => !!c.emisora).reduce((sum, c) => sum + cleanN(c.cobrado), 0);
+                    const sVales = mesCarreras.filter(c => c.formaPago === 'Vales').reduce((sum, c) => sum + cleanN(c.cobrado), 0);
 
                     const cTarjeta = mesCarreras.filter(c => c.formaPago === 'Tarjeta').length;
-                    const cEmisora = mesCarreras.filter(c => c.emisora).length;
+                    const cEmisora = mesCarreras.filter(c => !!c.emisora).length;
                     const vVales = mesCarreras.filter(c => c.formaPago === 'Vales').length;
 
-                    const propinas = mesCarreras.reduce((sum, c) => sum + Math.max(0, (c.cobrado || 0) - (c.taximetro || 0)), 0);
+                    const propinas = mesCarreras.reduce((sum, c) => sum + Math.max(0, cleanN(c.cobrado) - cleanN(c.taximetro)), 0);
 
-                    // Combustible / Consumo
-                    const combustibleGasto = mesGastos.filter(g => g.concepto?.toLowerCase().includes('combustible') || g.litros);
-                    const litrosTotal = combustibleGasto.reduce((sum, g) => sum + (g.litros || 0), 0);
-                    const litros100 = kilometros > 0 ? (litrosTotal / kilometros) * 100 : 0;
+                    // Combustible / Consumo (Detección mejorada)
+                    const combustibleGasto = mesGastos.filter(g => {
+                        const concepto = g.concepto?.toLowerCase() || '';
+                        const isFuelConcept = concepto.includes('combustible') || concepto.includes('carburante') || concepto.includes('gasolin') || concepto.includes('repost');
+                        const hasFuelData = cleanN(g.litros) > 0 || cleanN(g.kmParciales) > 0;
+                        return isFuelConcept || hasFuelData;
+                    });
+                    const litrosTotal = combustibleGasto.reduce((sum, g) => sum + cleanN(g.litros), 0);
+
+                    // Si no hay kms en turnos, intentar usar kmParciales de los gastos de combustible
+                    let kmsParaConsumo = kilometros;
+                    if (kmsParaConsumo <= 0) {
+                        kmsParaConsumo = combustibleGasto.reduce((sum, g) => sum + cleanN(g.kmParciales), 0);
+                    }
+
+                    const litros100 = (kmsParaConsumo > 0 && litrosTotal > 0) ? (litrosTotal / kmsParaConsumo) * 100 : 0;
 
                     return {
                         nombre,
@@ -111,8 +135,9 @@ const ResumenAnualDetalladoScreen: React.FC<ResumenAnualDetalladoScreenProps> = 
         loadYearData();
     }, [selectedYear]);
 
-    const formatCurrency = (val: number) => val.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const formatNumber = (val: number) => val.toLocaleString('es-ES');
+    const formatCurrency = (val: number) => (val === 0 || !val) ? ' ' : val.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const formatNumber = (val: number) => (val === 0 || !val) ? ' ' : val.toLocaleString('es-ES');
+    const formatAvg = (val: number, decimals: number = 1) => (val === 0 || !val) ? ' ' : val.toFixed(decimals).replace('.', ',');
 
     return (
         <div className="bg-zinc-950 min-h-screen text-zinc-100 flex flex-col p-4 bg-gradient-to-br from-zinc-950 to-zinc-900">
@@ -180,18 +205,18 @@ const ResumenAnualDetalladoScreen: React.FC<ResumenAnualDetalladoScreenProps> = 
                                 <td className={`p-2 text-right font-bold ${month.total >= 0 ? 'text-emerald-400' : 'text-red-500'}`}>
                                     {formatCurrency(month.total)}
                                 </td>
-                                <td className="p-2 text-center text-zinc-400">{month.dias}</td>
+                                <td className="p-2 text-center text-zinc-400">{formatNumber(month.dias)}</td>
                                 <td className="p-2 text-right text-zinc-400">{formatNumber(month.kilometros)}</td>
-                                <td className="p-2 text-center text-zinc-400">{month.carreras}</td>
-                                <td className="p-2 text-center text-zinc-400">{month.cTarjeta || ''}</td>
-                                <td className="p-2 text-center text-zinc-400">{month.cEmisora || ''}</td>
-                                <td className="p-2 text-center text-zinc-400">{month.vVales || ''}</td>
+                                <td className="p-2 text-center text-zinc-400">{formatNumber(month.carreras)}</td>
+                                <td className="p-2 text-center text-zinc-400">{formatNumber(month.cTarjeta)}</td>
+                                <td className="p-2 text-center text-zinc-400">{formatNumber(month.cEmisora)}</td>
+                                <td className="p-2 text-center text-zinc-400">{formatNumber(month.vVales)}</td>
                                 <td className="p-2 text-right text-zinc-400">{formatCurrency(month.sTarjeta)}</td>
                                 <td className="p-2 text-right text-zinc-400">{formatCurrency(month.sEmisora)}</td>
                                 <td className="p-2 text-right text-zinc-400">{formatCurrency(month.sVales)}</td>
-                                <td className="p-2 text-center text-zinc-400">{month.litros100.toFixed(2)}</td>
+                                <td className="p-2 text-center text-zinc-400">{formatAvg(month.litros100, 2)}</td>
                                 <td className="p-2 text-right text-zinc-400">{formatCurrency(month.propinas)}</td>
-                                <td className="p-2 text-center text-zinc-400">{month.turno1}</td>
+                                <td className="p-2 text-center text-zinc-400">{formatNumber(month.turno1)}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -202,36 +227,36 @@ const ResumenAnualDetalladoScreen: React.FC<ResumenAnualDetalladoScreenProps> = 
                                 <td className="p-2 text-right">{formatCurrency(stats.reduce((s, m) => s + m.ingreso, 0))}</td>
                                 <td className="p-2 text-right text-pink-400">{formatCurrency(stats.reduce((s, m) => s + m.egreso, 0))}</td>
                                 <td className="p-2 text-right text-emerald-400">{formatCurrency(stats.reduce((s, m) => s + m.total, 0))}</td>
-                                <td className="p-2 text-center">{stats.reduce((s, m) => s + m.dias, 0)}</td>
-                                <td className="p-2 text-right">{formatNumber(stats.reduce((s, m) => s + m.kilometros, 0))}</td>
-                                <td className="p-2 text-center">{stats.reduce((s, m) => s + m.carreras, 0)}</td>
-                                <td className="p-2 text-center">{stats.reduce((s, m) => s + m.cTarjeta, 0)}</td>
-                                <td className="p-2 text-center">{stats.reduce((s, m) => s + m.cEmisora, 0)}</td>
-                                <td className="p-2 text-center">{stats.reduce((s, m) => s + m.vVales, 0)}</td>
-                                <td className="p-2 text-right">{formatCurrency(stats.reduce((s, m) => s + m.sTarjeta, 0))}</td>
-                                <td className="p-2 text-right">{formatCurrency(stats.reduce((s, m) => s + m.sEmisora, 0))}</td>
-                                <td className="p-2 text-right">{formatCurrency(stats.reduce((s, m) => s + m.sVales, 0))}</td>
-                                <td className="p-2 text-center">{(stats.filter(m => m.litros100 > 0).reduce((s, m) => s + m.litros100, 0) / (stats.filter(m => m.litros100 > 0).length || 1)).toFixed(2)}</td>
-                                <td className="p-2 text-right">{formatCurrency(stats.reduce((s, m) => s + m.propinas, 0))}</td>
-                                <td className="p-2 text-center">{stats.reduce((s, m) => s + m.turno1, 0)}</td>
+                                <td className="p-2 text-center">{formatNumber(stats.reduce((s, m) => s + (m.dias || 0), 0))}</td>
+                                <td className="p-2 text-right">{formatNumber(stats.reduce((s, m) => s + (m.kilometros || 0), 0))}</td>
+                                <td className="p-2 text-center">{formatNumber(stats.reduce((s, m) => s + (m.carreras || 0), 0))}</td>
+                                <td className="p-2 text-center">{formatNumber(stats.reduce((s, m) => s + (m.cTarjeta || 0), 0))}</td>
+                                <td className="p-2 text-center">{formatNumber(stats.reduce((s, m) => s + (m.cEmisora || 0), 0))}</td>
+                                <td className="p-2 text-center">{formatNumber(stats.reduce((s, m) => s + (m.vVales || 0), 0))}</td>
+                                <td className="p-2 text-right">{formatCurrency(stats.reduce((s, m) => s + (m.sTarjeta || 0), 0))}</td>
+                                <td className="p-2 text-right">{formatCurrency(stats.reduce((s, m) => s + (m.sEmisora || 0), 0))}</td>
+                                <td className="p-2 text-right">{formatCurrency(stats.reduce((s, m) => s + (m.sVales || 0), 0))}</td>
+                                <td className="p-2 text-center">{formatAvg(stats.filter(m => m.litros100 > 0).reduce((s, m) => s + m.litros100, 0) / (stats.filter(m => m.litros100 > 0).length || 1), 2)}</td>
+                                <td className="p-2 text-right">{formatCurrency(stats.reduce((s, m) => s + (m.propinas || 0), 0))}</td>
+                                <td className="p-2 text-center">{formatNumber(stats.reduce((s, m) => s + (m.turno1 || 0), 0))}</td>
                             </tr>
                             <tr className="bg-zinc-950 text-zinc-400 font-semibold border-t border-zinc-800 text-[9px]">
                                 <td className="p-2 uppercase sticky left-0 z-20 bg-zinc-950 border-r border-zinc-800">MEDIA</td>
                                 <td className="p-2 text-right">{formatCurrency(stats.reduce((s, m) => s + m.ingreso, 0) / 12)}</td>
                                 <td className="p-2 text-right text-pink-400/80">{formatCurrency(stats.reduce((s, m) => s + m.egreso, 0) / 12)}</td>
-                                <td className="p-2 text-right text-emerald-400/80">{formatCurrency(stats.reduce((s, m) => s + m.total, 0) / 12)}</td>
-                                <td className="p-2 text-center">{(stats.reduce((s, m) => s + m.dias, 0) / 12).toFixed(1)}</td>
-                                <td className="p-2 text-right">{formatNumber(Math.round(stats.reduce((s, m) => s + m.kilometros, 0) / 12))}</td>
-                                <td className="p-2 text-center">{(stats.reduce((s, m) => s + m.carreras, 0) / 12).toFixed(1)}</td>
-                                <td className="p-2 text-center">{(stats.reduce((s, m) => s + m.cTarjeta, 0) / 12).toFixed(1)}</td>
-                                <td className="p-2 text-center">{(stats.reduce((s, m) => s + m.cEmisora, 0) / 12).toFixed(1)}</td>
-                                <td className="p-2 text-center">{(stats.reduce((s, m) => s + m.vVales, 0) / 12).toFixed(1)}</td>
-                                <td className="p-2 text-right">{formatCurrency(stats.reduce((s, m) => s + m.sTarjeta, 0) / 12)}</td>
-                                <td className="p-2 text-right">{formatCurrency(stats.reduce((s, m) => s + m.sEmisora, 0) / 12)}</td>
-                                <td className="p-2 text-right">{formatCurrency(stats.reduce((s, m) => s + m.sVales, 0) / 12)}</td>
-                                <td className="p-2 text-center">—</td>
-                                <td className="p-2 text-right">{formatCurrency(stats.reduce((s, m) => s + m.propinas, 0) / 12)}</td>
-                                <td className="p-2 text-center">{(stats.reduce((s, m) => s + m.turno1, 0) / 12).toFixed(1)}</td>
+                                <td className="p-2 text-right text-emerald-400/80">{formatCurrency(stats.reduce((s, m) => s + (m.total || 0), 0) / 12)}</td>
+                                <td className="p-2 text-center">{formatAvg(stats.reduce((s, m) => s + (m.dias || 0), 0) / 12, 1)}</td>
+                                <td className="p-2 text-right">{formatNumber(Math.round(stats.reduce((s, m) => s + (m.kilometros || 0), 0) / 12))}</td>
+                                <td className="p-2 text-center">{formatAvg(stats.reduce((s, m) => s + (m.carreras || 0), 0) / 12, 1)}</td>
+                                <td className="p-2 text-center">{formatAvg(stats.reduce((s, m) => s + (m.cTarjeta || 0), 0) / 12, 1)}</td>
+                                <td className="p-2 text-center">{formatAvg(stats.reduce((s, m) => s + (m.cEmisora || 0), 0) / 12, 1)}</td>
+                                <td className="p-2 text-center">{formatAvg(stats.reduce((s, m) => s + (m.vVales || 0), 0) / 12, 1)}</td>
+                                <td className="p-2 text-right">{formatCurrency(stats.reduce((s, m) => s + (m.sTarjeta || 0), 0) / 12)}</td>
+                                <td className="p-2 text-right">{formatCurrency(stats.reduce((s, m) => s + (m.sEmisora || 0), 0) / 12)}</td>
+                                <td className="p-2 text-right">{formatCurrency(stats.reduce((s, m) => s + (m.sVales || 0), 0) / 12)}</td>
+                                <td className="p-2 text-center">{formatAvg(stats.filter(m => (m.litros100 ?? 0) > 0).reduce((s, m) => s + (m.litros100 ?? 0), 0) / (stats.filter(m => (m.litros100 ?? 0) > 0).length || 1), 2)}</td>
+                                <td className="p-2 text-right">{formatCurrency(stats.reduce((s, m) => s + (m.propinas || 0), 0) / 12)}</td>
+                                <td className="p-2 text-center">{formatAvg(stats.reduce((s, m) => s + (m.turno1 || 0), 0) / 12, 1)}</td>
                             </tr>
                         </tfoot>
                     )}

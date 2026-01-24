@@ -35,6 +35,12 @@ const EditTurnScreen: React.FC<EditTurnScreenProps> = ({ navigateTo, turnoId }) 
         return isNaN(parsed.getTime()) ? new Date() : parsed;
     };
 
+    const safeParse = (val: string): number => {
+        if (!val) return 0;
+        const cleaned = val.replace(',', '.').replace(/[^\d.-]/g, '');
+        return parseFloat(cleaned) || 0;
+    };
+
     // Estados del formulario
     const [fechaInicio, setFechaInicio] = useState('');
     const [horaInicio, setHoraInicio] = useState('');
@@ -112,8 +118,8 @@ const EditTurnScreen: React.FC<EditTurnScreenProps> = ({ navigateTo, turnoId }) 
         if (!turno) return;
 
         // Validar kilómetros iniciales
-        const kmsInicio = parseFloat(kilometrosInicio);
-        if (isNaN(kmsInicio) || kmsInicio <= 0) {
+        const kmsInicio = safeParse(kilometrosInicio);
+        if (kmsInicio <= 0) {
             setError("Los kilómetros iniciales deben ser un valor válido mayor a 0");
             return;
         }
@@ -121,8 +127,8 @@ const EditTurnScreen: React.FC<EditTurnScreenProps> = ({ navigateTo, turnoId }) 
         // Validar kilómetros finales si se proporcionan
         let kmsFin: number | undefined = undefined;
         if (kilometrosFin.trim() !== '') {
-            kmsFin = parseFloat(kilometrosFin);
-            if (isNaN(kmsFin) || kmsFin <= 0) {
+            kmsFin = safeParse(kilometrosFin);
+            if (kmsFin <= 0) {
                 setError("Los kilómetros finales deben ser un valor válido mayor a 0");
                 return;
             }

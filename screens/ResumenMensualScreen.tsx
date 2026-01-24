@@ -57,7 +57,7 @@ const ResumenMensualScreen: React.FC<ResumenMensualScreenProps> = ({ navigateTo 
 
     // Función helper para formatear valores: si es 0, retorna cadena vacía
     const formatValue = (value: number): string => {
-        if (value === 0) return '';
+        if (value === 0) return ' ';
         return `${value.toFixed(2).replace('.', ',')} €`;
     };
 
@@ -293,11 +293,11 @@ const ResumenMensualScreen: React.FC<ResumenMensualScreenProps> = ({ navigateTo 
                     <div className="flex items-center">
                         <span className="text-zinc-100 font-bold uppercase tracking-wide">Total</span>
                     </div>
-                    <div className="text-cyan-300 text-right font-bold flex items-center justify-end whitespace-nowrap">{totales.ingresosTotal.toFixed(2)} €</div>
-                    <div className="text-red-400 text-right font-bold flex items-center justify-end whitespace-nowrap">{totales.gastosTotal.toFixed(2)} €</div>
+                    <div className="text-cyan-300 text-right font-bold flex items-center justify-end whitespace-nowrap">{formatValue(totales.ingresosTotal)}</div>
+                    <div className="text-red-400 text-right font-bold flex items-center justify-end whitespace-nowrap">{formatValue(totales.gastosTotal)}</div>
                     <div className={`text-right font-bold flex items-center justify-end whitespace-nowrap ${totales.totalGeneral >= 0 ? 'text-emerald-400' : 'text-red-400'
                         }`}>
-                        {totales.totalGeneral.toFixed(2)} €
+                        {formatValue(totales.totalGeneral)}
                     </div>
                 </div>
             </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Seccion, Gasto } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
 import ScreenTopBar from '../components/ScreenTopBar';
-import { removeDuplicates, getGastosByMonth } from '../services/api';
+import { removeDuplicates, getGastosByMonth, getMaintenanceIntervals, saveMaintenanceIntervals, MaintenanceIntervals, deleteMonthlyData } from '../services/api';
 import { useToast } from '../components/Toast';
 
 const WalletIcon = () => (
@@ -10,6 +10,12 @@ const WalletIcon = () => (
         <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
         <path d="M20 10v4" />
         <circle cx="12" cy="12" r="2" />
+    </svg>
+);
+
+const ToolsIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.7-3.7a2 2 0 0 1 0 2.8l-3.2 3.2-1.6-1.6a1 1 0 0 0-1.4 0l-5.6 5.6a2 2 0 0 1-2.8 0l-1.6-1.6a2 2 0 0 1 0-2.8l5.6-5.6a1 1 0 0 0 0-1.4l-1.6-1.6a1 1 0 0 0-1.4 0L2.3 8.7a2 2 0 0 0 0 2.8l3.2 3.2-1.6 1.6a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.7-3.7a2 2 0 0 1 0-2.8l-3.2-3.2 1.6-1.6a1 1 0 0 0 0-1.4l1.6-1.6z" />
     </svg>
 );
 
@@ -75,6 +81,9 @@ const VariosScreen: React.FC<VariosScreenProps> = ({ navigateTo }) => {
     const { isDark } = useTheme();
     const { showToast } = useToast();
     const [isCleaning, setIsCleaning] = useState(false);
+    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    const [isResetting, setIsResetting] = useState(false);
 
     // History State
     const now = new Date();
@@ -108,6 +117,26 @@ const VariosScreen: React.FC<VariosScreenProps> = ({ navigateTo }) => {
         setViewDate(newDate);
     };
 
+    // Maintenance State
+    const [maintenance, setMaintenance] = useState<MaintenanceIntervals>({
+        aceite: 15000,
+        ruedas: 40000,
+        filtros: 15000,
+        frenos: 30000,
+        inspeccion: 50000
+    });
+
+    useEffect(() => {
+        getMaintenanceIntervals().then(setMaintenance);
+    }, []);
+
+    const updateMaintenanceField = async (field: keyof MaintenanceIntervals, value: string) => {
+        const numValue = parseInt(value) || 0;
+        const newMaintenance = { ...maintenance, [field]: numValue };
+        setMaintenance(newMaintenance);
+        await saveMaintenanceIntervals(newMaintenance);
+    };
+
     const handleCleanDuplicates = async () => {
         if (!window.confirm("Se buscarán y eliminarán registros duplicados (Exactamente el mismo contenido). ¿Continuar?")) {
             return;
@@ -122,6 +151,24 @@ const VariosScreen: React.FC<VariosScreenProps> = ({ navigateTo }) => {
             showToast('❌ Error al limpiar duplicados.', 'error');
         } finally {
             setIsCleaning(false);
+        }
+    };
+
+    const handleResetMonth = async () => {
+        const monthName = new Intl.DateTimeFormat('es-ES', { month: 'long' }).format(new Date(selectedYear, selectedMonth));
+        if (!window.confirm(`¿Estás SEGURO de que quieres BORRAR TODO (Carreras, Gastos y Turnos) de ${monthName} de ${selectedYear}?\n\nEsta acción NO se puede deshacer y dejará el mes a cero.`)) {
+            return;
+        }
+
+        setIsResetting(true);
+        try {
+            await deleteMonthlyData(selectedMonth, selectedYear);
+            showToast(`Mes de ${monthName} de ${selectedYear} reseteado correctamente`, 'success');
+        } catch (error) {
+            console.error('Error resetting month:', error);
+            showToast('Error al resetear el mes', 'error');
+        } finally {
+            setIsResetting(false);
         }
     };
 
@@ -216,6 +263,124 @@ const VariosScreen: React.FC<VariosScreenProps> = ({ navigateTo }) => {
                             <p className={`text-[10px] ${isDark ? 'text-zinc-500' : 'text-zinc-400'} mt-0.5 leading-tight`}>Eliminar registros duplicados de gastos y carreras.</p>
                         </div>
                     </button>
+                </div>
+
+                {/* Maintenance Configuration Card */}
+                <div className={`mt-2 p-4 rounded-2xl ${isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-200'} border shadow-xl`}>
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2 bg-blue-500/10 text-blue-500 rounded-lg flex-shrink-0">
+                            <ToolsIcon />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-base">Próximo Mantenimiento (km)</h3>
+                            <p className="text-[10px] text-zinc-500 uppercase tracking-tighter font-semibold">Configura tus intervalos</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1">Cambio Aceite</label>
+                            <div className="relative">
+                                <input
+                                    type="number"
+                                    value={maintenance.aceite === 0 ? '' : maintenance.aceite}
+                                    onChange={(e) => updateMaintenanceField('aceite', e.target.value)}
+                                    className={`w-full py-2 px-3 pr-8 rounded-xl text-sm font-bold border transition-all ${isDark ? 'bg-zinc-800 border-zinc-700 text-cyan-400 focus:border-cyan-500' : 'bg-zinc-100 border-zinc-200 text-blue-600 focus:border-blue-400'} outline-none`}
+                                    placeholder="15000"
+                                />
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-zinc-500 font-bold">km</span>
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1">Neumáticos</label>
+                            <div className="relative">
+                                <input
+                                    type="number"
+                                    value={maintenance.ruedas === 0 ? '' : maintenance.ruedas}
+                                    onChange={(e) => updateMaintenanceField('ruedas', e.target.value)}
+                                    className={`w-full py-2 px-3 pr-8 rounded-xl text-sm font-bold border transition-all ${isDark ? 'bg-zinc-800 border-zinc-700 text-cyan-400 focus:border-cyan-500' : 'bg-zinc-100 border-zinc-200 text-blue-600 focus:border-blue-400'} outline-none`}
+                                    placeholder="40000"
+                                />
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-zinc-500 font-bold">km</span>
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1">Filtros</label>
+                            <div className="relative">
+                                <input
+                                    type="number"
+                                    value={maintenance.filtros === 0 ? '' : maintenance.filtros}
+                                    onChange={(e) => updateMaintenanceField('filtros', e.target.value)}
+                                    className={`w-full py-2 px-3 pr-8 rounded-xl text-sm font-bold border transition-all ${isDark ? 'bg-zinc-800 border-zinc-700 text-cyan-400 focus:border-cyan-500' : 'bg-zinc-100 border-zinc-200 text-blue-600 focus:border-blue-400'} outline-none`}
+                                    placeholder="15000"
+                                />
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-zinc-500 font-bold">km</span>
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1">Frenos / Pastillas</label>
+                            <div className="relative">
+                                <input
+                                    type="number"
+                                    value={maintenance.frenos === 0 ? '' : maintenance.frenos}
+                                    onChange={(e) => updateMaintenanceField('frenos', e.target.value)}
+                                    className={`w-full py-2 px-3 pr-8 rounded-xl text-sm font-bold border transition-all ${isDark ? 'bg-zinc-800 border-zinc-700 text-cyan-400 focus:border-cyan-500' : 'bg-zinc-100 border-zinc-200 text-blue-600 focus:border-blue-400'} outline-none`}
+                                    placeholder="30000"
+                                />
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-zinc-500 font-bold">km</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Reset Data Card */}
+                <div className={`mt-2 p-4 rounded-2xl ${isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-200'} border shadow-xl`}>
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2 bg-red-500/10 text-red-500 rounded-lg flex-shrink-0">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-base">Limpieza de Datos por Mes</h3>
+                            <p className="text-[10px] text-zinc-500 uppercase tracking-tighter font-semibold">Resetea ingresos, gastos y turnos</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1">Mes</label>
+                                <select
+                                    value={selectedMonth}
+                                    onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                                    className={`w-full py-2 px-3 rounded-xl text-sm font-bold border transition-all ${isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-100' : 'bg-zinc-100 border-zinc-200 text-zinc-900'} outline-none`}
+                                >
+                                    {['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'].map((m, i) => (
+                                        <option key={i} value={i}>{m}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1">Año</label>
+                                <select
+                                    value={selectedYear}
+                                    onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                                    className={`w-full py-2 px-3 rounded-xl text-sm font-bold border transition-all ${isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-100' : 'bg-zinc-100 border-zinc-200 text-zinc-900'} outline-none`}
+                                >
+                                    {[2024, 2025, 2026, 2027].map(y => (
+                                        <option key={y} value={y}>{y}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={handleResetMonth}
+                            disabled={isResetting}
+                            className={`w-full py-3 rounded-xl font-black text-xs tracking-widest transition-all active:scale-95 shadow-md ${isResetting ? 'bg-zinc-800 text-zinc-500' : 'bg-red-600 text-white hover:bg-red-700 shadow-red-900/40'}`}
+                        >
+                            {isResetting ? 'RESETEANDO...' : 'BORRAR DATOS DEL MES'}
+                        </button>
+                    </div>
                 </div>
 
                 {/* Historique Comparison Card */}
