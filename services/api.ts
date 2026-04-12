@@ -1,3 +1,4 @@
+import { firebaseSync } from './firebaseSync';
 ﻿// services/api.ts - Reimplemented using IndexedDB
 import { addItem, getAllItems, getItem, deleteItem, clearStore } from '../src/lib/indexedDB';
 // import { syncService } from './syncService'; // DESHABILITADO - archivo eliminado
@@ -108,7 +109,7 @@ export async function getCarrera(id: string): Promise<CarreraVista | undefined> 
 export async function addCarrera(carrera: Omit<CarreraVista, 'id'> & { id?: string }): Promise<string> {
     const key = carrera.id ?? crypto.randomUUID();
     await addItem('carreras', key, { ...carrera, id: key });
-    // syncService.create('Carreras', { ...carrera, id: key }); // DESHABILITADO
+    firebaseSync.create('Carreras', { ...carrera, id: key });
     return key;
 }
 
@@ -117,12 +118,12 @@ export async function updateCarrera(id: string, updates: Partial<CarreraVista>):
     if (!existing) throw new Error('Carrera not found');
     const updated = { ...existing, ...updates };
     await addItem('carreras', id, updated);
-    // syncService.update('Carreras', updated); // DESHABILITADO
+    firebaseSync.update('Carreras', updated);
 }
 
 export async function deleteCarrera(id: string): Promise<void> {
     await deleteItem('carreras', id);
-    // syncService.delete ('Carreras', id); // DESHABILITADO
+    firebaseSync.delete('Carreras', id);
 }
 
 export async function getCarrerasByDate(date: Date): Promise<CarreraVista[]> {
@@ -155,12 +156,12 @@ export async function addGasto(gasto: Omit<Gasto, 'id'> & { id?: string }): Prom
 
     // Sync Gasto
     const fullGasto = { ...gasto, id: key };
-    // syncService.create('Gastos', fullGasto); // DESHABILITADO
+    firebaseSync.create('Gastos', fullGasto);
 
     // Sync Servicios (Nested)
     if (gasto.servicios && gasto.servicios.length > 0) {
         // gasto.servicios.forEach(s => {
-        //     // syncService.create('Incisos', { ...s, gastoId: key, id: crypto.randomUUID() });
+        //     firebaseSync.create('Incisos', { ...s, gastoId: key, id: crypto.randomUUID() });
         // });
     }
 
@@ -173,12 +174,12 @@ export async function updateGasto(id: string, updates: Partial<Gasto>): Promise<
     const updated = { ...existing, ...updates };
     await addItem('gastos', id, updated);
 
-    // syncService.update('Gastos', updated); // DESHABILITADO
+    firebaseSync.update('Gastos', updated);
 }
 
 export async function deleteGasto(id: string): Promise<void> {
     await deleteItem('gastos', id);
-    // syncService.delete ('Gastos', id); // DESHABILITADO
+    firebaseSync.delete('Gastos', id);
 }
 
 export async function getGastosByDate(date: Date): Promise<Gasto[]> {
@@ -208,7 +209,7 @@ export async function getTurno(id: string): Promise<Turno | undefined> {
 export async function addTurno(turno: Omit<Turno, 'id'> & { id?: string }): Promise<string> {
     const key = turno.id ?? crypto.randomUUID();
     await addItem('turnos', key, { ...turno, id: key });
-    // syncService.create('Turnos', { ...turno, id: key }); // DESHABILITADO
+    firebaseSync.create('Turnos', { ...turno, id: key });
     return key;
 }
 
@@ -263,7 +264,7 @@ export async function getProveedores(): Promise<Proveedor[]> {
 export async function addProveedor(proveedor: Omit<Proveedor, 'id'> & { id?: string }): Promise<string> {
     const key = proveedor.id ?? crypto.randomUUID();
     await addItem('proveedores', key, { ...proveedor, id: key });
-    // syncService.create('Proveedores', { ...proveedor, id: key }); // DESHABILITADO
+    firebaseSync.create('Proveedores', { ...proveedor, id: key });
     return key;
 }
 
@@ -272,12 +273,12 @@ export async function updateProveedor(id: string, updates: Partial<Proveedor>): 
     if (!existing) throw new Error('Proveedor not found');
     const updated = { ...existing, ...updates };
     await addItem('proveedores', id, updated);
-    // syncService.update('Proveedores', updated); // DESHABILITADO
+    firebaseSync.update('Proveedores', updated);
 }
 
 export async function deleteProveedor(id: string): Promise<void> {
     await deleteItem('proveedores', id);
-    // syncService.delete ('Proveedores', id); // DESHABILITADO
+    firebaseSync.delete('Proveedores', id);
 }
 
 /** Conceptos */
@@ -288,7 +289,7 @@ export async function getConceptos(): Promise<Concepto[]> {
 export async function addConcepto(concepto: Omit<Concepto, 'id'> & { id?: string }): Promise<string> {
     const key = concepto.id ?? crypto.randomUUID();
     await addItem('conceptos', key, { ...concepto, id: key });
-    // syncService.create('Conceptos', { ...concepto, id: key }); // DESHABILITADO
+    firebaseSync.create('Conceptos', { ...concepto, id: key });
     return key;
 }
 
@@ -297,12 +298,12 @@ export async function updateConcepto(id: string, updates: Partial<Concepto>): Pr
     if (!existing) throw new Error('Concepto not found');
     const updated = { ...existing, ...updates };
     await addItem('conceptos', id, updated);
-    // syncService.update('Conceptos', updated); // DESHABILITADO
+    firebaseSync.update('Conceptos', updated);
 }
 
 export async function deleteConcepto(id: string): Promise<void> {
     await deleteItem('conceptos', id);
-    // syncService.delete ('Conceptos', id); // DESHABILITADO
+    firebaseSync.delete('Conceptos', id);
 }
 export async function getTalleres(): Promise<Taller[]> {
     return getAllItems('talleres');
@@ -311,7 +312,7 @@ export async function getTalleres(): Promise<Taller[]> {
 export async function addTaller(taller: Omit<Taller, 'id'> & { id?: string }): Promise<string> {
     const key = taller.id ?? crypto.randomUUID();
     await addItem('talleres', key, { ...taller, id: key });
-    // syncService.create('Talleres', { ...taller, id: key }); // DESHABILITADO
+    firebaseSync.create('Talleres', { ...taller, id: key });
     return key;
 }
 
@@ -320,12 +321,12 @@ export async function updateTaller(id: string, updates: Partial<Taller>): Promis
     if (!existing) throw new Error('Taller not found');
     const updated = { ...existing, ...updates };
     await addItem('talleres', id, updated);
-    // syncService.update('Talleres', updated); // DESHABILITADO
+    firebaseSync.update('Talleres', updated);
 }
 
 export async function deleteTaller(id: string): Promise<void> {
     await deleteItem('talleres', id);
-    // syncService.delete ('Talleres', id); // DESHABILITADO
+    firebaseSync.delete('Talleres', id);
 }
 export async function closeTurno(id: string, kilometrosFin: number): Promise<void> {
     const turno = await getItem<Turno>('turnos', id);
@@ -338,7 +339,7 @@ export async function closeTurno(id: string, kilometrosFin: number): Promise<voi
     };
 
     await addItem('turnos', id, updatedTurno);
-    // syncService.update('Turnos', updatedTurno); // DESHABILITADO
+    firebaseSync.update('Turnos', updatedTurno);
 }
 
 export async function reopenTurno(id: string): Promise<void> {
@@ -403,7 +404,7 @@ export async function getReminders(): Promise<Reminder[]> {
 export async function addReminder(reminder: Reminder): Promise<string> {
     const key = reminder.id ?? crypto.randomUUID();
     await addItem('reminders', key, { ...reminder, id: key });
-    // syncService.create('Recordatorios', { ...reminder, id: key }); // DESHABILITADO
+    firebaseSync.create('Recordatorios', { ...reminder, id: key });
     return key;
 }
 
@@ -412,12 +413,12 @@ export async function updateReminder(id: string, updates: Partial<Reminder>): Pr
     if (!existing) throw new Error('Reminder not found');
     const updated = { ...existing, ...updates };
     await addItem('reminders', id, updated);
-    // syncService.update('Recordatorios', updated); // DESHABILITADO
+    firebaseSync.update('Recordatorios', updated);
 }
 
 export async function deleteReminder(id: string): Promise<void> {
     await deleteItem('reminders', id);
-    // syncService.delete ('Recordatorios', id); // DESHABILITADO
+    firebaseSync.delete('Recordatorios', id);
 }
 
 /** Otros Ingresos */
@@ -432,7 +433,7 @@ export async function getOtroIngreso(id: string): Promise<OtroIngreso | undefine
 export async function addOtroIngreso(entry: Omit<OtroIngreso, 'id'> & { id?: string }): Promise<string> {
     const key = entry.id ?? crypto.randomUUID();
     await addItem('otrosIngresos', key, { ...entry, id: key });
-    // syncService.create('OtrosIngresos', { ...entry, id: key }); // DESHABILITADO
+    firebaseSync.create('OtrosIngresos', { ...entry, id: key });
     return key;
 }
 
@@ -441,12 +442,12 @@ export async function updateOtroIngreso(id: string, updates: Partial<OtroIngreso
     if (!existing) throw new Error('OtroIngreso not found');
     const updated = { ...existing, ...updates };
     await addItem('otrosIngresos', id, updated);
-    // syncService.update('OtrosIngresos', updated); // DESHABILITADO
+    firebaseSync.update('OtrosIngresos', updated);
 }
 
 export async function deleteOtroIngreso(id: string): Promise<void> {
     await deleteItem('otrosIngresos', id);
-    // syncService.delete ('OtrosIngresos', id); // DESHABILITADO
+    firebaseSync.delete('OtrosIngresos', id);
 }
 
 export async function getOtrosIngresosByDateRange(start: Date, end: Date): Promise<OtroIngreso[]> {
@@ -459,7 +460,7 @@ export async function getOtrosIngresosByDateRange(start: Date, end: Date): Promi
 
 export async function restoreOtroIngreso(entry: any, skipSync = false): Promise<void> {
     await addItem('otrosIngresos', entry.id, entry);
-    // if (!skipSync) syncService.create('OtrosIngresos', { ...entry, id: entry.id });
+    if (!skipSync) firebaseSync.create('OtrosIngresos', { ...entry, id: entry.id });
 }
 
 // ...
@@ -603,7 +604,7 @@ export async function saveAjustes(ajustes: any, skipSync = false): Promise<void>
     if (!skipSync) {
         // Sync each setting key individually
         for (const [key, value] of Object.entries(ajustes)) {
-            // syncService.update('Ajustes', { clave: key, valor: value }); // DESHABILITADO
+            firebaseSync.update('Ajustes', { clave: key, valor: value });
         }
     }
 }
@@ -616,7 +617,7 @@ export async function getBreakConfiguration(): Promise<any> {
 
 export async function saveBreakConfiguration(config: any, skipSync = false): Promise<void> {
     await addItem('settings', 'breakConfig', { ...config, key: 'breakConfig' });
-    // if (!skipSync) syncService.update('Ajustes', { clave: 'breakConfiguration', valor: config });
+    if (!skipSync) firebaseSync.update('Ajustes', { clave: 'breakConfiguration', valor: config });
 }
 
 /** Maintenance Intervals */
@@ -674,7 +675,7 @@ export async function getValesDirectory(): Promise<ValeDirectoryEntry[]> {
 export async function addValeDirectoryEntry(entry: Omit<ValeDirectoryEntry, 'id'> & { id?: string }): Promise<string> {
     const key = entry.id ?? crypto.randomUUID();
     await addItem('vales', key, { ...entry, id: key });
-    // syncService.create('Vales', { ...entry, id: key }); // DESHABILITADO
+    firebaseSync.create('Vales', { ...entry, id: key });
     return key;
 }
 
@@ -683,12 +684,12 @@ export async function updateValeDirectoryEntry(id: string, updates: Partial<Vale
     if (!existing) throw new Error('Vale directory entry not found');
     const updated = { ...existing, ...updates };
     await addItem('vales', id, updated);
-    // syncService.update('Vales', updated); // DESHABILITADO
+    firebaseSync.update('Vales', updated);
 }
 
 export async function deleteValeDirectoryEntry(id: string): Promise<void> {
     await deleteItem('vales', id);
-    // syncService.delete ('Vales', id); // DESHABILITADO
+    firebaseSync.delete('Vales', id);
 }
 
 export async function getExcepciones(): Promise<Excepcion[]> {
@@ -698,7 +699,7 @@ export async function getExcepciones(): Promise<Excepcion[]> {
 export async function addExcepcion(excepcion: Omit<Excepcion, 'id'> & { id?: string }): Promise<string> {
     const key = excepcion.id ?? crypto.randomUUID();
     await addItem('excepciones', key, { ...excepcion, id: key });
-    // syncService.create('Excepciones', { ...excepcion, id: key }); // DESHABILITADO
+    firebaseSync.create('Excepciones', { ...excepcion, id: key });
     return key;
 }
 
@@ -707,17 +708,17 @@ export async function updateExcepcion(id: string, updates: Partial<Excepcion>): 
     if (!existing) throw new Error('Excepcion not found');
     const updated = { ...existing, ...updates };
     await addItem('excepciones', id, updated);
-    // syncService.update('Excepciones', updated); // DESHABILITADO
+    firebaseSync.update('Excepciones', updated);
 }
 
 export async function deleteExcepcion(id: string): Promise<void> {
     await deleteItem('excepciones', id);
-    // syncService.delete ('Excepciones', id); // DESHABILITADO
+    firebaseSync.delete('Excepciones', id);
 }
 
 export async function restoreExcepcion(excepcion: any, skipSync = false): Promise<void> {
     await addItem('excepciones', excepcion.id, excepcion);
-    // if (!skipSync) syncService.create('Excepciones', { ...excepcion, id: excepcion.id });
+    if (!skipSync) firebaseSync.create('Excepciones', { ...excepcion, id: excepcion.id });
 }
 
 export async function isRestDay(date: Date): Promise<boolean> {
@@ -739,44 +740,44 @@ export async function isRestDay(date: Date): Promise<boolean> {
 /** Restore Functions (Wrappers) */
 export async function restoreCarrera(carrera: any, skipSync = false): Promise<void> {
     await addItem('carreras', carrera.id, carrera);
-    // if (!skipSync) syncService.create('Carreras', { ...carrera, id: carrera.id });
+    if (!skipSync) firebaseSync.create('Carreras', { ...carrera, id: carrera.id });
 }
 export async function restoreGasto(gasto: any, skipSync = false): Promise<void> {
     await addItem('gastos', gasto.id, gasto);
     if (!skipSync) {
         // Sync Gasto
-        // syncService.create('Gastos', { ...gasto, id: gasto.id }); // DESHABILITADO
+        firebaseSync.create('Gastos', { ...gasto, id: gasto.id });
         // Sync Servicios (Nested)
         if (gasto.servicios && gasto.servicios.length > 0) {
             gasto.servicios.forEach((s: any) => {
-                // syncService.create('Incisos', { ...s, gastoId: gasto.id, id: s.id || crypto.randomUUID() });
+                firebaseSync.create('Incisos', { ...s, gastoId: gasto.id, id: s.id || crypto.randomUUID() });
             });
         }
     }
 }
 export async function restoreTurno(turno: any, skipSync = false): Promise<void> {
     await addItem('turnos', turno.id, turno);
-    // if (!skipSync) syncService.create('Turnos', { ...turno, id: turno.id });
+    if (!skipSync) firebaseSync.create('Turnos', { ...turno, id: turno.id });
 }
 export async function restoreProveedor(proveedor: any, skipSync = false): Promise<void> {
     await addItem('proveedores', proveedor.id, proveedor);
-    // if (!skipSync) syncService.create('Proveedores', { ...proveedor, id: proveedor.id });
+    if (!skipSync) firebaseSync.create('Proveedores', { ...proveedor, id: proveedor.id });
 }
 export async function restoreConcepto(concepto: any, skipSync = false): Promise<void> {
     await addItem('conceptos', concepto.id, concepto);
-    // if (!skipSync) syncService.create('Conceptos', { ...concepto, id: concepto.id });
+    if (!skipSync) firebaseSync.create('Conceptos', { ...concepto, id: concepto.id });
 }
 export async function restoreTaller(taller: any, skipSync = false): Promise<void> {
     await addItem('talleres', taller.id, taller);
-    // if (!skipSync) syncService.create('Talleres', { ...taller, id: taller.id });
+    if (!skipSync) firebaseSync.create('Talleres', { ...taller, id: taller.id });
 }
 export async function restoreValeDirectoryEntry(entry: any, skipSync = false): Promise<void> {
     await addItem('vales', entry.id, entry);
-    // if (!skipSync) syncService.create('Vales', { ...entry, id: entry.id });
+    if (!skipSync) firebaseSync.create('OtrosIngresos', { ...entry, id: entry.id });
 }
 export async function restoreReminder(reminder: any, skipSync = false): Promise<void> {
     await addItem('reminders', reminder.id, reminder);
-    // if (!skipSync) syncService.create('Recordatorios', { ...reminder, id: reminder.id });
+    if (!skipSync) firebaseSync.create('Recordatorios', { ...reminder, id: reminder.id });
 }
 
 /** Statistics Helpers */
@@ -964,7 +965,7 @@ async function _forceCloudSync_deleted(): Promise<string | null> {
     const otrosIngresos = await getOtrosIngresos();
 
     return null; /*
-    return await // syncService.uploadAllData(
+    return await firebaseSync.uploadAllData(
         carreras,
         gastos,
         turnos,

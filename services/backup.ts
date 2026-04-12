@@ -528,7 +528,8 @@ export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; u
         // Convertir datos a filas respetando los nuevos encabezados
         const carrerasRows: any[][] = [headers.carreras];
         const valesCarrerasRows: any[][] = [headers.valesCarreras];
-        (data.carreras || []).forEach((c: any) => {
+        const sortedCarreras = [...(data.carreras || [])].sort((a: any, b: any) => (apiParseDate(a.fechaHora)?.getTime() || 0) - (apiParseDate(b.fechaHora)?.getTime() || 0));
+        sortedCarreras.forEach((c: any) => {
             const date = new Date(c.fechaHora);
             carrerasRows.push([
                 fmtDate(date),
@@ -560,7 +561,8 @@ export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; u
 
         const gastosRows: any[][] = [headers.gastos];
         const serviciosRows: any[][] = [headers.servicios];
-        (data.gastos || []).forEach((g: any) => {
+        const sortedGastos = [...(data.gastos || [])].sort((a: any, b: any) => (apiParseDate(a.fecha)?.getTime() || 0) - (apiParseDate(b.fecha)?.getTime() || 0));
+        sortedGastos.forEach((g: any) => {
             gastosRows.push([
                 fmtDate(g.fecha),
                 g.concepto || '',
@@ -593,7 +595,8 @@ export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; u
         });
 
         const turnosRows: any[][] = [headers.turnos];
-        (data.turnos || []).forEach((t: any) => {
+        const sortedTurnos = [...(data.turnos || [])].sort((a: any, b: any) => (apiParseDate(a.fechaInicio)?.getTime() || 0) - (apiParseDate(b.fechaInicio)?.getTime() || 0));
+        sortedTurnos.forEach((t: any) => {
             const kmRec = (t.kilometrosFin && t.kilometrosInicio) ? t.kilometrosFin - t.kilometrosInicio : '';
             turnosRows.push([
                 fmtDate(t.fechaInicio),
@@ -661,7 +664,8 @@ export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; u
         });
 
         const otrosIngresosRows: any[][] = [headers.otrosIngresos];
-        (data.otrosIngresos || []).forEach((oi: any) => {
+        const sortedOtrosIngresos = [...(data.otrosIngresos || [])].sort((a: any, b: any) => (apiParseDate(a.fecha)?.getTime() || 0) - (apiParseDate(b.fecha)?.getTime() || 0));
+        sortedOtrosIngresos.forEach((oi: any) => {
             otrosIngresosRows.push([
                 fmtDate(oi.fecha),
                 oi.concepto || '',

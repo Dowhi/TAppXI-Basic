@@ -1078,7 +1078,7 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-zinc-400 mb-1">Tarifa 3 (Especial/Noche Vi-Sa)</label>
+                            <label className="block text-xs font-medium text-zinc-400 mb-1">Tarifa 3 (Noche Vi-Sa)</label>
                             <input
                                 type="number"
                                 step="0.01"
@@ -1167,7 +1167,9 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                             const size = Number(e.target.value);
                             setHasUserChanged(true);
                             setTamanoFuente(size);
-                            setFontSize(size);
+                        }}
+                        onPointerUp={(e) => {
+                            setFontSize(Number((e.target as HTMLInputElement).value));
                         }}
                         className="w-full h-2 bg-zinc-600 rounded-lg appearance-none cursor-pointer accent-blue-500"
                     />
@@ -1858,23 +1860,6 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                     </div>
                 </div>
 
-                <section className="bg-zinc-800 rounded-lg p-2.5 border border-zinc-700 mb-2">
-                    <button
-                        onClick={() => navigateTo(Seccion.GestionDatos)}
-                        className="w-full text-left flex items-center justify-between group"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-purple-500/10 rounded-lg text-purple-400 group-hover:text-purple-300 transition-colors">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                            </div>
-                            <div>
-                                <div className="font-semibold text-zinc-100">Gestión de Proveedores, Talleres y Conceptos</div>
-                                <div className="text-xs text-zinc-500">Administrar listas de autocompletado</div>
-                            </div>
-                        </div>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-600 group-hover:text-zinc-400 transition-colors"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                    </button>
-                </section>
 
                 <div className="bg-zinc-800 rounded-lg p-2.5 border border-orange-500/50 mb-2">
                     <div className="flex items-center justify-between">

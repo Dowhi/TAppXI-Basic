@@ -102,9 +102,10 @@ const ResumenMensualDetalladoScreen: React.FC<ResumenMensualDetalladoScreenProps
 
         // Los helpers cleanN y parseDate ahora se importan de api.ts
 
-        // Horas trabajadas
+        // Horas trabajadas (solo turnos cerrados con fechaFin válido)
         let totalMs = 0;
         turnos.forEach(t => {
+            if (!t.fechaFin) return; // ignorar turnos activos sin cerrar
             const start = parseDate(t.fechaInicio);
             const end = parseDate(t.fechaFin);
             if (start && end) {
@@ -142,7 +143,15 @@ const ResumenMensualDetalladoScreen: React.FC<ResumenMensualDetalladoScreenProps
             return isFuelConcept || hasFuelData;
         });
         const combustible = combustibleGasto.reduce((sum, g) => sum + cleanN(g.importe), 0);
-        const litrosTotal = combustibleGasto.reduce((sum, g) => sum + cleanN(g.litros), 0);
+        const litrosTotal = combustibleGasto.reduce((sum, g) => {
+            const litros = cleanN(g.litros);
+            if (litros > 0) return sum + litros;
+            // Si no hay litros directos pero hay precio por litro, estimar
+            const precio = cleanN(g.precioPorLitro);
+            const importe = cleanN(g.importe);
+            if (precio > 0 && importe > 0) return sum + (importe / precio);
+            return sum;
+        }, 0);
 
         // Kms para el cálculo de consumo (prioridad turnos, respaldo kmParciales de gastos)
         let kmsParaConsumo = kilometros;

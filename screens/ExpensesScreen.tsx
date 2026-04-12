@@ -28,6 +28,63 @@ import { ExpenseScanner } from '../components/ExpenseScanner';
 import AutocompleteField from '../components/AutocompleteField';
 import { ProveedorModal, ConceptoModal, TallerModal } from '../components/ExpenseModals';
 
+// --- Icons (Tipo 2: Lineal Moderno, stroke-width=2) ---
+const CheckIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="20 6 9 17 4 12" />
+    </svg>
+);
+
+const TrashIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 6h18" />
+        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+    </svg>
+);
+
+const ZapIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+);
+
+const CameraIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+        <circle cx="12" cy="13" r="4" />
+    </svg>
+);
+
+const BriefcaseIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+    </svg>
+);
+
+const CarIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 13.1V16c0 .6.4 1 1 1h2" />
+        <circle cx="7" cy="17" r="2" />
+        <path d="M9 17h6" />
+        <circle cx="17" cy="17" r="2" />
+    </svg>
+);
+
+const StarIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+);
+
+const XIcon = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18" />
+        <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+);
+
 // --- UI Sub-components ---
 const FormCard: React.FC<{ title: string; children: React.ReactNode; className?: string }> = ({ title, children, className = "" }) => (
     <div className={`bg-zinc-900 border border-zinc-800 rounded-xl p-3 space-y-2 ${className}`}>
@@ -326,7 +383,7 @@ const ExpensesScreen: React.FC<{ navigateTo: (page: Seccion) => void; gastoId?: 
                                     className="px-2 bg-zinc-800 border border-zinc-700 rounded-lg text-blue-400 hover:bg-zinc-700 transition-colors"
                                     title="Escanear Ticket"
                                 >
-                                    <svg xmlns="http://www.w3.org/2000/svg" height="18" viewBox="0 0 24 24" width="18" fill="currentColor"><path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z" /></svg>
+                                    <CameraIcon />
                                 </button>
                             </div>
                         </FormField>
@@ -351,9 +408,10 @@ const ExpensesScreen: React.FC<{ navigateTo: (page: Seccion) => void; gastoId?: 
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
-                            className={`flex-1 py-1.5 rounded-lg font-black text-xs uppercase tracking-tight transition-all ${activeTab === tab ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}
+                            className={`flex-1 py-1.5 rounded-lg font-black text-xs uppercase tracking-tight transition-all flex items-center justify-center gap-2 ${activeTab === tab ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}
                         >
-                            {tab === 'actividad' ? '🏢 Actividad' : '🚗 Vehículo'}
+                            {tab === 'actividad' ? <BriefcaseIcon /> : <CarIcon />}
+                            {tab === 'actividad' ? 'Actividad' : 'Vehículo'}
                         </button>
                     ))}
                 </div>
@@ -545,22 +603,22 @@ const ExpensesScreen: React.FC<{ navigateTo: (page: Seccion) => void; gastoId?: 
                     <div className="flex gap-3">
                         {!isEditing && (
                             <PrimaryButton variant="outline" onClick={() => setShowTemplates(true)} className="flex-1 py-3">
-                                ⚡ Gastos Rápidos
+                                <ZapIcon /> Gastos Rápidos
                             </PrimaryButton>
                         )}
                         <PrimaryButton onClick={saveExpense} disabled={isSaving} className="flex-[2] py-3 text-base shadow-lg shadow-blue-900/20">
-                            {isSaving ? '⏳ Procesando...' : (isEditing ? '💾 Actualizar Cambios' : '✅ Guardar Gasto')}
+                            {isSaving ? '⏳ Procesando...' : (isEditing ? <><CheckIcon /> Actualizar Cambios</> : <><CheckIcon /> Guardar Gasto</>)}
                         </PrimaryButton>
                     </div>
 
                     <div className="flex gap-3">
                         {isEditing ? (
                             <PrimaryButton variant="danger" onClick={deleteEx} className="flex-1 py-2 text-zinc-100">
-                                🗑️ Eliminar Definitivamente
+                                <TrashIcon /> Eliminar Definitivamente
                             </PrimaryButton>
                         ) : (
                             <PrimaryButton variant="outline" onClick={() => setShowSaveTemplate(true)} className="w-full py-2">
-                                ⭐ Guardar como Plantilla nueva
+                                <StarIcon /> Guardar como Plantilla nueva
                             </PrimaryButton>
                         )}
                     </div>
@@ -632,7 +690,9 @@ const ExpensesScreen: React.FC<{ navigateTo: (page: Seccion) => void; gastoId?: 
                     <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 w-full max-w-sm max-h-[80vh] flex flex-col shadow-2xl">
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="font-black text-xl text-zinc-100">Plantillas Guardadas</h3>
-                            <button onClick={() => setShowTemplates(false)} className="text-zinc-500 text-2xl">×</button>
+                            <button onClick={() => setShowTemplates(false)} className="text-zinc-500 hover:text-white transition-colors">
+                                <XIcon />
+                            </button>
                         </div>
                         <div className="overflow-y-auto space-y-3 pr-1 custom-scrollbar">
                             {templates.length === 0 ? (
@@ -688,7 +748,7 @@ const ExpensesScreen: React.FC<{ navigateTo: (page: Seccion) => void; gastoId?: 
                                 setTemplateName('');
                                 showToast('Plantilla guardada con éxito', 'success');
                             }}>
-                                ⭐ Guardar Plantilla
+                                <StarIcon /> Guardar Plantilla
                             </PrimaryButton>
                             <PrimaryButton variant="outline" className="flex-1 py-3" onClick={() => setShowSaveTemplate(false)}>
                                 Cancelar
