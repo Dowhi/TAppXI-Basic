@@ -1,3 +1,4 @@
+// Deploy trigger after secrets setup
 import React, { useState, useEffect } from "react";
 import { useTheme } from "../contexts/ThemeContext";
 import { useFontSize } from "../contexts/FontSizeContext";
