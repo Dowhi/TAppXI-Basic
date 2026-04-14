@@ -236,6 +236,7 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
         }
     };
 
+
     const showAlert = (message: string) => {
         setAlertMessage(message);
     };
