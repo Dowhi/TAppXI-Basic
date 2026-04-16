@@ -25,6 +25,7 @@ import ResumenMensualDetalladoScreen from './screens/ResumenMensualDetalladoScre
 import ResumenGastosMensualScreen from './screens/ResumenGastosMensualScreen';
 import ResumenMensualIngresosScreen from './screens/ResumenMensualIngresosScreen';
 import ResumenAnualDetalladoScreen from './screens/ResumenAnualDetalladoScreen';
+import ResumenValesScreen from './screens/ResumenValesScreen';
 import AjustesScreen from './screens/AjustesScreen';
 import MasterDataScreen from './screens/MasterDataScreen';
 import OtherIncomeScreen from './screens/OtherIncomeScreen';
@@ -275,6 +276,8 @@ const App: React.FC = () => {
                 return <ResumenMensualIngresosScreen navigateTo={navigateTo} />;
             case Seccion.ResumenAnualDetallado:
                 return <ResumenAnualDetalladoScreen navigateTo={navigateTo} />;
+            case Seccion.ResumenVales:
+                return <ResumenValesScreen navigateTo={navigateTo} navigateToEditRace={navigateToEditRace} />;
             case Seccion.AjustesGenerales:
                 return <AjustesScreen navigateTo={navigateTo} />;
             case Seccion.GestionDatos:

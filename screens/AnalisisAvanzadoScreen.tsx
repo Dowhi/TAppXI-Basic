@@ -119,8 +119,8 @@ const AnalisisAvanzadoScreen: React.FC<AnalisisAvanzadoScreenProps> = ({ navigat
                 setAñoActual({ ingresos: ingresosAñoActual, gastos: gastosAñoActual });
                 setAñoAnterior({ ingresos: ingresosAñoAnterior, gastos: gastosAñoAnterior });
                 
-                if (ajustes && ajustes.objetivoDiario) {
-                    setObjetivoDiario(ajustes.objetivoDiario);
+                if (ajustes && ajustes.objetivoDiario !== undefined) {
+                    setObjetivoDiario(Number(ajustes.objetivoDiario));
                 }
 
                 // Calcular metas vs logros (solo días trabajados)
@@ -131,10 +131,10 @@ const AnalisisAvanzadoScreen: React.FC<AnalisisAvanzadoScreenProps> = ({ navigat
                 const diasTrabajadosHastaAhora = diasTrabajados.filter(d => d <= now).length;
                 const totalDiasTrabajadosMes = diasTrabajados.length;
                 
-                const objetivoDiarioValue = ajustes?.objetivoDiario || 100;
+                const objetivoDiarioValue = Number(ajustes?.objetivoDiario) || 100;
                 const objetivoMensual = objetivoDiarioValue * totalDiasTrabajadosMes;
                 const objetivoHastaAhora = objetivoDiarioValue * diasTrabajadosHastaAhora;
-                const ingresosHastaAhora = ingresosMesActual;
+                const ingresosHastaAhora = Number(ingresosMesActual) || 0;
                 
                 const porcentajeCumplimiento = objetivoHastaAhora > 0 
                     ? (ingresosHastaAhora / objetivoHastaAhora) * 100 
@@ -496,7 +496,7 @@ const AnalisisAvanzadoScreen: React.FC<AnalisisAvanzadoScreenProps> = ({ navigat
                                                         {horario.hora}:00 - {horario.hora + 1}:00
                                                     </div>
                                                     <div className="text-xs text-zinc-400">
-                                                        {horario.ingresos.toFixed(2)}€ promedio
+                                                        {Number(horario.ingresos || 0).toFixed(2)}€ promedio
                                                     </div>
                                                 </div>
                                             </div>
@@ -520,7 +520,7 @@ const AnalisisAvanzadoScreen: React.FC<AnalisisAvanzadoScreenProps> = ({ navigat
                                                 <div>
                                                     <div className="text-white font-semibold">{dia.nombre}</div>
                                                     <div className="text-xs text-zinc-400">
-                                                        {dia.ingresos.toFixed(2)}€ promedio
+                                                        {Number(dia.ingresos || 0).toFixed(2)}€ promedio
                                                     </div>
                                                 </div>
                                             </div>
@@ -556,27 +556,27 @@ const AnalisisAvanzadoScreen: React.FC<AnalisisAvanzadoScreenProps> = ({ navigat
                             <div className="grid grid-cols-2 gap-3 mb-4">
                                 <div className="bg-zinc-800 rounded-lg p-3">
                                     <div className="text-zinc-400 text-xs mb-1">Mes Actual</div>
-                                    <div className="text-white text-lg font-bold">{mesActual.ingresos.toFixed(2)}€</div>
-                                    <div className="text-zinc-500 text-xs mt-1">Gastos: {mesActual.gastos.toFixed(2)}€</div>
+                                    <div className="text-white text-lg font-bold">{Number(mesActual.ingresos || 0).toFixed(2)}€</div>
+                                    <div className="text-zinc-500 text-xs mt-1">Gastos: {Number(mesActual.gastos || 0).toFixed(2)}€</div>
                                 </div>
                                 <div className="bg-zinc-800 rounded-lg p-3">
                                     <div className="text-zinc-400 text-xs mb-1">Mes Anterior</div>
-                                    <div className="text-white text-lg font-bold">{mesAnterior.ingresos.toFixed(2)}€</div>
-                                    <div className="text-zinc-500 text-xs mt-1">Gastos: {mesAnterior.gastos.toFixed(2)}€</div>
+                                    <div className="text-white text-lg font-bold">{Number(mesAnterior.ingresos || 0).toFixed(2)}€</div>
+                                    <div className="text-zinc-500 text-xs mt-1">Gastos: {Number(mesAnterior.gastos || 0).toFixed(2)}€</div>
                                 </div>
                             </div>
                             <div className="bg-zinc-800 rounded-lg p-3">
                                 <div className="text-zinc-400 text-xs mb-2">Diferencia</div>
                                 <div className={`text-lg font-bold ${comparativaMes.diferenciaIngresos >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                    {comparativaMes.diferenciaIngresos >= 0 ? '+' : ''}{comparativaMes.diferenciaIngresos.toFixed(2)}€
+                                    {comparativaMes.diferenciaIngresos >= 0 ? '+' : ''}{Number(comparativaMes.diferenciaIngresos || 0).toFixed(2)}€
                                     {comparativaMes.porcentajeIngresos !== 0 && (
                                         <span className="text-sm ml-2">
-                                            ({comparativaMes.porcentajeIngresos >= 0 ? '+' : ''}{comparativaMes.porcentajeIngresos.toFixed(1)}%)
+                                            ({comparativaMes.porcentajeIngresos >= 0 ? '+' : ''}{Number(comparativaMes.porcentajeIngresos || 0).toFixed(1)}%)
                                         </span>
                                     )}
                                 </div>
                                 <div className="text-zinc-500 text-xs mt-2">
-                                    Balance: {comparativaMes.diferenciaBalance >= 0 ? '+' : ''}{comparativaMes.diferenciaBalance.toFixed(2)}€
+                                    Balance: {comparativaMes.diferenciaBalance >= 0 ? '+' : ''}{Number(comparativaMes.diferenciaBalance || 0).toFixed(2)}€
                                 </div>
                             </div>
                         </div>
@@ -590,27 +590,27 @@ const AnalisisAvanzadoScreen: React.FC<AnalisisAvanzadoScreenProps> = ({ navigat
                             <div className="grid grid-cols-2 gap-3 mb-4">
                                 <div className="bg-zinc-800 rounded-lg p-3">
                                     <div className="text-zinc-400 text-xs mb-1">Año Actual</div>
-                                    <div className="text-white text-lg font-bold">{añoActual.ingresos.toFixed(2)}€</div>
-                                    <div className="text-zinc-500 text-xs mt-1">Gastos: {añoActual.gastos.toFixed(2)}€</div>
+                                    <div className="text-white text-lg font-bold">{Number(añoActual.ingresos || 0).toFixed(2)}€</div>
+                                    <div className="text-zinc-500 text-xs mt-1">Gastos: {Number(añoActual.gastos || 0).toFixed(2)}€</div>
                                 </div>
                                 <div className="bg-zinc-800 rounded-lg p-3">
                                     <div className="text-zinc-400 text-xs mb-1">Año Anterior</div>
-                                    <div className="text-white text-lg font-bold">{añoAnterior.ingresos.toFixed(2)}€</div>
-                                    <div className="text-zinc-500 text-xs mt-1">Gastos: {añoAnterior.gastos.toFixed(2)}€</div>
+                                    <div className="text-white text-lg font-bold">{Number(añoAnterior.ingresos || 0).toFixed(2)}€</div>
+                                    <div className="text-zinc-500 text-xs mt-1">Gastos: {Number(añoAnterior.gastos || 0).toFixed(2)}€</div>
                                 </div>
                             </div>
                             <div className="bg-zinc-800 rounded-lg p-3">
                                 <div className="text-zinc-400 text-xs mb-2">Diferencia</div>
                                 <div className={`text-lg font-bold ${comparativaAño.diferenciaIngresos >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                    {comparativaAño.diferenciaIngresos >= 0 ? '+' : ''}{comparativaAño.diferenciaIngresos.toFixed(2)}€
+                                    {comparativaAño.diferenciaIngresos >= 0 ? '+' : ''}{Number(comparativaAño.diferenciaIngresos || 0).toFixed(2)}€
                                     {comparativaAño.porcentajeIngresos !== 0 && (
                                         <span className="text-sm ml-2">
-                                            ({comparativaAño.porcentajeIngresos >= 0 ? '+' : ''}{comparativaAño.porcentajeIngresos.toFixed(1)}%)
+                                            ({comparativaAño.porcentajeIngresos >= 0 ? '+' : ''}{Number(comparativaAño.porcentajeIngresos || 0).toFixed(1)}%)
                                         </span>
                                     )}
                                 </div>
                                 <div className="text-zinc-500 text-xs mt-2">
-                                    Balance: {comparativaAño.diferenciaBalance >= 0 ? '+' : ''}{comparativaAño.diferenciaBalance.toFixed(2)}€
+                                    Balance: {comparativaAño.diferenciaBalance >= 0 ? '+' : ''}{Number(comparativaAño.diferenciaBalance || 0).toFixed(2)}€
                                 </div>
                             </div>
                         </div>
@@ -624,31 +624,31 @@ const AnalisisAvanzadoScreen: React.FC<AnalisisAvanzadoScreenProps> = ({ navigat
                             <div className="space-y-3">
                                 <div className="bg-zinc-800 rounded-lg p-3">
                                     <div className="text-zinc-400 text-xs mb-1">Objetivo Diario</div>
-                                    <div className="text-white text-lg font-bold">{objetivoDiario.toFixed(2)}€</div>
+                                    <div className="text-white text-lg font-bold">{Number(objetivoDiario || 0).toFixed(2)}€</div>
                                 </div>
                                 <div className="bg-zinc-800 rounded-lg p-3">
                                     <div className="text-zinc-400 text-xs mb-1">Objetivo Mensual</div>
-                                    <div className="text-white text-lg font-bold">{metasVsLogros.objetivoMensual.toFixed(2)}€</div>
+                                    <div className="text-white text-lg font-bold">{Number(metasVsLogros.objetivoMensual || 0).toFixed(2)}€</div>
                                 </div>
                                 <div className="bg-zinc-800 rounded-lg p-3">
                                     <div className="text-zinc-400 text-xs mb-1">Ingresos Hasta Ahora</div>
-                                    <div className="text-white text-lg font-bold">{metasVsLogros.ingresosHastaAhora.toFixed(2)}€</div>
+                                    <div className="text-white text-lg font-bold">{Number(metasVsLogros.ingresosHastaAhora || 0).toFixed(2)}€</div>
                                     <div className="text-zinc-500 text-xs mt-1">
-                                        Objetivo hasta ahora: {metasVsLogros.objetivoHastaAhora.toFixed(2)}€
+                                        Objetivo hasta ahora: {Number(metasVsLogros.objetivoHastaAhora || 0).toFixed(2)}€
                                     </div>
                                 </div>
                                 <div className={`rounded-lg p-3 ${metasVsLogros.porcentajeCumplimiento >= 100 ? 'bg-green-900/30 border border-green-500/50' : 'bg-zinc-800'}`}>
                                     <div className="text-zinc-400 text-xs mb-2">Cumplimiento del Objetivo</div>
                                     <div className={`text-2xl font-bold ${metasVsLogros.porcentajeCumplimiento >= 100 ? 'text-green-400' : 'text-white'}`}>
-                                        {metasVsLogros.porcentajeCumplimiento.toFixed(1)}%
+                                        {Number(metasVsLogros.porcentajeCumplimiento || 0).toFixed(1)}%
                                     </div>
                                     <div className={`text-sm mt-2 ${metasVsLogros.diferencia >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                        {metasVsLogros.diferencia >= 0 ? '+' : ''}{metasVsLogros.diferencia.toFixed(2)}€
+                                        {metasVsLogros.diferencia >= 0 ? '+' : ''}{Number(metasVsLogros.diferencia || 0).toFixed(2)}€
                                     </div>
                                 </div>
                                 <div className="bg-zinc-800 rounded-lg p-3">
                                     <div className="text-zinc-400 text-xs mb-1">Proyección Mensual</div>
-                                    <div className="text-white text-lg font-bold">{metasVsLogros.proyeccionMensual.toFixed(2)}€</div>
+                                    <div className="text-white text-lg font-bold">{Number(metasVsLogros.proyeccionMensual || 0).toFixed(2)}€</div>
                                     <div className="text-zinc-500 text-xs mt-1">
                                         Basado en el ritmo actual
                                     </div>

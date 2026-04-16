@@ -468,13 +468,13 @@ const objectToRows = (obj: any, prefix: string = ''): (string | number | null)[]
 
 const fmtDate = (d: Date | string) => {
     if (!d) return '';
-    const date = d instanceof Date ? d : new Date(d);
+    const date = d instanceof Date ? d : apiParseDate(d);
     return isNaN(date.getTime()) ? '' : date.toLocaleDateString('es-ES');
 };
 
 const fmtTime = (d: Date | string) => {
     if (!d) return '';
-    const date = d instanceof Date ? d : new Date(d);
+    const date = d instanceof Date ? d : apiParseDate(d);
     return isNaN(date.getTime()) ? '' : date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 };
 
@@ -498,7 +498,8 @@ export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; u
             'Recordatorios',
             'Informes_Personalizados',
             'Otros_Ingresos',
-            'Vales_Carreras'
+            'Vales_Carreras',
+            'Detalle_Descansos'
         ];
 
         const { spreadsheetId } = await createSpreadsheetWithSheets(`TAppXI Export ${dateStr}`, sheetTitles);
@@ -510,9 +511,10 @@ export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; u
         // Definir columnas EXACTAMENTE como en syncService.ts
         const headers = {
             carreras: ['Fecha', 'Hora', 'Taxímetro', 'Cobrado', 'Forma Pago', 'Tipo', 'Emisora', 'Aeropuerto', 'Estación', 'Notas', 'Empresa Vale', 'Cod. Empresa', 'Nº Despacho', 'Nº Albaran', 'Autoriza', 'ID Turno', 'ID'],
-            gastos: ['Fecha', 'Concepto', 'Proveedor', 'Taller', 'Base', 'IVA %', 'IVA €', 'Total', 'Nº Factura', 'Forma Pago', 'Km', 'Notas', 'ID'],
+            gastos: ['Fecha', 'Concepto', 'Proveedor', 'NIF', 'Taller', 'Base', 'IVA %', 'IVA €', 'Total', 'Nº Factura', 'Forma Pago', 'Km Totales', 'Km Vehículo', 'Km Parciales', 'Litros', 'Precio/L', 'Descuento', 'Notas', 'ID Turno', 'ID'],
             servicios: ['Gasto ID', 'Referencia', 'Descripción', 'Importe', 'Cantidad', 'Desc. %', 'ID'],
             turnos: ['Fecha Inicio', 'Hora Inicio', 'Km Inicio', 'Fecha Fin', 'Hora Fin', 'Km Fin', 'Km Recorridos', 'ID'],
+            descansos: ['Turno ID', 'Fecha Inicio', 'Hora Inicio', 'Km Inicio', 'Fecha Fin', 'Hora Fin', 'Km Fin', 'Duración (min)', 'ID'],
             proveedores: ['Nombre', 'NIF', 'Dirección', 'Teléfono', 'ID'],
             conceptos: ['Nombre', 'Descripción', 'Categoría', 'ID'],
             talleres: ['Nombre', 'NIF', 'Dirección', 'Teléfono', 'ID'],
@@ -530,7 +532,7 @@ export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; u
         const valesCarrerasRows: any[][] = [headers.valesCarreras];
         const sortedCarreras = [...(data.carreras || [])].sort((a: any, b: any) => (apiParseDate(a.fechaHora)?.getTime() || 0) - (apiParseDate(b.fechaHora)?.getTime() || 0));
         sortedCarreras.forEach((c: any) => {
-            const date = new Date(c.fechaHora);
+            const date = c.fechaHora instanceof Date ? c.fechaHora : apiParseDate(c.fechaHora);
             carrerasRows.push([
                 fmtDate(date),
                 fmtTime(date),
@@ -542,6 +544,11 @@ export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; u
                 c.aeropuerto ? 'Sí' : 'No',
                 c.estacion ? 'Sí' : 'No',
                 c.notas || '',
+                c.valeInfo?.empresa || '',
+                c.valeInfo?.codigoEmpresa || '',
+                c.valeInfo?.despacho || '',
+                c.valeInfo?.numeroAlbaran || '',
+                c.valeInfo?.autoriza || '',
                 c.turnoId || '',
                 c.id
             ]);
@@ -567,6 +574,7 @@ export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; u
                 fmtDate(g.fecha),
                 g.concepto || '',
                 g.proveedor || '',
+                g.nif || '',
                 g.taller || '',
                 g.baseImponible || g.importe || 0,
                 g.ivaPorcentaje || 0,
@@ -575,7 +583,13 @@ export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; u
                 g.numeroFactura || '',
                 g.formaPago || '',
                 g.kilometros || '',
+                g.kilometrosVehiculo || '',
+                g.kmParciales || '',
+                g.litros || '',
+                g.precioPorLitro || '',
+                g.descuento || 0,
                 g.notas || '',
+                g.turnoId || '',
                 g.id
             ]);
 
@@ -595,19 +609,43 @@ export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; u
         });
 
         const turnosRows: any[][] = [headers.turnos];
+        const descansosRows: any[][] = [headers.descansos];
         const sortedTurnos = [...(data.turnos || [])].sort((a: any, b: any) => (apiParseDate(a.fechaInicio)?.getTime() || 0) - (apiParseDate(b.fechaInicio)?.getTime() || 0));
         sortedTurnos.forEach((t: any) => {
+            const start = t.fechaInicio instanceof Date ? t.fechaInicio : apiParseDate(t.fechaInicio);
+            const end = t.fechaFin ? (t.fechaFin instanceof Date ? t.fechaFin : apiParseDate(t.fechaFin)) : null;
             const kmRec = (t.kilometrosFin && t.kilometrosInicio) ? t.kilometrosFin - t.kilometrosInicio : '';
+
             turnosRows.push([
-                fmtDate(t.fechaInicio),
-                fmtTime(t.fechaInicio),
-                t.kilometrosInicio,
-                t.fechaFin ? fmtDate(t.fechaFin) : '',
-                t.fechaFin ? fmtTime(t.fechaFin) : '',
+                fmtDate(start),
+                fmtTime(start),
+                t.kilometrosInicio || 0,
+                end ? fmtDate(end) : '',
+                end ? fmtTime(end) : '',
                 t.kilometrosFin || '',
                 kmRec,
                 t.id
             ]);
+
+            if (t.descansos && Array.isArray(t.descansos)) {
+                t.descansos.forEach((d: any) => {
+                    const dStart = d.fechaInicio instanceof Date ? d.fechaInicio : apiParseDate(d.fechaInicio);
+                    const dEnd = d.fechaFin ? (d.fechaFin instanceof Date ? d.fechaFin : apiParseDate(d.fechaFin)) : null;
+                    const duration = (dEnd && dStart) ? Math.round((dEnd.getTime() - dStart.getTime()) / 60000) : '';
+
+                    descansosRows.push([
+                        t.id,
+                        fmtDate(dStart),
+                        fmtTime(dStart),
+                        d.kilometrosInicio || '',
+                        dEnd ? fmtDate(dEnd) : '',
+                        dEnd ? fmtTime(dEnd) : '',
+                        d.kilometrosFin || '',
+                        duration,
+                        d.id || crypto.randomUUID()
+                    ]);
+                });
+            }
         });
 
         const proveedoresRows: any[][] = [headers.proveedores];
@@ -682,6 +720,7 @@ export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; u
             { title: 'Gastos', rows: gastosRows },
             { title: 'Detalle_Servicios', rows: serviciosRows },
             { title: 'Turnos', rows: turnosRows },
+            { title: 'Detalle_Descansos', rows: descansosRows },
             { title: 'Proveedores', rows: proveedoresRows },
             { title: 'Conceptos', rows: conceptosRows },
             { title: 'Talleres', rows: talleresRows },

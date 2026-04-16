@@ -244,6 +244,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
         setFormaPago(option);
         if (option === 'Vales') {
             setValeFormTouched(false);
+            setEsEmisora(true);
             setShowValeModal(true);
         } else {
             setShowValeModal(false);

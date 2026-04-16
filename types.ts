@@ -32,6 +32,7 @@ export enum Seccion {
     EditarOtroIngreso = "Editar Otro Ingreso",
     Varios = "Otros",
     Vales = "Vales",
+    ResumenVales = "Resumen de Vales",
     ResumenAnualDetallado = "Resumen Anual Detallado",
 }
 
@@ -126,6 +127,7 @@ export interface Gasto {
     }>;
     notas?: string;
     nif?: string | null;
+    turnoId?: string | null;
 }
 
 export interface Taller {

@@ -14,7 +14,8 @@ import {
     addProveedor,
     addConcepto,
     addTaller,
-    cleanN
+    cleanN,
+    getActiveTurno
 } from '../services/api';
 const safeParse = cleanN;
 import {
@@ -281,7 +282,16 @@ const ExpensesScreen: React.FC<{ navigateTo: (page: Seccion) => void; gastoId?: 
                 descuento: safeParse(descuento) || null,
                 notas: notas.trim() || null,
                 kilometros: safeParse(kilometros) || null,
+                turnoId: null, // Placeholder
             };
+
+            // Intentar asociar con el turno activo si es un gasto nuevo
+            if (!isEditing) {
+                const activeTurno = await getActiveTurno();
+                if (activeTurno) {
+                    data.turnoId = activeTurno.id;
+                }
+            }
 
             if (activeTab === 'actividad') {
                 data.proveedor = proveedorName.trim() || null;

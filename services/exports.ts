@@ -3,6 +3,7 @@ import jsPDF from 'jspdf';
 // @ts-ignore
 import * as autoTableModule from 'jspdf-autotable';
 import { CarreraVista, Gasto, Turno } from '../types';
+import { parseDate as apiParseDate } from './api';
 
 export interface ExportFilter {
     fechaDesde?: Date;
@@ -33,27 +34,28 @@ export const exportToExcel = (
 
     // Hoja de Carreras
     if (data.carreras && data.carreras.length > 0) {
-        const carrerasData = data.carreras.map(c => ({
-            'Fecha': c.fechaHora instanceof Date
-                ? c.fechaHora.toLocaleDateString('es-ES')
-                : new Date(c.fechaHora).toLocaleDateString('es-ES'),
-            'Hora': c.fechaHora instanceof Date
-                ? c.fechaHora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
-                : new Date(c.fechaHora).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
-            'Taxímetro (€)': c.taximetro || 0,
-            'Cobrado (€)': c.cobrado || 0,
-            'Forma de Pago': c.formaPago || '',
-            'Tipo de Carrera': c.tipoCarrera || 'Urbana',
-            'Emisora': c.emisora ? 'Sí' : 'No',
-            'Aeropuerto': c.aeropuerto ? 'Sí' : 'No',
-            'Estación': c.estacion ? 'Sí' : 'No',
-            'Notas': c.notas || '',
-            'Empresa Vale': c.valeInfo?.empresa || '',
-            'Cod. Empresa': c.valeInfo?.codigoEmpresa || '',
-            'Albarán': c.valeInfo?.numeroAlbaran || '',
-            'Despacho': c.valeInfo?.despacho || '',
-            'Autoriza': c.valeInfo?.autoriza || '',
-        }));
+        const carrerasData = data.carreras.map(c => {
+            const fecha = c.fechaHora instanceof Date ? c.fechaHora : apiParseDate(c.fechaHora);
+            return {
+                'Fecha': fecha.toLocaleDateString('es-ES'),
+                'Hora': fecha.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+                'Taxímetro (€)': c.taximetro || 0,
+                'Cobrado (€)': c.cobrado || 0,
+                'Forma de Pago': c.formaPago || '',
+                'Tipo de Carrera': c.tipoCarrera || 'Urbana',
+                'Emisora': c.emisora ? 'Sí' : 'No',
+                'Aeropuerto': c.aeropuerto ? 'Sí' : 'No',
+                'Estación': c.estacion ? 'Sí' : 'No',
+                'Notas': c.notas || '',
+                'Empresa Vale': c.valeInfo?.empresa || '',
+                'Cod. Empresa': c.valeInfo?.codigoEmpresa || '',
+                'Albarán': c.valeInfo?.numeroAlbaran || '',
+                'Despacho': c.valeInfo?.despacho || '',
+                'Autoriza': c.valeInfo?.autoriza || '',
+                'ID Turno': c.turnoId || '',
+                'ID': c.id
+            };
+        });
 
         const wsCarreras = XLSX.utils.json_to_sheet(carrerasData);
 
@@ -62,7 +64,7 @@ export const exportToExcel = (
             { wch: 12 }, { wch: 8 }, { wch: 10 }, { wch: 10 },
             { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 10 },
             { wch: 10 }, { wch: 30 }, { wch: 20 }, { wch: 15 },
-            { wch: 15 }, { wch: 15 }, { wch: 15 }
+            { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 20 }
         ];
 
         XLSX.utils.book_append_sheet(workbook, wsCarreras, 'Carreras');
@@ -70,30 +72,40 @@ export const exportToExcel = (
 
     // Hoja de Gastos
     if (data.gastos && data.gastos.length > 0) {
-        const gastosData = data.gastos.map(g => ({
-            'Fecha': g.fecha instanceof Date
-                ? g.fecha.toLocaleDateString('es-ES')
-                : new Date(g.fecha).toLocaleDateString('es-ES'),
-            'Concepto': g.concepto || '',
-            'Proveedor': g.proveedor || '',
-            'Taller': g.taller || '',
-            'Base Imponible (€)': g.baseImponible || g.importe || 0,
-            'IVA %': g.ivaPorcentaje || 0,
-            'IVA (€)': g.ivaImporte || 0,
-            'Total (€)': g.importe || 0,
-            'Nº Factura': g.numeroFactura || '',
-            'Forma de Pago': g.formaPago || '',
-            'Kilómetros': g.kilometros || 0,
-            'Notas': g.notas || '',
-        }));
+        const gastosData = data.gastos.map(g => {
+            const fecha = g.fecha instanceof Date ? g.fecha : apiParseDate(g.fecha);
+            return {
+                'Fecha': fecha.toLocaleDateString('es-ES'),
+                'Concepto': g.concepto || '',
+                'Proveedor': g.proveedor || '',
+                'NIF Proveedor': g.nif || '',
+                'Taller': g.taller || '',
+                'Base Imponible (€)': g.baseImponible || g.importe || 0,
+                'IVA %': (g.ivaPorcentaje || 0).toString(),
+                'IVA (€)': g.ivaImporte || 0,
+                'Total (€)': g.importe || 0,
+                'Nº Factura': g.numeroFactura || '',
+                'Forma de Pago': g.formaPago || '',
+                'Kilómetros Totales': g.kilometros || 0,
+                'Km Vehículo': g.kilometrosVehiculo || 0,
+                'Km Parciales': g.kmParciales || 0,
+                'Litros': g.litros || 0,
+                'Precio/L': g.precioPorLitro || 0,
+                'Descuento (€)': g.descuento || 0,
+                'Notas': g.notas || '',
+                'ID Turno': g.turnoId || '',
+                'ID': g.id
+            };
+        });
 
         const wsGastos = XLSX.utils.json_to_sheet(gastosData);
 
         // Ajustar anchos de columna
         wsGastos['!cols'] = [
-            { wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 20 },
+            { wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 15 }, { wch: 20 },
             { wch: 15 }, { wch: 8 }, { wch: 12 }, { wch: 12 },
-            { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 30 }
+            { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+            { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 30 }, { wch: 20 }, { wch: 20 }
         ];
 
         XLSX.utils.book_append_sheet(workbook, wsGastos, 'Gastos');
@@ -101,39 +113,63 @@ export const exportToExcel = (
 
     // Hoja de Turnos
     if (data.turnos && data.turnos.length > 0) {
-        const turnosData = data.turnos.map(t => ({
-            'Fecha Inicio': t.fechaInicio instanceof Date
-                ? t.fechaInicio.toLocaleDateString('es-ES')
-                : new Date(t.fechaInicio).toLocaleDateString('es-ES'),
-            'Hora Inicio': t.fechaInicio instanceof Date
-                ? t.fechaInicio.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
-                : new Date(t.fechaInicio).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
-            'Km Inicio': t.kilometrosInicio || 0,
-            'Fecha Fin': t.fechaFin
-                ? (t.fechaFin instanceof Date
-                    ? t.fechaFin.toLocaleDateString('es-ES')
-                    : new Date(t.fechaFin).toLocaleDateString('es-ES'))
-                : '',
-            'Hora Fin': t.fechaFin
-                ? (t.fechaFin instanceof Date
-                    ? t.fechaFin.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
-                    : new Date(t.fechaFin).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }))
-                : '',
-            'Km Fin': t.kilometrosFin || '',
-            'Km Recorridos': t.kilometrosFin && t.kilometrosInicio
-                ? (t.kilometrosFin - t.kilometrosInicio)
-                : '',
-        }));
+        const turnosData = data.turnos.map(t => {
+            const fInicio = t.fechaInicio instanceof Date ? t.fechaInicio : apiParseDate(t.fechaInicio);
+            const fFin = t.fechaFin ? (t.fechaFin instanceof Date ? t.fechaFin : apiParseDate(t.fechaFin)) : null;
+            return {
+                'Fecha Inicio': fInicio.toLocaleDateString('es-ES'),
+                'Hora Inicio': fInicio.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+                'Km Inicio': t.kilometrosInicio || 0,
+                'Fecha Fin': fFin ? fFin.toLocaleDateString('es-ES') : '',
+                'Hora Fin': fFin ? fFin.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '',
+                'Km Fin': t.kilometrosFin || '',
+                'Km Recorridos': t.kilometrosFin && t.kilometrosInicio ? (t.kilometrosFin - t.kilometrosInicio) : '',
+                'ID': t.id
+            };
+        });
 
         const wsTurnos = XLSX.utils.json_to_sheet(turnosData);
 
         // Ajustar anchos de columna
         wsTurnos['!cols'] = [
             { wch: 12 }, { wch: 8 }, { wch: 10 }, { wch: 12 },
-            { wch: 8 }, { wch: 10 }, { wch: 12 }
+            { wch: 8 }, { wch: 10 }, { wch: 12 }, { wch: 20 }
         ];
 
         XLSX.utils.book_append_sheet(workbook, wsTurnos, 'Turnos');
+
+        // Hoja de Descansos
+        const descansosData: any[] = [];
+        data.turnos.forEach(t => {
+            if (t.descansos && Array.isArray(t.descansos)) {
+                t.descansos.forEach(d => {
+                    const dStart = d.fechaInicio instanceof Date ? d.fechaInicio : apiParseDate(d.fechaInicio);
+                    const dEnd = d.fechaFin ? (d.fechaFin instanceof Date ? d.fechaFin : apiParseDate(d.fechaFin)) : null;
+                    const duration = dEnd && dStart ? Math.round((dEnd.getTime() - dStart.getTime()) / 60000) : '';
+
+                    descansosData.push({
+                        'ID Turno': t.id,
+                        'Fecha': dStart.toLocaleDateString('es-ES'),
+                        'Hora Inicio': dStart.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+                        'Km Inicio': d.kilometrosInicio || '',
+                        'Fecha Fin': dEnd ? dEnd.toLocaleDateString('es-ES') : '',
+                        'Hora Fin': dEnd ? dEnd.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '',
+                        'Km Fin': d.kilometrosFin || '',
+                        'Duración (min)': duration,
+                        'ID': d.id || ''
+                    });
+                });
+            }
+        });
+
+        if (descansosData.length > 0) {
+            const wsDescansos = XLSX.utils.json_to_sheet(descansosData);
+            wsDescansos['!cols'] = [
+                { wch: 20 }, { wch: 12 }, { wch: 10 }, { wch: 10 },
+                { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 20 }
+            ];
+            XLSX.utils.book_append_sheet(workbook, wsDescansos, 'Detalle_Descansos');
+        }
     }
 
     // Hoja de Resumen
@@ -151,6 +187,17 @@ export const exportToExcel = (
     const wsResumen = XLSX.utils.json_to_sheet(resumenData);
     wsResumen['!cols'] = [{ wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 15 }];
     XLSX.utils.book_append_sheet(workbook, wsResumen, 'Resumen');
+
+    // Hoja de Ajustes
+    if (data.ajustes) {
+        const ajustesData = Object.entries(data.ajustes).map(([key, value]) => ({
+            'Configuración': key,
+            'Valor': typeof value === 'object' ? JSON.stringify(value) : String(value)
+        }));
+        const wsAjustes = XLSX.utils.json_to_sheet(ajustesData);
+        wsAjustes['!cols'] = [{ wch: 30 }, { wch: 50 }];
+        XLSX.utils.book_append_sheet(workbook, wsAjustes, 'Ajustes');
+    }
 
     // Generar archivo
     const finalFilename = filename || `TAppXI_Export_${dateStr}.xlsx`;
@@ -177,9 +224,9 @@ export const exportToCSV = (
     // Carreras
     if (data.carreras && data.carreras.length > 0) {
         lines.push('=== CARRERAS ===');
-        lines.push('Fecha,Hora,Taxímetro,Cobrado,Forma Pago,Tipo Carrera,Emisora,Aeropuerto,Estación,Empresa Vale,Código Vale,Albarán');
+        lines.push('Fecha,Hora,Taxímetro,Cobrado,Forma Pago,Tipo Carrera,Emisora,Aeropuerto,Estación,Notas,Empresa Vale,Código Vale,Despacho,Albarán,Autoriza,ID Turno,ID');
         data.carreras.forEach(c => {
-            const fecha = c.fechaHora instanceof Date ? c.fechaHora : new Date(c.fechaHora);
+            const fecha = c.fechaHora instanceof Date ? c.fechaHora : apiParseDate(c.fechaHora);
             lines.push([
                 fecha.toLocaleDateString('es-ES'),
                 fecha.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
@@ -190,9 +237,14 @@ export const exportToCSV = (
                 c.emisora ? 'Sí' : 'No',
                 c.aeropuerto ? 'Sí' : 'No',
                 c.estacion ? 'Sí' : 'No',
-                c.valeInfo?.empresa || '',
-                c.valeInfo?.codigoEmpresa || '',
-                c.valeInfo?.numeroAlbaran || ''
+                (c.notas || '').replace(/,/g, ';'),
+                (c.valeInfo?.empresa || '').replace(/,/g, ';'),
+                (c.valeInfo?.codigoEmpresa || '').replace(/,/g, ';'),
+                (c.valeInfo?.despacho || '').replace(/,/g, ';'),
+                (c.valeInfo?.numeroAlbaran || '').replace(/,/g, ';'),
+                (c.valeInfo?.autoriza || '').replace(/,/g, ';'),
+                c.turnoId || '',
+                c.id
             ].join(','));
         });
         lines.push('');
@@ -201,20 +253,79 @@ export const exportToCSV = (
     // Gastos
     if (data.gastos && data.gastos.length > 0) {
         lines.push('=== GASTOS ===');
-        lines.push('Fecha,Concepto,Proveedor,Base Imponible,IVA %,IVA,Total,Nº Factura,Forma Pago');
+        lines.push('Fecha,Concepto,Proveedor,NIF,Taller,Base Imponible,IVA %,IVA,Total,Nº Factura,Forma Pago,Km Totales,Km Vehículo,Km Parciales,Litros,Precio/L,Descuento,Notas,ID Turno,ID');
         data.gastos.forEach(g => {
-            const fecha = g.fecha instanceof Date ? g.fecha : new Date(g.fecha);
+            const fecha = g.fecha instanceof Date ? g.fecha : apiParseDate(g.fecha);
             lines.push([
                 fecha.toLocaleDateString('es-ES'),
                 (g.concepto || '').replace(/,/g, ';'),
                 (g.proveedor || '').replace(/,/g, ';'),
+                (g.nif || '').replace(/,/g, ';'),
+                (g.taller || '').replace(/,/g, ';'),
                 (g.baseImponible || g.importe || 0).toFixed(2),
                 (g.ivaPorcentaje || 0).toString(),
                 (g.ivaImporte || 0).toFixed(2),
                 (g.importe || 0).toFixed(2),
                 (g.numeroFactura || '').replace(/,/g, ';'),
                 g.formaPago || '',
+                g.kilometros || 0,
+                g.kilometrosVehiculo || 0,
+                g.kmParciales || 0,
+                g.litros || 0,
+                g.precioPorLitro || 0,
+                g.descuento || 0,
+                (g.notas || '').replace(/,/g, ';'),
+                g.turnoId || '',
+                g.id
             ].join(','));
+        });
+        lines.push('');
+    }
+
+    // Turnos
+    if (data.turnos && data.turnos.length > 0) {
+        lines.push('=== TURNOS ===');
+        lines.push('Fecha Inicio,Hora Inicio,Km Inicio,Fecha Fin,Hora Fin,Km Fin,Km Recorridos,ID');
+        data.turnos.forEach(t => {
+            const fInicio = t.fechaInicio instanceof Date ? t.fechaInicio : apiParseDate(t.fechaInicio);
+            const fFin = t.fechaFin ? (t.fechaFin instanceof Date ? t.fechaFin : apiParseDate(t.fechaFin)) : null;
+            const kmRec = t.kilometrosFin && t.kilometrosInicio ? (t.kilometrosFin - t.kilometrosInicio) : '';
+            
+            lines.push([
+                fInicio.toLocaleDateString('es-ES'),
+                fInicio.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+                t.kilometrosInicio || 0,
+                fFin ? fFin.toLocaleDateString('es-ES') : '',
+                fFin ? fFin.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '',
+                t.kilometrosFin || '',
+                kmRec,
+                t.id
+            ].join(','));
+        });
+        lines.push('');
+
+        // Descansos en CSV
+        lines.push('=== DETALLE_DESCANSOS ===');
+        lines.push('ID Turno,Fecha Inicio,Hora Inicio,Km Inicio,Fecha Fin,Hora Fin,Km Fin,Duración (min),ID');
+        data.turnos.forEach(t => {
+            if (t.descansos && Array.isArray(t.descansos)) {
+                t.descansos.forEach(d => {
+                    const dStart = d.fechaInicio instanceof Date ? d.fechaInicio : apiParseDate(d.fechaInicio);
+                    const dEnd = d.fechaFin ? (d.fechaFin instanceof Date ? d.fechaFin : apiParseDate(d.fechaFin)) : null;
+                    const duration = dEnd && dStart ? Math.round((dEnd.getTime() - dStart.getTime()) / 60000) : '';
+                    lines.push([
+                        t.id,
+                        dStart.toLocaleDateString('es-ES'),
+                        dStart.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+                        d.kilometrosInicio || '',
+                        dEnd ? dEnd.toLocaleDateString('es-ES') : '',
+                        dEnd ? dEnd.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '',
+                        d.kilometrosFin || '',
+                        duration,
+                        d.id || ''
+                    ].join(','));
+                });
+            }
         });
         lines.push('');
     }
@@ -503,6 +614,92 @@ export const exportToPDFAdvanced = async (
                 margin: { left: 14, right: 14 }
             });
             yPos = (doc as any).lastAutoTable.finalY + 10;
+        }
+    }
+
+    // Turnos
+    if (data.turnos && data.turnos.length > 0) {
+        if (yPos > pageHeight - 60) {
+            doc.addPage();
+            yPos = 20;
+        }
+
+        doc.setFontSize(16);
+        doc.setTextColor(0, 0, 0);
+        doc.setFont(undefined, 'bold');
+        doc.text('RESUMEN DE TURNOS', 14, yPos);
+        yPos += 8;
+
+        const turnosData = data.turnos.map(t => {
+            const fInicio = t.fechaInicio instanceof Date ? t.fechaInicio : apiParseDate(t.fechaInicio);
+            const fFin = t.fechaFin ? (t.fechaFin instanceof Date ? t.fechaFin : apiParseDate(t.fechaFin)) : null;
+            const kmRec = t.kilometrosFin && t.kilometrosInicio ? (t.kilometrosFin - t.kilometrosInicio) : 0;
+            return [
+                fInicio.toLocaleDateString('es-ES'),
+                fInicio.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+                t.kilometrosInicio || 0,
+                fFin ? fFin.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '-',
+                t.kilometrosFin || '-',
+                kmRec
+            ];
+        });
+
+        // @ts-ignore
+        const autoTable = autoTableModule.default || doc.autoTable;
+        if (typeof autoTable === 'function') {
+            autoTable(doc, {
+                startY: yPos,
+                head: [['Fecha', 'Inicio', 'Km Ini', 'Fin', 'Km Fin', 'Km Rec']],
+                body: turnosData,
+                theme: 'striped',
+                headStyles: { fillColor: [50, 50, 50], textColor: 255, fontStyle: 'bold' },
+                styles: { fontSize: 8 },
+                margin: { left: 14, right: 14 }
+            });
+            yPos = (doc as any).lastAutoTable.finalY + 10;
+        }
+
+        // Descansos
+        const finalDescansosData: any[] = [];
+        data.turnos.forEach(t => {
+            if (t.descansos && Array.isArray(t.descansos)) {
+                t.descansos.forEach(d => {
+                    const dStart = d.fechaInicio instanceof Date ? d.fechaInicio : apiParseDate(d.fechaInicio);
+                    const dEnd = d.fechaFin ? (d.fechaFin instanceof Date ? d.fechaFin : apiParseDate(d.fechaFin)) : null;
+                    const duration = dEnd && dStart ? Math.round((dEnd.getTime() - dStart.getTime()) / 60000) : '-';
+                    finalDescansosData.push([
+                        dStart.toLocaleDateString('es-ES'),
+                        dStart.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+                        d.kilometrosInicio || '-',
+                        dEnd ? dEnd.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '-',
+                        d.kilometrosFin || '-',
+                        duration
+                    ]);
+                });
+            }
+        });
+
+        if (finalDescansosData.length > 0) {
+            if (yPos > pageHeight - 40) {
+                doc.addPage();
+                yPos = 20;
+            }
+            doc.setFontSize(14);
+            doc.text('DETALLE DE DESCANSOS', 14, yPos);
+            yPos += 6;
+
+            if (typeof autoTable === 'function') {
+                autoTable(doc, {
+                    startY: yPos,
+                    head: [['Fecha', 'Inicio', 'Km Ini', 'Fin', 'Km Fin', 'Dur (min)']],
+                    body: finalDescansosData,
+                    theme: 'grid',
+                    headStyles: { fillColor: [100, 100, 100], textColor: 255 },
+                    styles: { fontSize: 7 },
+                    margin: { left: 14, right: 14 }
+                });
+                yPos = (doc as any).lastAutoTable.finalY + 10;
+            }
         }
     }
 
