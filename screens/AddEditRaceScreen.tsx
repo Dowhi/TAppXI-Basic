@@ -127,6 +127,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
     const [valeDirectory, setValeDirectory] = useState<ValeDirectoryEntry[]>([]);
     const [empresaManuallyEdited, setEmpresaManuallyEdited] = useState(false);
     const [notas, setNotas] = useState('');
+    const [originalRace, setOriginalRace] = useState<any>(initialData || null);
 
     const { isListening, startListening, stopListening, transcript, processCommand, supported } = useVoiceInput();
 
@@ -211,6 +212,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                 if (race.cobrado !== race.taximetro) {
                     setCobradoManuallySet(true);
                 }
+                setOriginalRace(race);
             } else {
                 console.error("Race not found!");
                 navigateTo(Seccion.VistaCarreras);
@@ -522,10 +524,14 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
 
         setIsSubmitting(true);
 
-        let turnoIdToUse = initialData?.turnoId;
+        // Preservar la fecha/hora y el turno original si estamos editando
+        const originalFechaHora = originalRace?.fechaHora;
+        const originalTurnoId = originalRace?.turnoId;
 
-        // Si es una nueva carrera (no edición) o si no tiene turno asignado, intentamos asignar el turno activo
-        if (!raceId || !turnoIdToUse) {
+        let turnoIdToUse = originalTurnoId || initialData?.turnoId;
+
+        // Si no tiene turno asignado (incluso si es edición pero el registro estaba corrupto), intentamos asignar el turno activo
+        if (!turnoIdToUse) {
             const activeTurno = await getActiveTurno();
             if (activeTurno) {
                 turnoIdToUse = activeTurno.id;
@@ -546,8 +552,15 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
         };
         try {
             if (isEditing && raceId) {
-                await updateCarrera(raceId, { ...carreraData, fechaHora: new Date() });
+                // Enviamos explícitamente la fechaHora original para asegurar que no se sobreescriba
+                // Solo si la tenemos, de lo contrario updateCarrera usará la existente en DB
+                const updates: any = { ...carreraData };
+                if (originalFechaHora) {
+                    updates.fechaHora = originalFechaHora;
+                }
+                await updateCarrera(raceId, updates);
             } else {
+                // Para nuevas carreras sí establecemos la hora actual
                 await addCarrera({ ...carreraData, fechaHora: new Date() });
             }
             // Navegar de vuelta a la pantalla de carreras después de guardar
