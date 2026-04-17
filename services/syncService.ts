@@ -30,7 +30,7 @@ const SHEETS = {
     },
     Gastos: {
         title: 'Gastos',
-        headers: ['Fecha', 'Concepto', 'Proveedor', 'Taller', 'Base', 'IVA %', 'IVA €', 'Total', 'Nº Factura', 'Forma Pago', 'Km', 'Notas', 'ID']
+        headers: ['Fecha', 'Concepto', 'Proveedor', 'NIF Proveedor', 'Taller', 'Base Imponible (€)', 'IVA %', 'IVA €', 'Total (€)', 'Nº Factura', 'Forma de Pago', 'Kilómetros Totales', 'Km Vehículo', 'Km Parciales', 'Litros', 'Precio/L', 'Descuento (€)', 'Notas', 'ID Turno', 'ID']
     },
     Incisos: { // Detalle Servicios
         title: 'Detalle_Servicios',
@@ -74,7 +74,7 @@ const SHEETS = {
     },
     OtrosIngresos: {
         title: 'Otros_Ingresos',
-        headers: ['Fecha', 'Concepto', 'Importe', 'Forma Pago', 'Notas', 'ID']
+        headers: ['Fecha', 'Hora', 'Concepto', 'Importe', 'Forma Pago', 'Notas', 'ID']
     },
     Vales_Carreras: {
         title: 'Vales_Carreras',
@@ -445,6 +445,7 @@ class SyncService {
                     fmtDate(g.fecha),
                     g.concepto || '',
                     g.proveedor || '',
+                    g.nif || '',
                     g.taller || '',
                     g.baseImponible || g.importe || 0,
                     g.ivaPorcentaje || 0,
@@ -453,7 +454,13 @@ class SyncService {
                     g.numeroFactura || '',
                     g.formaPago || '',
                     g.kilometros || '',
+                    g.kilometrosVehiculo || '',
+                    g.kmParciales || '',
+                    g.litros || '',
+                    g.precioPorLitro || '',
+                    g.descuento || '',
                     g.notas || '',
+                    g.turnoId || '',
                     g.id
                 ];
             case 'Incisos': // Detalle Servicios
@@ -514,7 +521,8 @@ class SyncService {
             case 'OtrosIngresos':
                 return [
                     fmtDate(data.fecha),
-                    data.concepto || '',
+                    fmtTime(data.fecha),
+                    data.concept || data.concepto || '',
                     data.importe || 0,
                     data.formaPago || '',
                     data.notas || '',

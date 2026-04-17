@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 const STORAGE_KEY_ACTIVATED = 'tappxi_activated';
 const STORAGE_KEY_DEVICE_ID = 'tappxi_device_id';
 const SECRET_SALT = 'TAPPXI_SECURE_2025_V1'; // Simple salt for hashing
-const MASTER_CODE = '772194'; // Master unlock code for any device
+const MASTER_CODE = '290998'; // Master unlock code for any device
 
 export const ActivationService = {
     getDeviceId: (): string => {
@@ -24,7 +24,7 @@ export const ActivationService = {
 
     activate: (code: string): boolean => {
         const sanitizedCode = code.trim().toUpperCase();
-        
+
         // Check Master Code first
         if (sanitizedCode === MASTER_CODE) {
             localStorage.setItem(STORAGE_KEY_ACTIVATED, 'true');

@@ -777,8 +777,19 @@ const normalizeHeader = (header: string): string => {
         'nº albarán': 'numeroAlbaran',
         'base': 'baseImponible',
         'iva %': 'ivaPorcentaje',
+        'iva %': 'ivaPorcentaje',
         'iva €': 'ivaImporte',
+        'iva (importe)': 'ivaImporte',
+        'ivaporc': 'ivaPorcentaje',
+        'base imponible (€)': 'baseImponible',
+        'total (€)': 'importe',
         'total': 'importe',
+        'kilómetros totales': 'kilometros',
+        'km vehículo': 'kilometrosVehiculo',
+        'km parciales': 'kmParciales',
+        'litros': 'litros',
+        'precio/l': 'precioPorLitro',
+        'descuento (€)': 'descuento',
         'nº factura': 'numeroFactura',
         'km': 'kilometros',
         'teléfono': 'telefono',
@@ -793,6 +804,7 @@ const normalizeHeader = (header: string): string => {
         'nueva letra': 'nuevaLetra',
         'configuración (json)': 'configuracion',
         'nif / cif': 'nif',
+        'nif proveedor': 'nif',
         'razón social': 'nombre',
         'dirección fiscal': 'direccion',
         'email': 'email',
@@ -800,6 +812,7 @@ const normalizeHeader = (header: string): string => {
         'valor': 'valor',
         'estación': 'estacion',
         'forma pago': 'formaPago',
+        'forma de pago': 'formaPago',
         'tipo': 'tipoCarrera',
         'dirección_vales': 'Vales',
         'informes_personalizados': 'CustomReports',
@@ -970,9 +983,18 @@ export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?
             if (!dateStr) return null;
             const date = parseDate(dateStr);
             if (!date) return null;
-            if (timeStr && typeof timeStr === 'string' && timeStr.includes(':')) {
-                const [hours, minutes] = timeStr.split(':').map(n => parseInt(n, 10));
-                if (!isNaN(hours) && !isNaN(minutes)) {
+
+            if (timeStr !== undefined && timeStr !== null) {
+                if (typeof timeStr === 'string' && timeStr.includes(':')) {
+                    const [hours, minutes] = timeStr.split(':').map(n => parseInt(n, 10));
+                    if (!isNaN(hours) && !isNaN(minutes)) {
+                        date.setHours(hours, minutes, 0, 0);
+                    }
+                } else if (typeof timeStr === 'number') {
+                    // Manejar tiempo numérico de Excel/Google Sheets (fracción del día)
+                    const totalMinutes = Math.round(timeStr * 24 * 60);
+                    const hours = Math.floor(totalMinutes / 60);
+                    const minutes = totalMinutes % 60;
                     date.setHours(hours, minutes, 0, 0);
                 }
             }
@@ -1045,11 +1067,16 @@ export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?
             return {
                 ...g,
                 id: g.id || crypto.randomUUID(), // Asegurar que siempre hay ID
-                importe: parseNumber(g.importe || g.total),
-                baseImponible: parseNumber(g.baseimponible || g.base),
+                importe: parseNumber(g.importe || g.total || g.totale),
+                baseImponible: parseNumber(g.baseimponible || g.base || g.baseimponiblee),
                 ivaImporte: parseNumber(g.ivaimporte || g.ivae),
                 ivaPorcentaje: parseNumber(g.ivaporcentaje || g.ivaporc),
-                kilometros: parseNumber(g.kilometros || g.km),
+                kilometros: parseNumber(g.kilometros || g.km || g.kilometrostotales),
+                kilometrosVehiculo: parseNumber(g.kilometrosvehiculo || g.kmvehiculo),
+                kmParciales: parseNumber(g.kmparciales),
+                litros: parseNumber(g.litros),
+                precioPorLitro: parseNumber(g.precioporlitro || g.preciol),
+                descuento: parseNumber(g.descuento || g.descuentoe),
                 fecha: parseDate(g.fecha), // No fallback
                 servicios: servicios.length > 0 ? servicios : (g.servicios || [])
             };
@@ -1062,8 +1089,8 @@ export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?
         });
 
         const turnos = turnosRaw.map(t => {
-            const fechaInicio = t.fechainicio ? parseDate(t.fechainicio) : processDateWithTime(t, 'fechainicio', 'horainicio');
-            const fechaFin = t.fechafin ? parseDate(t.fechafin) : processDateWithTime(t, 'fechafin', 'horafin');
+            const fechaInicio = processDateWithTime(t, 'fechainicio', 'horainicio');
+            const fechaFin = processDateWithTime(t, 'fechafin', 'horafin');
             return {
                 ...t,
                 id: t.id || crypto.randomUUID(), // Asegurar que siempre hay ID
@@ -1143,7 +1170,7 @@ export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?
         const otrosIngresos = otrosIngresosRaw.map(oi => ({
             ...oi,
             id: oi.id || crypto.randomUUID(),
-            fecha: parseDate(oi.fecha),
+            fecha: processDateWithTime(oi, 'fecha', 'hora'),
             importe: parseNumber(oi.importe)
         })).filter(oi => {
             if (!oi.fecha) {
