@@ -4,7 +4,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useFontSize } from "../contexts/FontSizeContext";
 import ScreenTopBar from "../components/ScreenTopBar";
 import { Seccion } from "../types";
-import { saveAjustes, getAjustes, deleteAllData, DeleteProgress, removeDuplicates } from "../services/api";
+import { saveAjustes, getAjustes, deleteAllData, DeleteProgress, removeDuplicates, syncFromFirestore } from "../services/api";
 import { downloadBackupJson, restoreBackup, restoreFromGoogleSheets, exportToGoogleSheets } from "../services/backup";
 import { listFiles, getFileContent, isGoogleLoggedIn, signOutGoogle, ensureGoogleSignIn } from "../services/google";
 import { archiveOperationalDataOlderThan, getRelativeCutoffDate } from "../services/maintenance";
@@ -576,6 +576,32 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                     setShowRestoreModal(false);
                     setRestoreProgress(0);
                     setRestoreMessage("");
+                }
+            }
+        );
+    };
+
+    const handleSyncFromFirestore = async () => {
+        showConfirm(
+            "¿Quieres sincronizar los datos desde Firestore?\n\n⚠️ Esto descargará los datos de la nube y los fusionará con los locales (actualizando los existentes). Se recomienda hacer un backup JSON antes.",
+            async () => {
+                setRestoring(true);
+                setRestoreProgress(0);
+                setRestoreMessage("Conectando con Firestore...");
+
+                try {
+                    await syncFromFirestore((progress, message) => {
+                        setRestoreProgress(progress);
+                        setRestoreMessage(message);
+                    });
+
+                    showAlert("✅ Sincronización desde Firestore completada con éxito.\n\nLa aplicación se recargará para aplicar los cambios.");
+                    setTimeout(() => window.location.reload(), 2000);
+                } catch (e: any) {
+                    console.error("Error sincronizando desde Firestore:", e);
+                    showAlert(`❌ Error en la sincronización: ${e.message || e}`);
+                } finally {
+                    setRestoring(false);
                 }
             }
         );
@@ -1435,6 +1461,27 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                                 </>
                             )}
                         </button>
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-zinc-700">
+                        <button
+                            onClick={handleSyncFromFirestore}
+                            disabled={restoring || exporting}
+                            className={`w-full font-bold py-2.5 px-3 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm ${!restoring && !exporting
+                                ? 'bg-orange-600 hover:bg-orange-700 text-white shadow-lg'
+                                : 'bg-zinc-700 text-zinc-500 cursor-not-allowed'
+                                }`}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9-9c1.657 0 3 1.343 3 3s-1.343 3-3 3-3-1.343-3-3 1.343-3 3-3z" />
+                                <polyline points="7 10 12 15 17 10" />
+                                <line x1="12" y1="15" x2="12" y2="3" />
+                            </svg>
+                            <span>Sincronizar desde Firestore</span>
+                        </button>
+                        <p className="text-zinc-500 text-[10px] mt-2 text-center uppercase tracking-wider">
+                            Descarga y combina los datos almacenados en Cloud Firestore
+                        </p>
                     </div>
                 </div>
 

@@ -1048,3 +1048,43 @@ export async function deleteMonthlyData(month: number, year: number): Promise<vo
     for (const o of otros) await deleteOtroIngreso(o.id);
     for (const t of turnos) await deleteItem('turnos', t.id);
 }
+
+export async function syncFromFirestore(onProgress?: (progress: number, message: string) => void): Promise<void> {
+    if (onProgress) onProgress(0, "Iniciando descarga de Firestore...");
+    
+    const cloudData = await firebaseSync.downloadAll();
+    
+    const steps = [
+        { key: 'Ajustes', msg: 'Sincronizando ajustes...', restore: async (data: any) => {
+            const ajustesObj: any = {};
+            data.forEach((item: any) => { if (item.clave) ajustesObj[item.clave] = item.valor; });
+            if (Object.keys(ajustesObj).length > 0) await saveAjustes(ajustesObj, true);
+        }},
+        { key: 'Carreras', msg: 'Sincronizando carreras...', restore: async (item: any) => restoreCarrera(item, true) },
+        { key: 'Gastos', msg: 'Sincronizando gastos...', restore: async (item: any) => restoreGasto(item, true) },
+        { key: 'Turnos', msg: 'Sincronizando turnos...', restore: async (item: any) => restoreTurno(item, true) },
+        { key: 'Proveedores', msg: 'Sincronizando proveedores...', restore: async (item: any) => restoreProveedor(item, true) },
+        { key: 'Conceptos', msg: 'Sincronizando conceptos...', restore: async (item: any) => restoreConcepto(item, true) },
+        { key: 'Talleres', msg: 'Sincronizando talleres...', restore: async (item: any) => restoreTaller(item, true) },
+        { key: 'Recordatorios', msg: 'Sincronizando recordatorios...', restore: async (item: any) => restoreReminder(item, true) },
+        { key: 'Excepciones', msg: 'Sincronizando excepciones...', restore: async (item: any) => restoreExcepcion(item, true) },
+        { key: 'Vales', msg: 'Sincronizando vales...', restore: async (item: any) => restoreValeDirectoryEntry(item, true) },
+        { key: 'OtrosIngresos', msg: 'Sincronizando otros ingresos...', restore: async (item: any) => restoreOtroIngreso(item, true) }
+    ];
+
+    for (let i = 0; i < steps.length; i++) {
+        const step = steps[i];
+        if (onProgress) onProgress(Math.round((i / steps.length) * 100), step.msg);
+        
+        const data = cloudData[step.key] || [];
+        if (step.key === 'Ajustes') {
+            await (step.restore as any)(data);
+        } else {
+            for (const item of data) {
+                await step.restore(item);
+            }
+        }
+    }
+
+    if (onProgress) onProgress(100, "Sincronización completada.");
+}

@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, deleteDoc, getDocs, collection } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyA8bWJ0RPlhWyJPiWA6Qc9huE9EkFmzKZM",
@@ -78,6 +78,20 @@ class FirebaseSync {
         } catch (e) {
             console.error(`Error de borrado pasivo (Firebase) en ${collection}:`, e);
         }
+    }
+
+    async downloadAll(): Promise<Record<string, any[]>> {
+        const results: Record<string, any[]> = {};
+        for (const [key, colName] of Object.entries(COLLECTION_MAP)) {
+            try {
+                const querySnapshot = await getDocs(collection(db, colName));
+                results[key] = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+            } catch (e) {
+                console.error(`Error descargando coleccion ${colName}:`, e);
+                results[key] = [];
+            }
+        }
+        return results;
     }
 }
 
