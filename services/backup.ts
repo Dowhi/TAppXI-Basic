@@ -28,7 +28,7 @@ import {
     parseDate as apiParseDate
 } from './api';
 import { getCustomReports, restoreCustomReport } from './customReports';
-import { uploadFileToDrive, createSpreadsheetWithSheets, writeSheetValues, readSheetValues, getSpreadsheetDetails } from './google';
+import { uploadFileToDrive, createSpreadsheetWithSheets, writeSheetValues, readSheetValues, getSpreadsheetDetails, findOrCreateFolder, listFilesInFolder, deleteFile } from './google';
 
 interface BackupPayload {
     meta: {
@@ -1207,3 +1207,106 @@ export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?
         throw new Error(`Error al restaurar desde Google Sheets: ${error.message}`);
     }
 };
+
+/**
+ * Realiza una copia de seguridad automática en la carpeta "TAppXI" de Google Drive.
+ * Mantiene un máximo de 3 copias, borrando la más antigua cuando se supera ese límite.
+ * @param replaceToday Si true, reemplaza el backup de hoy (si existe) en lugar de acumularlo.
+ */
+export const autoBackupToDrive = async (replaceToday = false): Promise<void> => {
+    const FOLDER_NAME = 'TAppXI';
+    const MAX_BACKUPS = 3;
+
+    try {
+        // 1. Obtener o crear la carpeta TAppXI en Drive
+        const folderId = await findOrCreateFolder(FOLDER_NAME);
+
+        // 2. Listar archivos existentes (ASC: el más antiguo primero)
+        let existing = await listFilesInFolder(folderId);
+
+        // 3. Si replaceToday=true, buscar y eliminar el backup de hoy para reemplazarlo
+        if (replaceToday) {
+            const todayPrefix = `tappxi-backup-${new Date().toISOString().slice(0, 10)}`;
+            const todayFiles = existing.filter(f => f.name.startsWith(todayPrefix));
+            for (const f of todayFiles) {
+                await deleteFile(f.id);
+                console.log(`[AutoBackup] Backup de hoy reemplazado: ${f.name}`);
+            }
+            // Actualizar la lista tras el borrado
+            existing = existing.filter(f => !f.name.startsWith(todayPrefix));
+        }
+
+        // 4. Si ya hay MAX_BACKUPS o más (de otros días), borrar el más antiguo
+        if (existing.length >= MAX_BACKUPS) {
+            await deleteFile(existing[0].id);
+            console.log(`[AutoBackup] Copia antigua borrada: ${existing[0].name}`);
+        }
+
+        // 5. Generar el JSON de backup
+        const data = await buildBackupPayload();
+        const json = JSON.stringify(data, null, 2);
+        const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+        const dateStr = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        const fileName = `tappxi-backup-${dateStr}.json`;
+
+        // 6. Subir el nuevo backup a la carpeta TAppXI
+        await uploadFileToDrive({
+            name: fileName,
+            mimeType: 'application/json',
+            content: blob,
+            parents: [folderId],
+        });
+
+        console.log(`[AutoBackup] Copia de seguridad creada: ${fileName}`);
+        localStorage.setItem('tappxi_last_auto_backup', new Date().toISOString());
+    } catch (e: any) {
+        console.error('[AutoBackup] Error en la copia automática:', e);
+    }
+};
+
+/**
+ * Inicia el scheduler que ejecuta autoBackupToDrive cada noche a las 23:59.
+ * Devuelve una función para cancelarlo (cleanup).
+ */
+/**
+ * Comprueba si ya se hizo una copia hoy. Si no, la hace ahora.
+ * Llamar al abrir la app como red de seguridad.
+ */
+export const backupIfMissedToday = async (): Promise<void> => {
+    const last = localStorage.getItem('tappxi_last_auto_backup');
+    if (last) {
+        const lastDate = new Date(last).toDateString();
+        const today = new Date().toDateString();
+        if (lastDate === today) {
+            // Ya se hizo hoy, no hacer nada
+            return;
+        }
+    }
+    console.log('[AutoBackup] No hay copia de hoy. Iniciando backup...');
+    await autoBackupToDrive();
+};
+
+/**
+ * Registra un listener en visibilitychange para hacer una copia al cerrar/ocultar la app.
+ * También hace una copia de seguridad si no se hizo hoy al llamar a esta función (al abrir).
+ * Devuelve una función de cleanup para eliminar el listener.
+ */
+export const startAutoBackupOnClose = (): (() => void) => {
+    // Red de seguridad: comprobar al abrir si falta el backup de ayer
+    backupIfMissedToday().catch(e => console.warn('[AutoBackup] Error en comprobación inicial:', e));
+
+    const handleVisibilityChange = () => {
+        if (document.visibilityState === 'hidden') {
+            // Al cerrar/cambiar de pestaña: siempre reemplazar el backup de hoy
+            // para que refleje el estado más actualizado de los datos
+            console.log('[AutoBackup] App ocultada/cerrada. Reemplazando backup de hoy...');
+            autoBackupToDrive(true).catch(e => console.warn('[AutoBackup] Error al cerrar:', e));
+        }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Limpieza al desmontar
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+};
+

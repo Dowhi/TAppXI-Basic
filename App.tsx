@@ -5,6 +5,7 @@ import { useTheme } from './contexts/ThemeContext';
 import { Seccion, CarreraVista } from './types';
 import { startReminderSoundCheck, stopReminderSoundCheck, requestNotificationPermission } from './services/reminderSound';
 import { initGoogleClient } from './services/google';
+import { startAutoBackupOnClose } from './services/backup';
 import { ErrorHandlerSetup } from './components/ErrorHandlerSetup';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import HomeScreen from './screens/HomeScreen';
@@ -79,9 +80,12 @@ const App: React.FC = () => {
 
     // Preload Google Scripts (Critical for iOS popup handling)
     useEffect(() => {
+        let cancelBackup: (() => void) | undefined;
         const init = async () => {
             try {
                 await initGoogleClient();
+                // Arrancar backup: al cerrar la app y al abrir si falta el del día anterior
+                cancelBackup = startAutoBackupOnClose();
             } catch (err) {
                 console.error(err);
             } finally {
@@ -92,6 +96,7 @@ const App: React.FC = () => {
             }
         };
         init();
+        return () => cancelBackup?.();
     }, []);
 
     // Iniciar verificación de sonidos

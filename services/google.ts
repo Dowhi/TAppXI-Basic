@@ -584,3 +584,69 @@ export const addSheet = async (spreadsheetId: string, title: string): Promise<vo
         console.log(`Sheet ${title} might already exist or error:`, e);
     }
 };
+
+/**
+ * Busca una carpeta en Drive por nombre; si no existe, la crea. Devuelve el ID de la carpeta.
+ */
+export const findOrCreateFolder = async (folderName: string): Promise<string> => {
+    await ensureGoogleSignIn();
+    const gapi = (window as any).gapi;
+
+    // Buscar carpeta existente
+    const searchResp = await gapi.client.request({
+        path: '/drive/v3/files',
+        method: 'GET',
+        params: {
+            q: `name = '${folderName}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+            fields: 'files(id, name)',
+            spaces: 'drive',
+        },
+    });
+    const files = searchResp?.result?.files || [];
+    if (files.length > 0) {
+        return files[0].id;
+    }
+
+    // Crear carpeta si no existe
+    const createResp = await gapi.client.request({
+        path: '/drive/v3/files',
+        method: 'POST',
+        body: JSON.stringify({
+            name: folderName,
+            mimeType: 'application/vnd.google-apps.folder',
+        }),
+        headers: { 'Content-Type': 'application/json' },
+    });
+    return createResp.result.id;
+};
+
+/**
+ * Lista archivos dentro de una carpeta de Drive, ordenados por fecha de creación ASC (el más antiguo primero).
+ */
+export const listFilesInFolder = async (folderId: string): Promise<{ id: string; name: string; createdTime: string }[]> => {
+    await ensureGoogleSignIn();
+    const gapi = (window as any).gapi;
+
+    const resp = await gapi.client.request({
+        path: '/drive/v3/files',
+        method: 'GET',
+        params: {
+            q: `'${folderId}' in parents and trashed = false`,
+            fields: 'files(id, name, createdTime)',
+            orderBy: 'createdTime asc',
+        },
+    });
+    return resp?.result?.files || [];
+};
+
+/**
+ * Borra un archivo de Drive por su ID.
+ */
+export const deleteFile = async (fileId: string): Promise<void> => {
+    await ensureGoogleSignIn();
+    const gapi = (window as any).gapi;
+    await gapi.client.request({
+        path: `/drive/v3/files/${fileId}`,
+        method: 'DELETE',
+    });
+};
