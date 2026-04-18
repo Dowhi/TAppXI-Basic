@@ -26,38 +26,38 @@ const ValesIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmln
 
 const FormCard: React.FC<{ title: string; children: React.ReactNode; className?: string }> = ({ title, children, className }) => (
     <div className={`bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-4 ${className}`}>
-        <h2 className="text-lg font-bold text-zinc-100">{title}</h2>
+        <h2 className="text-xl font-bold text-zinc-100">{title}</h2>
         {children}
     </div>
 );
 
 const FormField: React.FC<{ label: string; children: React.ReactNode; className?: string }> = ({ label, children, className }) => (
     <div className={className}>
-        <label className="block text-sm font-medium text-zinc-400 mb-1.5">{label}</label>
+        <label className="block text-base font-semibold text-zinc-300 mb-2">{label}</label>
         {children}
     </div>
 );
 
 const TextInput: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = (props) => (
-    <input {...props} className={`w-full p-2 border border-zinc-700 bg-zinc-800/50 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm text-zinc-100 placeholder:text-zinc-500 ${props.className}`} />
+    <input {...props} className={`w-full p-3 border border-zinc-700 bg-zinc-800/50 rounded-md focus:ring-blue-500 focus:border-blue-500 text-base text-zinc-100 placeholder:text-zinc-500 ${props.className}`} />
 );
 
 const TextArea: React.FC<React.TextareaHTMLAttributes<HTMLTextAreaElement>> = ({ className = '', ...rest }) => (
     <textarea
         {...rest}
-        className={`w-full min-h-[90px] p-2 border border-zinc-700 bg-zinc-800/50 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm text-zinc-100 placeholder:text-zinc-500 resize-y ${className}`}
+        className={`w-full min-h-[90px] p-3 border border-zinc-700 bg-zinc-800/50 rounded-md focus:ring-blue-500 focus:border-blue-500 text-base text-zinc-100 placeholder:text-zinc-500 resize-y ${className}`}
     />
 );
 
 const CheckboxField: React.FC<{ label: string; checked: boolean; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; }> = ({ label, checked, onChange }) => (
     <label className="flex items-center gap-2 cursor-pointer">
-        <input type="checkbox" checked={checked} onChange={onChange} className="w-4 h-4 text-blue-600 bg-zinc-700 border-zinc-600 rounded focus:ring-blue-500" />
-        <span className="text-sm font-medium text-zinc-300">{label}</span>
+        <input type="checkbox" checked={checked} onChange={onChange} className="w-6 h-6 text-blue-600 bg-zinc-700 border-zinc-600 rounded focus:ring-blue-500" />
+        <span className="text-base font-semibold text-zinc-300">{label}</span>
     </label>
 );
 
 const PrimaryButton: React.FC<{ children: React.ReactNode; onClick?: () => void; className?: string; disabled?: boolean; }> = ({ children, onClick, className, disabled }) => (
-    <button onClick={onClick} disabled={disabled} className={`w-full bg-blue-600 text-white px-3 py-3 rounded-lg font-bold flex items-center justify-center gap-1.5 text-base hover:bg-blue-700 transition-colors disabled:bg-zinc-700 disabled:text-zinc-400 ${className}`}>
+    <button onClick={onClick} disabled={disabled} className={`w-full bg-blue-600 text-white px-3 py-4 rounded-lg font-bold flex items-center justify-center gap-1.5 text-lg hover:bg-blue-700 transition-colors disabled:bg-zinc-700 disabled:text-zinc-400 ${className}`}>
         {children}
     </button>
 );
@@ -70,13 +70,13 @@ const PaymentOption: React.FC<{
 }> = ({ label, icon, selected, onClick }) => (
     <button
         onClick={onClick}
-        className={`flex flex-col items-center justify-center p-2 rounded-lg border-2 transition-colors w-full aspect-square
+        className={`flex flex-col items-center justify-center p-3 rounded-lg border-2 transition-colors w-full aspect-square
             ${selected ? 'bg-zinc-700 border-blue-500' : 'bg-zinc-800 border-zinc-700 hover:bg-zinc-700/50'}`
         }
         aria-pressed={selected}
     >
-        <div className={`w-7 h-7 mb-1 ${selected ? 'text-blue-400' : 'text-zinc-400'}`}>{icon}</div>
-        <span className={`text-xs font-semibold ${selected ? 'text-zinc-50' : 'text-zinc-300'}`}>{label}</span>
+        <div className={`w-9 h-9 mb-1.5 ${selected ? 'text-blue-400' : 'text-zinc-400'}`}>{icon}</div>
+        <span className={`text-sm font-semibold ${selected ? 'text-zinc-50' : 'text-zinc-300'}`}>{label}</span>
     </button>
 );
 
@@ -636,7 +636,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                     <FormField label="Taxímetro">
                         <button
                             onClick={handleTaximetroClick}
-                            className={`w-full p-2 border rounded-md text-left text-sm text-zinc-100 hover:border-blue-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${isFieldTouched('taximetro') && getFieldError('taximetro')
+                            className={`w-full p-4 border rounded-md text-left text-xl font-bold text-zinc-100 hover:border-blue-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${isFieldTouched('taximetro') && getFieldError('taximetro')
                                 ? 'border-red-500 bg-red-900/20'
                                 : 'border-zinc-700 bg-zinc-800/50'
                                 }`}
@@ -651,7 +651,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                     <FormField label="Cobrado">
                         <button
                             onClick={handleCobradoClick}
-                            className={`w-full p-2 border rounded-md text-left text-sm text-zinc-100 hover:border-blue-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${isFieldTouched('cobrado') && getFieldError('cobrado')
+                            className={`w-full p-4 border rounded-md text-left text-xl font-bold text-zinc-100 hover:border-blue-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${isFieldTouched('cobrado') && getFieldError('cobrado')
                                 ? 'border-red-500 bg-red-900/20'
                                 : 'border-zinc-700 bg-zinc-800/50'
                                 }`}
@@ -706,9 +706,9 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                                     value="Urbana"
                                     checked={tipoCarrera === 'Urbana'}
                                     onChange={(e) => setTipoCarrera(e.target.value as 'Urbana' | 'Interurbana')}
-                                    className="w-4 h-4 text-blue-600 bg-zinc-700 border-zinc-600 focus:ring-blue-500"
+                                    className="w-5 h-5 text-blue-600 bg-zinc-700 border-zinc-600 focus:ring-blue-500"
                                 />
-                                <span className="text-sm font-medium text-zinc-300">Urbana</span>
+                                <span className="text-base font-semibold text-zinc-300">Urbana</span>
                             </label>
                             <label className="flex items-center gap-2 cursor-pointer">
                                 <input
@@ -717,9 +717,9 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                                     value="Interurbana"
                                     checked={tipoCarrera === 'Interurbana'}
                                     onChange={(e) => setTipoCarrera(e.target.value as 'Urbana' | 'Interurbana')}
-                                    className="w-4 h-4 text-blue-600 bg-zinc-700 border-zinc-600 focus:ring-blue-500"
+                                    className="w-5 h-5 text-blue-600 bg-zinc-700 border-zinc-600 focus:ring-blue-500"
                                 />
-                                <span className="text-sm font-medium text-zinc-300">Interurbana</span>
+                                <span className="text-base font-semibold text-zinc-300">Interurbana</span>
                             </label>
                         </div>
                     </FormField>
@@ -875,19 +875,19 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                                 {/* Fila 1 */}
                                 <button
                                     onClick={() => handleNumberKeyPress('7')}
-                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-3xl font-bold py-5 rounded-lg transition-colors active:bg-zinc-600"
                                 >
                                     7
                                 </button>
                                 <button
                                     onClick={() => handleNumberKeyPress('8')}
-                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-3xl font-bold py-5 rounded-lg transition-colors active:bg-zinc-600"
                                 >
                                     8
                                 </button>
                                 <button
                                     onClick={() => handleNumberKeyPress('9')}
-                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-3xl font-bold py-5 rounded-lg transition-colors active:bg-zinc-600"
                                 >
                                     9
                                 </button>
@@ -895,19 +895,19 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                                 {/* Fila 2 */}
                                 <button
                                     onClick={() => handleNumberKeyPress('4')}
-                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-3xl font-bold py-5 rounded-lg transition-colors active:bg-zinc-600"
                                 >
                                     4
                                 </button>
                                 <button
                                     onClick={() => handleNumberKeyPress('5')}
-                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-3xl font-bold py-5 rounded-lg transition-colors active:bg-zinc-600"
                                 >
                                     5
                                 </button>
                                 <button
                                     onClick={() => handleNumberKeyPress('6')}
-                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-3xl font-bold py-5 rounded-lg transition-colors active:bg-zinc-600"
                                 >
                                     6
                                 </button>
@@ -915,19 +915,19 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                                 {/* Fila 3 */}
                                 <button
                                     onClick={() => handleNumberKeyPress('1')}
-                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-3xl font-bold py-5 rounded-lg transition-colors active:bg-zinc-600"
                                 >
                                     1
                                 </button>
                                 <button
                                     onClick={() => handleNumberKeyPress('2')}
-                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-3xl font-bold py-5 rounded-lg transition-colors active:bg-zinc-600"
                                 >
                                     2
                                 </button>
                                 <button
                                     onClick={() => handleNumberKeyPress('3')}
-                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-3xl font-bold py-5 rounded-lg transition-colors active:bg-zinc-600"
                                 >
                                     3
                                 </button>
@@ -941,7 +941,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                                 </button>
                                 <button
                                     onClick={() => handleNumberKeyPress('0')}
-                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-3xl font-bold py-5 rounded-lg transition-colors active:bg-zinc-600"
                                 >
                                     0
                                 </button>
@@ -957,7 +957,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                             <div className="grid grid-cols-2 gap-3">
                                 <button
                                     onClick={handleDecimalPoint}
-                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-3xl font-bold py-5 rounded-lg transition-colors active:bg-zinc-600"
                                 >
                                     .
                                 </button>
@@ -991,19 +991,19 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                                 {/* Fila 1 */}
                                 <button
                                     onClick={() => handleCobradoNumberKeyPress('7')}
-                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-3xl font-bold py-5 rounded-lg transition-colors active:bg-zinc-600"
                                 >
                                     7
                                 </button>
                                 <button
                                     onClick={() => handleCobradoNumberKeyPress('8')}
-                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-3xl font-bold py-5 rounded-lg transition-colors active:bg-zinc-600"
                                 >
                                     8
                                 </button>
                                 <button
                                     onClick={() => handleCobradoNumberKeyPress('9')}
-                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-3xl font-bold py-5 rounded-lg transition-colors active:bg-zinc-600"
                                 >
                                     9
                                 </button>
@@ -1011,19 +1011,19 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                                 {/* Fila 2 */}
                                 <button
                                     onClick={() => handleCobradoNumberKeyPress('4')}
-                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-3xl font-bold py-5 rounded-lg transition-colors active:bg-zinc-600"
                                 >
                                     4
                                 </button>
                                 <button
                                     onClick={() => handleCobradoNumberKeyPress('5')}
-                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-3xl font-bold py-5 rounded-lg transition-colors active:bg-zinc-600"
                                 >
                                     5
                                 </button>
                                 <button
                                     onClick={() => handleCobradoNumberKeyPress('6')}
-                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-3xl font-bold py-5 rounded-lg transition-colors active:bg-zinc-600"
                                 >
                                     6
                                 </button>
@@ -1031,19 +1031,19 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                                 {/* Fila 3 */}
                                 <button
                                     onClick={() => handleCobradoNumberKeyPress('1')}
-                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-3xl font-bold py-5 rounded-lg transition-colors active:bg-zinc-600"
                                 >
                                     1
                                 </button>
                                 <button
                                     onClick={() => handleCobradoNumberKeyPress('2')}
-                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-3xl font-bold py-5 rounded-lg transition-colors active:bg-zinc-600"
                                 >
                                     2
                                 </button>
                                 <button
                                     onClick={() => handleCobradoNumberKeyPress('3')}
-                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-3xl font-bold py-5 rounded-lg transition-colors active:bg-zinc-600"
                                 >
                                     3
                                 </button>
@@ -1057,7 +1057,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                                 </button>
                                 <button
                                     onClick={() => handleCobradoNumberKeyPress('0')}
-                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-3xl font-bold py-5 rounded-lg transition-colors active:bg-zinc-600"
                                 >
                                     0
                                 </button>
@@ -1073,7 +1073,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                             <div className="grid grid-cols-2 gap-3">
                                 <button
                                     onClick={handleCobradoDecimalPoint}
-                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-2xl font-bold py-4 rounded-lg transition-colors active:bg-zinc-600"
+                                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-3xl font-bold py-5 rounded-lg transition-colors active:bg-zinc-600"
                                 >
                                     .
                                 </button>

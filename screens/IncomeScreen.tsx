@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Seccion, CarrerasResumen, CarreraVista, Turno } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
 import ScreenTopBar from '../components/ScreenTopBar';
@@ -171,8 +171,8 @@ const CustomTextField: React.FC<React.InputHTMLAttributes<HTMLInputElement> & { 
 
 const ResumenBox: React.FC<{ title: string; value: string; }> = ({ title, value }) => (
     <div className="flex-1 text-center">
-        <p className="text-sm text-zinc-400">{title}</p>
-        <p className="font-semibold text-base text-zinc-100">{value}</p>
+        <p className="text-base text-zinc-400">{title}</p>
+        <p className="font-bold text-xl text-zinc-100">{value}</p>
     </div>
 );
 
@@ -202,9 +202,9 @@ const ResumenBoxGrande: React.FC<{ title: string; value: string; valueNumeric: n
     const textColor = 'text-zinc-100 dark:text-zinc-100 text-zinc-900';
 
     return (
-        <div className="bg-zinc-900 dark:bg-zinc-900 bg-white border border-zinc-800 dark:border-zinc-800 border-zinc-200 rounded-lg p-1.5 flex-1 flex flex-col justify-center items-center text-center">
-            <p className="text-lg font-bold text-zinc-100 dark:text-zinc-100 text-zinc-900">{displayTitle}</p>
-            <p className={`text-2xl font-bold ${valueColor}`}>{value}</p>
+        <div className="bg-zinc-900 dark:bg-zinc-900 bg-white border border-zinc-800 dark:border-zinc-800 border-zinc-200 rounded-lg p-3 flex-1 flex flex-col justify-center items-center text-center">
+            <p className="text-xl font-bold text-zinc-100 dark:text-zinc-100 text-zinc-900">{displayTitle}</p>
+            <p className={`text-4xl font-bold ${valueColor}`}>{value}</p>
         </div>
     );
 };
@@ -532,13 +532,13 @@ const IncomeScreen: React.FC<IncomeScreenProps> = ({ navigateTo, navigateToEditR
                     <ResumenBoxGrande title="Pendiente" value={hideValues ? '****' : resumen.pendiente} valueNumeric={resumen.pendienteValor} />
                     <ResumenBoxGrande title="TOTAL" value={hideValues ? '****' : resumen.total} valueNumeric={parseFloat(resumen.total)} />
                 </div>
-                <div className={`flex space-x-2 ${cardBg} border ${cardBorder} rounded-lg p-1.5`}>
+                <div className={`flex space-x-2 ${cardBg} border ${cardBorder} rounded-lg p-2.5`}>
                     <ResumenBox title="Carr." value={hideValues ? '****' : resumen.carreras} />
                     <ResumenBox title="Tarjeta" value={hideValues ? '****' : resumen.tarjeta} />
                     <ResumenBox title="H.Inic." value={hideValues ? '****' : resumen.horaInicio} />
                     <ResumenBox title="H.Trab" value={hideValues ? '****' : resumen.horaTrabajo} />
                 </div>
-                <div className={`flex space-x-2 ${cardBg} border ${cardBorder} rounded-lg p-1.5`}>
+                <div className={`flex space-x-2 ${cardBg} border ${cardBorder} rounded-lg p-2.5`}>
                     <ResumenBox title="Kms. Ini" value={hideValues ? '****' : resumen.kmsInicio} />
                     {parseFloat(resumen.propina) > 0 && <ResumenBox title="Propina" value={hideValues ? '****' : resumen.propina} />}
                     <ResumenBox title="Tarjeta" value={hideValues ? '****' : resumen.totalTarjeta} />
@@ -546,41 +546,41 @@ const IncomeScreen: React.FC<IncomeScreenProps> = ({ navigateTo, navigateToEditR
             </section>
 
             <section>
-                <div className="border-b border-zinc-800 p-1 flex items-center text-zinc-400 font-semibold text-center text-sm">
-                    <span className="flex-1 flex justify-center items-center"><EuroIcon className="w-4 h-4" /></span>
-                    <span className="flex-1 flex justify-center items-center"><EuroIcon className="w-4 h-4" /></span>
+                <div className="border-b border-zinc-800 p-2 flex items-center text-zinc-400 font-semibold text-center text-base">
+                    <span className="flex-1 flex justify-center items-center"><EuroIcon className="w-5 h-5" /></span>
+                    <span className="flex-1 flex justify-center items-center"><EuroIcon className="w-5 h-5" /></span>
                     <span className="flex-1">Propinas</span>
-                    <span className="flex-1 flex justify-center items-center" title="Emisora"><CellTowerIcon className="w-5 h-5 text-pink-400" /></span>
+                    <span className="flex-1 flex justify-center items-center" title="Emisora"><CellTowerIcon className="w-6 h-6 text-pink-400" /></span>
                     <span className="flex-1 flex justify-center items-center" title="Interurbana / Aeropuerto / Estación"></span>
-                    <span className="flex-1 flex justify-center items-center"><AccessTimeIcon className="w-4 h-4" /></span>
+                    <span className="flex-1 flex justify-center items-center"><AccessTimeIcon className="w-5 h-5" /></span>
                 </div>
                 {loading && <div className="text-center p-2 text-zinc-400 text-base">Cargando carreras...</div>}
                 {error && <div className="text-center p-2 text-red-400 text-base">{error}</div>}
                 {!loading && !error && (
-                    <div className="space-y-0.5 max-h-96 overflow-y-auto pt-0.5">
+                    <div className="space-y-1 max-h-80 overflow-y-auto pt-0.5">
                         {carreras.map(carrera => {
                             const PaymentIcon = getPaymentIconComponent(carrera.formaPago);
                             const propina = carrera.cobrado - carrera.taximetro;
                             return (
-                                <div key={carrera.id} onClick={() => navigateToEditRace(carrera.id)} className={`${cardBg} border ${cardBorder} rounded-lg p-1.5 flex items-center text-center cursor-pointer ${cardBgHover} transition-colors`}>
-                                    <span className="flex-1 font-bold text-zinc-100 text-base">{hideValues ? '****' : `${carrera.cobrado.toFixed(2)}€`}</span>
+                                <div key={carrera.id} onClick={() => navigateToEditRace(carrera.id)} className={`${cardBg} border ${cardBorder} rounded-lg p-3 flex items-center text-center cursor-pointer ${cardBgHover} transition-colors`}>
+                                    <span className="flex-1 font-bold text-zinc-100 text-xl">{hideValues ? '****' : `${carrera.cobrado.toFixed(2)}€`}</span>
                                     <span className={`flex-1 flex justify-center items-center ${getPaymentColorClass(carrera.formaPago)}`}>
-                                        <PaymentIcon className="w-5 h-5" />
+                                        <PaymentIcon className="w-6 h-6" />
                                     </span>
-                                    <span className="flex-1 text-emerald-400 text-sm">{propina > 0 ? (hideValues ? '****' : `${propina.toFixed(2)}€`) : ''}</span>
+                                    <span className="flex-1 text-emerald-400 text-base">{propina > 0 ? (hideValues ? '****' : `${propina.toFixed(2)}€`) : ''}</span>
                                     <span className="flex-1 text-pink-400 flex justify-center items-center">
-                                        {carrera.emisora ? <CellTowerIcon className="w-5 h-5 text-pink-400" /> : null}
+                                        {carrera.emisora ? <CellTowerIcon className="w-6 h-6 text-pink-400" /> : null}
                                     </span>
                                     <span className="flex-1 flex justify-center items-center">
                                         {(carrera.tipoCarrera || 'Urbana') === 'Interurbana' ? (
-                                            <RoadIcon className="w-6 h-6 text-orange-400" title="Interurbana" />
+                                            <RoadIcon className="w-7 h-7 text-orange-400" title="Interurbana" />
                                         ) : carrera.aeropuerto ? (
-                                            <FlightTakeoffIcon className="w-6 h-6 text-blue-400" title="Aeropuerto" />
+                                            <FlightTakeoffIcon className="w-7 h-7 text-blue-400" title="Aeropuerto" />
                                         ) : carrera.estacion ? (
-                                            <TrainIcon className="w-6 h-6 text-amber-400" title="Estación" />
+                                            <TrainIcon className="w-7 h-7 text-amber-400" title="Estación" />
                                         ) : null}
                                     </span>
-                                    <span className="flex-1 text-sm text-zinc-400">{hideValues ? '****' : parseSafeDate(carrera.fechaHora).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
+                                    <span className="flex-1 text-base text-zinc-400">{hideValues ? '****' : parseSafeDate(carrera.fechaHora).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
                                 </div>
                             )
                         })}
@@ -621,9 +621,9 @@ const IncomeScreen: React.FC<IncomeScreenProps> = ({ navigateTo, navigateToEditR
                         }
                         navigateTo(Seccion.IntroducirCarrera);
                     }}
-                    className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-colors ${activeBreak ? 'bg-zinc-700 text-zinc-500 cursor-not-allowed' : 'bg-zinc-50 text-zinc-900 hover:bg-zinc-200'}`}
+                    className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-colors ${activeBreak ? 'bg-zinc-700 text-zinc-500 cursor-not-allowed' : 'bg-zinc-50 text-zinc-900 hover:bg-zinc-200'}`}
                 >
-                    <AddIcon className="w-6 h-6" />
+                    <AddIcon className="w-9 h-9" />
                 </button>
             </div>
 
