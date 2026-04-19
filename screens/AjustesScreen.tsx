@@ -6,7 +6,7 @@ import ScreenTopBar from "../components/ScreenTopBar";
 import { Seccion } from "../types";
 import { saveAjustes, getAjustes, deleteAllData, DeleteProgress, removeDuplicates, syncFromFirestore } from "../services/api";
 import { downloadBackupJson, restoreBackup, restoreFromGoogleSheets, exportToGoogleSheets } from "../services/backup";
-import { listFiles, getFileContent, isGoogleLoggedIn, signOutGoogle, ensureGoogleSignIn } from "../services/google";
+import { listFiles, getFileContent, isGoogleLoggedIn, signOutGoogle, ensureGoogleSignIn, extractGapiErrorMessage, listFolders } from "../services/google";
 import { archiveOperationalDataOlderThan, getRelativeCutoffDate } from "../services/maintenance";
 import { exportToExcel, exportToCSV, exportToPDFAdvanced, exportToHacienda, ExportFilter } from "../services/exports";
 import { getCarreras, getGastos, getRecentTurnos } from "../services/api";
@@ -157,6 +157,20 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
 
     // Estado de sesión de Google
     const [isLoggedIn, setIsLoggedIn] = useState(isGoogleLoggedIn());
+    const [driveFolders, setDriveFolders] = useState<{id: string, name: string}[]>([]);
+    const [selectedFolderId, setSelectedFolderId] = useState<string>(localStorage.getItem('tappxi_drive_export_folder') || '');
+    const [lastBackupStatus, setLastBackupStatus] = useState<string | null>(localStorage.getItem('tappxi_last_auto_backup_status'));
+
+    useEffect(() => {
+        if (isLoggedIn) {
+            listFolders().then(setDriveFolders).catch(console.error);
+        }
+    }, [isLoggedIn]);
+
+    // Actualizar status de backup cada vez que se abre la pantalla
+    useEffect(() => {
+        setLastBackupStatus(localStorage.getItem('tappxi_last_auto_backup_status'));
+    }, []);
 
     const handleGoogleLogin = async () => {
         try {
@@ -165,7 +179,8 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
             showAlert("✅ Conectado con Google correctamente.");
         } catch (error: any) {
             console.error("Error login Google:", error);
-            showAlert(`❌ Error al conectar con Google: ${error.message || error}`);
+            const msg = extractGapiErrorMessage(error);
+            showAlert(`❌ Error al conectar con Google: ${msg}`);
         }
     };
 
@@ -471,7 +486,6 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
 
 
 
-    // START NEW CODE
     const handleExportToSheets = async () => {
         if (!isLoggedIn) {
             showAlert("⚠️ Debes conectar tu cuenta de Google primero.");
@@ -480,7 +494,8 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
 
         setExporting(true);
         try {
-            const result = await exportToGoogleSheets();
+            // Pasar el folder ID seleccionado (si existe)
+            const result = await exportToGoogleSheets(selectedFolderId || undefined);
             showAlert(`✅ Exportación completada con éxito.\n\nSe ha creado una hoja de cálculo en tu Google Drive.`);
             // Opcionalmente abrir la URL
             if (result.url) {
@@ -488,7 +503,8 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
             }
         } catch (error: any) {
             console.error("Error exportando a Sheets:", error);
-            showAlert(`❌ Error al exportar: ${error.message || error}`);
+            const msg = error?.message || JSON.stringify(error);
+            showAlert(`❌ Error al exportar: ${msg}`);
         } finally {
             setExporting(false);
         }
@@ -513,6 +529,10 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
     };
     // END NEW CODE
     const handleListBackups = async () => {
+        if (!isLoggedIn) {
+            showAlert("⚠️ Debes conectar tu cuenta de Google primero para ver los backups en Drive.");
+            return;
+        }
         setLoadingBackups(true);
         setShowRestoreModal(true);
         setBackupsList([]);
@@ -525,7 +545,14 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
             setBackupsList(files);
         } catch (e: any) {
             console.error("Error cargando backups:", e);
-            showAlert(`❌ Error al cargar backups: ${e.message || e}`);
+            const msg = e?.message || JSON.stringify(e);
+            showAlert(
+                `❌ Error al cargar backups: ${msg}\n\n` +
+                `Asegúrate de:\n` +
+                `1. Tener conexión a internet\n` +
+                `2. Haber autorizado el acceso a Google Drive\n` +
+                `3. Tener espacio disponible en tu cuenta de Google`
+            );
         } finally {
             setLoadingBackups(false);
         }
@@ -1382,9 +1409,9 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                 </div>
 
                 {/* Sección: Google Cloud (Importar/Exportar) */}
-                <div className="bg-zinc-800 rounded-lg p-2.5 border border-zinc-700">
-                    <div className="flex items-center justify-between mb-3">
-                        <div className="flex-1">
+                <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700 space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div>
                             <h3 className="text-zinc-100 font-bold text-base mb-0.5">Google Cloud</h3>
                             <p className="text-zinc-400 text-sm">Respalda tus datos en Google Sheets y Drive.</p>
                         </div>
@@ -1405,83 +1432,80 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                         )}
                     </div>
 
-                    <div className="flex gap-2">
-                        <button
-                            onClick={handleListBackups}
-                            disabled={!isLoggedIn || restoring || exporting}
-                            className={`flex-1 font-bold py-2.5 px-3 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm ${isLoggedIn && !restoring && !exporting
-                                ? 'bg-purple-600 hover:bg-purple-700 text-white'
-                                : 'bg-zinc-700 text-zinc-500 cursor-not-allowed'
-                                }`}
-                        >
-                            {restoring ? (
-                                <>
-                                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    <span>Importando...</span>
-                                </>
-                            ) : (
-                                <>
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                        <polyline points="7 10 12 15 17 10" />
-                                        <line x1="12" y1="15" x2="12" y2="3" />
-                                    </svg>
-                                    <span>Importar (Sheets/Drive)</span>
-                                </>
-                            )}
-                        </button>
+                    {isLoggedIn && (
+                        <>
+                            <div className="space-y-2 pt-2 border-t border-zinc-700">
+                                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block">
+                                    Carpeta de Destino en Google Drive
+                                </label>
+                                <select
+                                    value={selectedFolderId || ''}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setSelectedFolderId(val);
+                                        localStorage.setItem('tappxi_drive_export_folder', val);
+                                    }}
+                                    className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-blue-500 transition-colors"
+                                >
+                                    <option value="">📁 Carpeta por defecto (TAppXI)</option>
+                                    {driveFolders.map(f => (
+                                        <option key={f.id} value={f.id}>📁 {f.name}</option>
+                                    ))}
+                                </select>
+                                <p className="text-[10px] text-zinc-500 italic">
+                                    Las exportaciones y copias automáticas se guardarán aquí.
+                                </p>
+                            </div>
 
-                        <button
-                            onClick={handleExportToSheets}
-                            disabled={!isLoggedIn || restoring || exporting}
-                            className={`flex-1 font-bold py-2.5 px-3 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm ${isLoggedIn && !restoring && !exporting
-                                ? 'bg-green-600 hover:bg-green-700 text-white'
-                                : 'bg-zinc-700 text-zinc-500 cursor-not-allowed'
-                                }`}
-                        >
-                            {exporting ? (
-                                <>
-                                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    <span>Exportando...</span>
-                                </>
-                            ) : (
-                                <>
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                        <polyline points="17 8 12 3 7 8" />
-                                        <line x1="12" y1="3" x2="12" y2="15" />
-                                    </svg>
-                                    <span>Exportar (Sheets)</span>
-                                </>
-                            )}
-                        </button>
-                    </div>
+                            <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                                <div className="flex items-center gap-2 text-orange-500 mb-1">
+                                    <i className="fa-solid fa-clock-rotate-left text-xs"></i>
+                                    <span className="text-xs font-bold uppercase tracking-wider">Último Backup Automático</span>
+                                </div>
+                                <p className="text-[11px] text-zinc-400">
+                                    {lastBackupStatus || 'No hay registros de copias recientes.'}
+                                </p>
+                                <p className="text-[10px] text-zinc-500 mt-2 leading-relaxed">
+                                    * La app intenta guardar una copia en la nube cada vez que se cierra o se oculta (si hay conexión y sesión activa).
+                                </p>
+                            </div>
 
-                    <div className="mt-3 pt-3 border-t border-zinc-700">
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={handleListBackups}
+                                    disabled={restoring || exporting}
+                                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-3 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm disabled:opacity-50"
+                                >
+                                    <i className="fa-solid fa-cloud-arrow-down shadow-sm"></i>
+                                    <span>Importar</span>
+                                </button>
+
+                                <button
+                                    onClick={handleExportToSheets}
+                                    disabled={restoring || exporting}
+                                    className={`flex-1 font-bold py-2.5 px-3 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm ${
+                                        exporting ? 'bg-zinc-700 text-zinc-500 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                                    }`}
+                                >
+                                    {exporting ? (
+                                        <><i className="fa-solid fa-spinner fa-spin"></i> Exportando...</>
+                                    ) : (
+                                        <><i className="fa-solid fa-file-excel"></i> Exportar</>
+                                    )}
+                                </button>
+                            </div>
+                        </>
+                    )}
+
+                    <div className="pt-2">
                         <button
                             onClick={handleSyncFromFirestore}
                             disabled={restoring || exporting}
-                            className={`w-full font-bold py-2.5 px-3 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm ${!restoring && !exporting
-                                ? 'bg-orange-600 hover:bg-orange-700 text-white shadow-lg'
-                                : 'bg-zinc-700 text-zinc-500 cursor-not-allowed'
-                                }`}
+                            className="w-full bg-zinc-700 hover:bg-zinc-600 text-zinc-200 font-bold py-2 px-3 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm disabled:opacity-50"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9-9c1.657 0 3 1.343 3 3s-1.343 3-3 3-3-1.343-3-3 1.343-3 3-3z" />
-                                <polyline points="7 10 12 15 17 10" />
-                                <line x1="12" y1="15" x2="12" y2="3" />
-                            </svg>
-                            <span>Sincronizar desde Firestore</span>
+                            <i className="fa-solid fa-rotate"></i>
+                            Sincronizar desde Firestore
                         </button>
-                        <p className="text-zinc-500 text-[10px] mt-2 text-center uppercase tracking-wider">
-                            Descarga y combina los datos almacenados en Cloud Firestore
-                        </p>
                     </div>
                 </div>
 

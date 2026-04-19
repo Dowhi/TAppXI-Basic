@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Seccion, CarreraVista } from '../types';
 import ScreenTopBar from '../components/ScreenTopBar';
 import { getCarrerasByDate, getGastosByDate, isRestDay, getCarreras, getOtrosIngresosByDateRange } from '../services/api';
@@ -173,9 +173,8 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
         const totalBalance = totalIngresos - totalGastos;
         const totalCarreras = workingDays.reduce((sum, d) => sum + d.numCarreras, 0);
 
-        const diasConIngresos = workingDays.filter(d => d.ingresos > 0).length;
-        const diasConGastos = workingDays.filter(d => d.gastos > 0).length;
-        const diasTrabajados = workingDays.length;
+        const diasConActividad = workingDays.filter(d => d.numCarreras > 0 || d.ingresos > 0 || d.gastos > 0).length;
+        const diasTrabajados = diasConActividad;
         const diasDescanso = dayData.length - diasTrabajados;
 
         const mejorDia = workingDays.reduce((best, current) =>

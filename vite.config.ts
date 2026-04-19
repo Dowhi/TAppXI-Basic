@@ -15,8 +15,8 @@ export default defineConfig(({ mode }) => {
   return {
     base: base,
     server: {
-      port: 5173,
-      strictPort: true,
+      port: 8080,
+      strictPort: false,
       host: '0.0.0.0', // Permite acceso desde la red local (móvil)
       open: true,
     },

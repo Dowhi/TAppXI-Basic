@@ -1,6 +1,21 @@
 const GOOGLE_API_SRC = "https://apis.google.com/js/api.js";
 const GIS_API_SRC = "https://accounts.google.com/gsi/client";
 
+/**
+ * Extrae un mensaje de error legible de un error de GAPI.
+ * Los errores de gapi.client tienen la forma: { result: { error: { message, code } } }
+ */
+export const extractGapiErrorMessage = (e: any): string => {
+    if (!e) return 'Error desconocido';
+    // Estructura GAPI: { result: { error: { message } } }
+    const gapiMsg = e?.result?.error?.message;
+    if (gapiMsg) return gapiMsg;
+    // Estructura estándar
+    if (typeof e?.message === 'string' && e.message) return e.message;
+    // Último recurso: serializar
+    try { return JSON.stringify(e); } catch { return String(e); }
+};
+
 // Credenciales desde variables de entorno
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || "";
@@ -196,7 +211,7 @@ export const ensureGoogleSignIn = async (): Promise<void> => {
             tokenClient.callback = (resp: any) => {
                 if (resp.error !== undefined) {
                     console.error("Error en autenticación Google:", resp);
-                    reject(resp);
+                    reject(new Error(extractGapiErrorMessage(resp)));
                     return;
                 }
 
@@ -219,7 +234,7 @@ export const ensureGoogleSignIn = async (): Promise<void> => {
             // Si falla o no hay sesión, Google mostrará el popup automáticamente si es necesario o podemos catch el error
             tokenClient.requestAccessToken({ prompt: '' });
         } catch (err) {
-            reject(err);
+            reject(new Error(extractGapiErrorMessage(err)));
         }
     });
 };
@@ -298,7 +313,7 @@ export const uploadFileToDrive = async (opts: {
         return response.result;
     } catch (e: any) {
         console.error("Error uploadFileToDrive", e);
-        throw e;
+        throw new Error(extractGapiErrorMessage(e));
     }
 };
 
@@ -327,7 +342,7 @@ export const listFiles = async (query: string): Promise<any[]> => {
         return response.result.files;
     } catch (e: any) {
         console.error("Error listFiles", e);
-        throw e;
+        throw new Error(extractGapiErrorMessage(e));
     }
 };
 
@@ -359,7 +374,7 @@ export const getFileContent = async (fileId: string): Promise<any> => {
         }
     } catch (e: any) {
         console.error("Error getFileContent", e);
-        throw e;
+        throw new Error(extractGapiErrorMessage(e));
     }
 };
 
@@ -388,7 +403,7 @@ export const createSpreadsheetWithSheets = async (
         return { spreadsheetId: resp.result.spreadsheetId };
     } catch (e: any) {
         console.error("Error createSpreadsheetWithSheets", e);
-        throw e;
+        throw new Error(extractGapiErrorMessage(e));
     }
 };
 
@@ -420,7 +435,7 @@ export const writeSheetValues = async (
         }
     } catch (e: any) {
         console.error("Error writeSheetValues", e);
-        throw e;
+        throw new Error(extractGapiErrorMessage(e));
     }
 };
 
@@ -471,7 +486,7 @@ export const readSheetValues = async (
         return response.result.values;
     } catch (e: any) {
         console.error("Error readSheetValues", e);
-        throw e;
+        throw new Error(extractGapiErrorMessage(e));
     }
 };
 
@@ -649,4 +664,29 @@ export const deleteFile = async (fileId: string): Promise<void> => {
         path: `/drive/v3/files/${fileId}`,
         method: 'DELETE',
     });
+};
+
+/**
+ * Lista las carpetas en el nivel raíz de Google Drive.
+ */
+export const listFolders = async (): Promise<{ id: string; name: string }[]> => {
+    await ensureGoogleSignIn();
+    const gapi = (window as any).gapi;
+
+    try {
+        const response = await gapi.client.request({
+            path: "/drive/v3/files",
+            method: "GET",
+            params: {
+                q: "mimeType = 'application/vnd.google-apps.folder' and trashed = false",
+                fields: "files(id, name)",
+                orderBy: "name",
+            },
+        });
+
+        return response.result.files || [];
+    } catch (e: any) {
+        console.error("Error listFolders", e);
+        throw new Error(extractGapiErrorMessage(e));
+    }
 };

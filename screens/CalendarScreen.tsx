@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { jsPDF } from 'jspdf';
 import { Seccion } from '../types';
 import { getCarrerasByDate, getGastosByDate, getExcepciones, Excepcion } from '../services/api';

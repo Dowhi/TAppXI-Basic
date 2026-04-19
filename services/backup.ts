@@ -28,7 +28,7 @@ import {
     parseDate as apiParseDate
 } from './api';
 import { getCustomReports, restoreCustomReport } from './customReports';
-import { uploadFileToDrive, createSpreadsheetWithSheets, writeSheetValues, readSheetValues, getSpreadsheetDetails, findOrCreateFolder, listFilesInFolder, deleteFile } from './google';
+import { uploadFileToDrive, createSpreadsheetWithSheets, writeSheetValues, readSheetValues, getSpreadsheetDetails, findOrCreateFolder, listFilesInFolder, deleteFile, isGoogleLoggedIn } from './google';
 
 interface BackupPayload {
     meta: {
@@ -478,10 +478,16 @@ const fmtTime = (d: Date | string) => {
     return isNaN(date.getTime()) ? '' : date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 };
 
-export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; url: string }> => {
+export const exportToGoogleSheets = async (folderId?: string): Promise<{ spreadsheetId: string; url: string }> => {
     try {
         const data = await buildBackupPayload();
         const dateStr = new Date().toISOString().split('T')[0];
+
+        // 0. Si no se pasa folderId, usar (o crear) la carpeta TAppXI por defecto
+        let targetFolderId = folderId;
+        if (!targetFolderId) {
+            targetFolderId = await findOrCreateFolder('TAppXI');
+        }
 
         // Usar exactamente los mismos nombres de hoja que syncService
         const sheetTitles = [
@@ -503,6 +509,26 @@ export const exportToGoogleSheets = async (): Promise<{ spreadsheetId: string; u
         ];
 
         const { spreadsheetId } = await createSpreadsheetWithSheets(`TAppXI Export ${dateStr}`, sheetTitles);
+
+        // Si tenemos carpeta de destino, mover el archivo allí
+        if (spreadsheetId && targetFolderId) {
+            const gapi = (window as any).gapi;
+            // Primero obtener los padres actuales para quitárselos
+            const file = await gapi.client.drive.files.get({
+                fileId: spreadsheetId,
+                fields: 'parents'
+            });
+            const previousParents = (file.result.parents || []).join(',');
+            
+            // Mover el archivo
+            await gapi.client.drive.files.update({
+                fileId: spreadsheetId,
+                addParents: targetFolderId,
+                removeParents: previousParents,
+                fields: 'id, parents'
+            });
+            console.log(`[Export] Hoja de cálculo movida a la carpeta ${targetFolderId}`);
+        }
 
         if (!spreadsheetId) {
             throw new Error("No se recibió el ID de la hoja de cálculo creada.");
@@ -776,7 +802,6 @@ const normalizeHeader = (header: string): string => {
         'cod. empresa': 'codigoEmpresa',
         'nº albarán': 'numeroAlbaran',
         'base': 'baseImponible',
-        'iva %': 'ivaPorcentaje',
         'iva %': 'ivaPorcentaje',
         'iva €': 'ivaImporte',
         'iva (importe)': 'ivaImporte',
@@ -1217,9 +1242,18 @@ export const autoBackupToDrive = async (replaceToday = false): Promise<void> => 
     const FOLDER_NAME = 'TAppXI';
     const MAX_BACKUPS = 3;
 
+    // No intentar si no hay sesión de Google activa (evita errores en background)
+    if (!isGoogleLoggedIn()) {
+        console.log('[AutoBackup] Sin sesión de Google activa. Backup omitido.');
+        return;
+    }
+
     try {
-        // 1. Obtener o crear la carpeta TAppXI en Drive
-        const folderId = await findOrCreateFolder(FOLDER_NAME);
+        // 1. Obtener carpeta: primero intentar la seleccionada por el usuario en Ajustes
+        let folderId = localStorage.getItem('tappxi_drive_export_folder');
+        if (!folderId) {
+            folderId = await findOrCreateFolder(FOLDER_NAME);
+        }
 
         // 2. Listar archivos existentes (ASC: el más antiguo primero)
         let existing = await listFilesInFolder(folderId);
@@ -1257,10 +1291,15 @@ export const autoBackupToDrive = async (replaceToday = false): Promise<void> => 
             parents: [folderId],
         });
 
-        console.log(`[AutoBackup] Copia de seguridad creada: ${fileName}`);
+        // 7. Guardar registro del éxito para depuración
+        localStorage.setItem('tappxi_last_auto_backup_status', `Success: ${new Date().toLocaleTimeString()} - ${fileName}`);
         localStorage.setItem('tappxi_last_auto_backup', new Date().toISOString());
-    } catch (e: any) {
-        console.error('[AutoBackup] Error en la copia automática:', e);
+        console.log(`[AutoBackup] Completado con éxito: ${fileName}`);
+    } catch (error: any) {
+        const errorMsg = error?.message || String(error);
+        localStorage.setItem('tappxi_last_auto_backup_status', `Error: ${new Date().toLocaleTimeString()} - ${errorMsg}`);
+        console.error('[AutoBackup] Error crítico durante copia automática:', error);
+        throw error;
     }
 };
 
@@ -1273,6 +1312,11 @@ export const autoBackupToDrive = async (replaceToday = false): Promise<void> => 
  * Llamar al abrir la app como red de seguridad.
  */
 export const backupIfMissedToday = async (): Promise<void> => {
+    // No hacer nada si no hay sesión de Google activa
+    if (!isGoogleLoggedIn()) {
+        console.log('[AutoBackup] Sin sesión de Google. Comprobación diaria omitida.');
+        return;
+    }
     const last = localStorage.getItem('tappxi_last_auto_backup');
     if (last) {
         const lastDate = new Date(last).toDateString();
