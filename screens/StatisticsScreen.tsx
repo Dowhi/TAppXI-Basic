@@ -36,10 +36,13 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                 start.setDate(start.getDate() - 7);
                 break;
             case 'month':
-                start.setMonth(start.getMonth() - 1);
+                // Mes actual: del día 1 del mes en curso hasta hoy
+                start.setDate(1);
                 break;
             case '3months':
-                start.setMonth(start.getMonth() - 3);
+                // Últimos 3 meses: del día 1 de hace 2 meses hasta hoy
+                start.setMonth(start.getMonth() - 2);
+                start.setDate(1);
                 break;
         }
         start.setHours(0, 0, 0, 0);
@@ -175,8 +178,8 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
 
         const diasConIngresos = workingDays.filter(d => d.ingresos > 0).length;
         const diasConGastos = workingDays.filter(d => d.gastos > 0).length;
-        const diasConActividad = workingDays.filter(d => d.numCarreras > 0 || d.ingresos > 0 || d.gastos > 0).length;
-        const diasTrabajados = diasConActividad;
+        // Días trabajados = todos los días NO marcados como descanso
+        const diasTrabajados = workingDays.length;
         const diasDescanso = dayData.length - diasTrabajados;
 
         const mejorDia = workingDays.reduce((best, current) =>
