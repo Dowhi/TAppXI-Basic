@@ -6,6 +6,39 @@ import { firebaseSync } from './firebaseSync';
 import type { CarreraVista, Gasto, Turno, Proveedor, Concepto, Taller, Reminder, Ajustes, OtroIngreso, Excepcion } from '../types';
 import { getCustomReports } from './customReports';
 
+// Event system for real subscriptions
+type Listener<T> = (data: T) => void;
+const listeners = {
+    activeTurno: new Set<Listener<Turno | null>>(),
+    carreras: new Set<Listener<CarreraVista[]>>(),
+    gastos: new Set<Listener<Gasto[]>>(),
+    reminders: new Set<Listener<Reminder[]>>()
+};
+
+function notifyActiveTurno() {
+    getActiveTurno().then(turno => {
+        listeners.activeTurno.forEach(l => l(turno));
+    });
+}
+
+function notifyCarreras() {
+    getCarreras().then(carreras => {
+        listeners.carreras.forEach(l => l(carreras));
+    });
+}
+
+function notifyGastos() {
+    getGastos().then(gastos => {
+        listeners.gastos.forEach(l => l(gastos));
+    });
+}
+
+function notifyReminders() {
+    getReminders().then(reminders => {
+        listeners.reminders.forEach(l => l(reminders));
+    });
+}
+
 /** Helpers para normalización de tipos */
 export const cleanN = (val: any): number => {
     if (val === null || val === undefined) return 0;
@@ -120,6 +153,7 @@ export async function addCarrera(carrera: Omit<CarreraVista, 'id'> & { id?: stri
     const key = carrera.id ?? crypto.randomUUID();
     await addItem('carreras', key, { ...carrera, id: key });
     firebaseSync.create('Carreras', { ...carrera, id: key });
+    notifyCarreras();
     return key;
 }
 
@@ -129,11 +163,13 @@ export async function updateCarrera(id: string, updates: Partial<CarreraVista>):
     const updated = { ...existing, ...updates };
     await addItem('carreras', id, updated);
     firebaseSync.update('Carreras', updated);
+    notifyCarreras();
 }
 
 export async function deleteCarrera(id: string): Promise<void> {
     await deleteItem('carreras', id);
     firebaseSync.delete('Carreras', id);
+    notifyCarreras();
 }
 
 export async function getCarrerasByDate(date: Date): Promise<CarreraVista[]> {
@@ -164,6 +200,7 @@ export async function addGasto(gasto: Omit<Gasto, 'id'> & { id?: string }): Prom
     // Sync Gasto
     const fullGasto = { ...gasto, id: key };
     firebaseSync.create('Gastos', fullGasto);
+    notifyGastos();
 
     // Sync Servicios (Nested)
     if (gasto.servicios && gasto.servicios.length > 0) {
@@ -182,11 +219,13 @@ export async function updateGasto(id: string, updates: Partial<Gasto>): Promise<
     await addItem('gastos', id, updated);
 
     firebaseSync.update('Gastos', updated);
+    notifyGastos();
 }
 
 export async function deleteGasto(id: string): Promise<void> {
     await deleteItem('gastos', id);
     firebaseSync.delete('Gastos', id);
+    notifyGastos();
 }
 
 export async function getGastosByDate(date: Date): Promise<Gasto[]> {
@@ -214,6 +253,7 @@ export async function addTurno(turno: Omit<Turno, 'id'> & { id?: string }): Prom
     const key = turno.id ?? crypto.randomUUID();
     await addItem('turnos', key, { ...turno, id: key });
     firebaseSync.create('Turnos', { ...turno, id: key });
+    notifyActiveTurno();
     return key;
 }
 
@@ -221,6 +261,7 @@ export async function updateTurno(id: string, updates: Partial<Turno>): Promise<
     const existing = await getItem<Turno>('turnos', id);
     if (!existing) throw new Error('Turno not found');
     await addItem('turnos', id, { ...existing, ...updates });
+    notifyActiveTurno();
 }
 
 export async function deleteTurno(id: string): Promise<void> {
@@ -233,6 +274,7 @@ export async function deleteTurno(id: string): Promise<void> {
 
     // 2. Borrar el turno
     await deleteItem('turnos', id);
+    notifyActiveTurno();
 }
 
 export async function getTurnosByDate(date: Date): Promise<Turno[]> {
@@ -344,6 +386,7 @@ export async function closeTurno(id: string, kilometrosFin: number): Promise<voi
 
     await addItem('turnos', id, updatedTurno);
     firebaseSync.update('Turnos', updatedTurno);
+    notifyActiveTurno();
 }
 
 export async function reopenTurno(id: string): Promise<void> {
@@ -357,6 +400,7 @@ export async function reopenTurno(id: string): Promise<void> {
     };
 
     await addItem('turnos', id, updatedTurno);
+    notifyActiveTurno();
 }
 
 export async function startBreak(turnoId: string, kilometrosInicio: number): Promise<void> {
@@ -375,6 +419,7 @@ export async function startBreak(turnoId: string, kilometrosInicio: number): Pro
     };
 
     await addItem('turnos', turnoId, updatedTurno);
+    notifyActiveTurno();
 }
 
 export async function endBreak(turnoId: string, kilometrosFin: number): Promise<void> {
@@ -398,6 +443,7 @@ export async function endBreak(turnoId: string, kilometrosFin: number): Promise<
     };
 
     await addItem('turnos', turnoId, updatedTurno);
+    notifyActiveTurno();
 }
 
 /** Reminders */
@@ -409,6 +455,7 @@ export async function addReminder(reminder: Reminder): Promise<string> {
     const key = reminder.id ?? crypto.randomUUID();
     await addItem('reminders', key, { ...reminder, id: key });
     firebaseSync.create('Recordatorios', { ...reminder, id: key });
+    notifyReminders();
     return key;
 }
 
@@ -418,11 +465,13 @@ export async function updateReminder(id: string, updates: Partial<Reminder>): Pr
     const updated = { ...existing, ...updates };
     await addItem('reminders', id, updated);
     firebaseSync.update('Recordatorios', updated);
+    notifyReminders();
 }
 
 export async function deleteReminder(id: string): Promise<void> {
     await deleteItem('reminders', id);
     firebaseSync.delete('Recordatorios', id);
+    notifyReminders();
 }
 
 /** Otros Ingresos */
@@ -470,20 +519,24 @@ export function subscribeToReminders(callback: (reminders: Reminder[]) => void, 
         console.error(err);
         if (errorCallback) errorCallback(err);
     });
-    return () => { };
+    
+    listeners.reminders.add(callback);
+    return () => {
+        listeners.reminders.delete(callback);
+    };
 }
 
 /** Subscriptions (Mock for Local DB) */
 export function subscribeToActiveTurno(callback: (turno: Turno | null) => void, errorCallback?: (error: any) => void): () => void {
-    getTurnos().then(turnos => {
-        // Find open turno (no fechaFin)
-        const active = turnos.find(t => !t.fechaFin) || null;
-        callback(active);
-    }).catch(err => {
+    getActiveTurno().then(callback).catch(err => {
         console.error(err);
         if (errorCallback) errorCallback(err);
     });
-    return () => { };
+
+    listeners.activeTurno.add(callback);
+    return () => {
+        listeners.activeTurno.delete(callback);
+    };
 }
 
 export function subscribeToCarreras(callback: (carreras: CarreraVista[]) => void, errorCallback?: (error: any) => void): () => void {
@@ -491,19 +544,29 @@ export function subscribeToCarreras(callback: (carreras: CarreraVista[]) => void
         console.error(err);
         if (errorCallback) errorCallback(err);
     });
-    return () => { };
+
+    listeners.carreras.add(callback);
+    return () => {
+        listeners.carreras.delete(callback);
+    };
 }
 
 // ...
 export function subscribeToGastos(callback: (total: number) => void, errorCallback?: (error: any) => void): () => void {
-    getGastos().then(gastos => {
+    const internalCallback = (gastos: Gasto[]) => {
         const total = gastos.reduce((sum, g) => sum + (g.importe || 0), 0);
         callback(total);
-    }).catch(err => {
+    };
+
+    getGastos().then(internalCallback).catch(err => {
         console.error(err);
         if (errorCallback) errorCallback(err);
     });
-    return () => { };
+
+    listeners.gastos.add(internalCallback);
+    return () => {
+        listeners.gastos.delete(internalCallback);
+    };
 }
 
 export async function getGastosByMonth(month: number, year: number): Promise<Gasto[]> {
