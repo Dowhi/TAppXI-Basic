@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Seccion, Turno, CarreraVista } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -11,7 +11,9 @@ import {
   getCarrerasByDate,
   getWorkingDays,
   getOtrosIngresosByDateRange,
+  getTurnosByDate,
 } from '../services/api';
+import { useActiveTurno } from '../contexts/TurnoContext';
 import { filterRemindersForToday, checkMaintenanceReminders } from '../services/reminders';
 import PredictionWidget from '../components/PredictionWidget';
 
@@ -179,8 +181,6 @@ const MoreIcon = () => (
 
 // --- COMPONENTE PRINCIPAL (REPLICADO DE LA FOTO) ---
 
-import QuickActionsWidget from '../components/QuickActionsWidget';
-
 // ...
 
 interface HomeScreenProps {
@@ -200,6 +200,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction }) =>
   };
 
   const { isDark } = useTheme();
+  const { activeTurno: turnoActivoContext, isLoading: turnoLoading } = useActiveTurno();
   const [turnoActivo, setTurnoActivo] = useState<Turno | null>(null);
   const [carreras, setCarreras] = useState<CarreraVista[]>([]);
   const [ingresos, setIngresos] = useState(0);
@@ -210,24 +211,33 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction }) =>
   const [promedioDiasAnteriores, setPromedioDiasAnteriores] = useState<number>(0);
   const [remindersToday, setRemindersToday] = useState<any[]>([]);
 
+  // Efecto para procesar el turno del contexto (ej: calcular número si falta)
   useEffect(() => {
-    const unsubscribe = subscribeToActiveTurno(async (turno) => {
-      if (turno && !turno.numero) {
-        // Si el turno no tiene número, calcularlo
-        const fechaTurno = new Date(turno.fechaInicio);
-        fechaTurno.setHours(0, 0, 0, 0);
-        const { getTurnosByDate } = await import('../services/api');
-        const turnosDelDia = await getTurnosByDate(fechaTurno);
-        const turnosOrdenados = turnosDelDia.sort((a, b) =>
-          new Date(a.fechaInicio).getTime() - new Date(b.fechaInicio).getTime()
-        );
-        const indice = turnosOrdenados.findIndex(t => t.id === turno.id);
-        turno.numero = indice >= 0 ? indice + 1 : 1;
+    const processTurno = async () => {
+      if (turnoActivoContext) {
+        const turno = { ...turnoActivoContext };
+        try {
+          if (!turno.numero) {
+            const fechaTurno = new Date(turno.fechaInicio);
+            fechaTurno.setHours(0, 0, 0, 0);
+            const turnosDelDia = await getTurnosByDate(fechaTurno);
+            const turnosOrdenados = turnosDelDia.sort((a, b) =>
+              new Date(a.fechaInicio).getTime() - new Date(b.fechaInicio).getTime()
+            );
+            const indice = turnosOrdenados.findIndex(t => t.id === turno.id);
+            turno.numero = indice >= 0 ? indice + 1 : 1;
+          }
+        } catch (error) {
+          console.error("Error procesando número de turno:", error);
+        } finally {
+          setTurnoActivo(turno);
+        }
+      } else {
+        setTurnoActivo(null);
       }
-      setTurnoActivo(turno);
-    });
-    return () => unsubscribe();
-  }, []);
+    };
+    processTurno();
+  }, [turnoActivoContext]);
 
   useEffect(() => {
     const unsubscribe = subscribeToCarreras((data) => setCarreras(data));
@@ -353,7 +363,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction }) =>
   }, [turnoActivo]);
 
   const quickActions = [
-    { label: 'Ingresos', icon: <TrendingUpIcon />, action: () => navigateTo(turnoActivo ? Seccion.VistaCarreras : Seccion.Turnos) },
+    { label: 'Ingresos', icon: <TrendingUpIcon />, action: () => navigateTo((turnoActivo || turnoActivoContext) ? Seccion.VistaCarreras : Seccion.Turnos) },
     { label: 'Gastos', icon: <TrendingDownIcon />, action: () => navigateTo(Seccion.Gastos) },
     { label: 'Histórico', icon: <HistoryIcon />, action: () => navigateTo(Seccion.Historico) },
     { label: 'Estadísticas', icon: <StatisticsIcon />, action: () => navigateTo(Seccion.Estadisticas) },
@@ -452,9 +462,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction }) =>
               <SettingsIcon />
             </button>
           </div>
-
-          {/* Quick Actions Widget */}
-          <QuickActionsWidget onQuickAction={onQuickAction} />
 
           {/* Alertas de Recordatorios */}
           {remindersToday.length > 0 && (

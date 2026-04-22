@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { FontSizeProvider } from './contexts/FontSizeContext';
+import { TurnoProvider } from './contexts/TurnoContext';
 import { ToastProvider } from './components/Toast';
 import ErrorBoundary from './components/ErrorBoundary';
 import './index.css';
@@ -19,7 +20,9 @@ root.render(
     <ThemeProvider>
       <FontSizeProvider>
           <ToastProvider>
-        <App />
+            <TurnoProvider>
+              <App />
+            </TurnoProvider>
           </ToastProvider>
       </FontSizeProvider>
     </ThemeProvider>

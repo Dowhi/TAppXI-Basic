@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Seccion, CarreraVista } from '../types';
-import { getCarrera, addCarrera, updateCarrera, deleteCarrera, getValesDirectory, ValeDirectoryEntry, getActiveTurno, addValeDirectoryEntry } from '../services/api';
+import { getCarrera, addCarrera, updateCarrera, deleteCarrera, getValesDirectory, ValeDirectoryEntry, addValeDirectoryEntry } from '../services/api';
+import { useActiveTurno } from '../contexts/TurnoContext';
+import QuickActionsWidget from '../components/QuickActionsWidget';
+import { getCurrentMinimaRate, getCurrentAeropuertoRate } from '../services/tariffs';
 
 
 import ScreenTopBar from '../components/ScreenTopBar';
@@ -14,15 +17,10 @@ import { useVoiceInput } from '../hooks/useVoiceInput';
 const MicIcon = ({ className }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>;
 
 const DeleteIcon = () => <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" /></svg>;
-const EuroIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M15 18.5c-2.51 0-4.68-1.42-5.76-3.5H15v-2H8.58c-.05-.33-.08-.66-.08-1s.03-.67.08-1H15V9H9.24C10.32 6.92 12.5 5.5 15 5.5c1.61 0 3.09.59 4.23 1.57L21 5.3C19.41 3.87 17.3 3 15 3c-3.92 0-7.24 2.51-8.48 6H3v2h3.06c-.04.33-.06.66-.06 1s.02.67.06 1H3v2h3.52c1.24 3.49 4.56 6 8.48 6 2.31 0 4.41-.87 6-2.3l-1.78-1.77C18.09 17.91 16.61 18.5 15 18.5z" /></svg>;
-const CreditCardIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z" /></svg>;
-const BizumIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
-        <path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z" />
-        <path d="M11.5 14.5h-1v-1h-1c-.55 0-1-.45-1-1v-3c0-.55.45-1 1-1h2v-1h-3v-1.5h3v-1h1v1h1c.55 0 1 .45 1 1v3c0 .55-.45 1-1 1h-2v1h3v1.5h-3v1z" />
-    </svg>
-);
-const ValesIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2h-2v2h2V4zM9 18H4v-2h5v2zm0-4H4v-2h5v2zm0-4H4V8h5v2zm7 8h-5v-2h5v2zm0-4h-5v-2h5v2zm0-4h-5V8h5v2z" /></svg>;
+const EuroIcon: React.FC<{ className?: string }> = ({ className }) => <img src={`${import.meta.env.BASE_URL}efectivo-icon-new.png?v=2`} alt="Efectivo" className={`w-full h-full object-contain drop-shadow-md scale-125 grayscale contrast-110 opacity-85 ${className || ''}`} />;
+const CreditCardIcon: React.FC<{ className?: string }> = ({ className }) => <img src={`${import.meta.env.BASE_URL}pos-terminal.png`} alt="Tarjeta" className={`w-full h-full object-contain drop-shadow-md scale-125 grayscale contrast-110 opacity-85 ${className || ''}`} />;
+const BizumIcon: React.FC<{ className?: string }> = ({ className }) => <img src={`${import.meta.env.BASE_URL}bizum-icon-new.png`} alt="Bizum" className={`w-full h-full object-contain drop-shadow-md scale-125 grayscale contrast-110 opacity-85 ${className || ''}`} />;
+const ValesIcon: React.FC<{ className?: string }> = ({ className }) => <img src={`${import.meta.env.BASE_URL}vales-icon-new.png`} alt="Vales" className={`w-full h-full object-contain drop-shadow-md scale-125 grayscale contrast-110 opacity-85 ${className || ''}`} />;
 
 const FormCard: React.FC<{ title: string; children: React.ReactNode; className?: string }> = ({ title, children, className }) => (
     <div className={`bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-4 ${className}`}>
@@ -67,18 +65,27 @@ const PaymentOption: React.FC<{
     icon: React.ReactNode;
     selected: boolean;
     onClick: () => void;
-}> = ({ label, icon, selected, onClick }) => (
-    <button
-        onClick={onClick}
-        className={`flex flex-col items-center justify-center p-3 rounded-lg border-2 transition-colors w-full aspect-square
-            ${selected ? 'bg-zinc-700 border-blue-500' : 'bg-zinc-800 border-zinc-700 hover:bg-zinc-700/50'}`
-        }
-        aria-pressed={selected}
-    >
-        <div className={`w-9 h-9 mb-1.5 ${selected ? 'text-blue-400' : 'text-zinc-400'}`}>{icon}</div>
-        <span className={`text-sm font-semibold ${selected ? 'text-zinc-50' : 'text-zinc-300'}`}>{label}</span>
-    </button>
-);
+  }> = ({ label, icon, selected, onClick }) => {
+    const isImageOnly = true;
+    return (
+        <button
+            onClick={onClick}
+            className={`flex flex-col items-center justify-center p-3 rounded-lg border-2 transition-colors w-full aspect-square relative overflow-hidden
+                ${selected ? 'bg-zinc-700 border-blue-500' : 'bg-zinc-800 border-zinc-700 hover:bg-zinc-700/50'}`
+            }
+            aria-pressed={selected}
+        >
+            {isImageOnly ? (
+                <div className="w-full h-full flex items-center justify-center">{icon}</div>
+            ) : (
+                <>
+                    <div className={`w-9 h-9 mb-1.5 ${selected ? 'text-blue-400' : 'text-zinc-400'}`}>{icon}</div>
+                    <span className={`text-sm font-semibold ${selected ? 'text-zinc-50' : 'text-zinc-300'}`}>{label}</span>
+                </>
+            )}
+        </button>
+    );
+};
 
 interface AddEditRaceScreenProps {
     navigateTo: (page: Seccion) => void;
@@ -99,6 +106,7 @@ const carreraSchema = z.object({
 const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceId, initialData }) => {
     const isEditing = raceId !== null;
     const { showToast } = useToast();
+    const { activeTurno } = useActiveTurno();
     const { validate, getFieldError, isFieldTouched, setFieldTouched, validateField } = useFormValidation(carreraSchema);
 
     const [taximetro, setTaximetro] = useState(initialData?.taximetro?.toString() || '');
@@ -250,6 +258,25 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
             setShowValeModal(true);
         } else {
             setShowValeModal(false);
+        }
+    };
+
+    const handleQuickAction = (action: string) => {
+        if (action === 'minima') {
+            const { amount } = getCurrentMinimaRate();
+            setTaximetro(amount.toString());
+            setCobrado(amount.toString());
+            setCobradoManuallySet(true);
+            handlePaymentSelection('Efectivo');
+            setTipoCarrera('Urbana');
+        } else if (action === 'aeropuerto') {
+            const { amount } = getCurrentAeropuertoRate();
+            setTaximetro(amount.toString());
+            setCobrado(amount.toString());
+            setCobradoManuallySet(true);
+            handlePaymentSelection('Tarjeta');
+            setTipoCarrera('Interurbana');
+            setEsAeropuerto(true);
         }
     };
 
@@ -530,12 +557,9 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
 
         let turnoIdToUse = originalTurnoId || initialData?.turnoId;
 
-        // Si no tiene turno asignado (incluso si es edición pero el registro estaba corrupto), intentamos asignar el turno activo
-        if (!turnoIdToUse) {
-            const activeTurno = await getActiveTurno();
-            if (activeTurno) {
-                turnoIdToUse = activeTurno.id;
-            }
+        // Si no tiene turno asignado, usamos el del contexto
+        if (!turnoIdToUse && activeTurno) {
+            turnoIdToUse = activeTurno.id;
         }
 
         const carreraData = {
@@ -631,6 +655,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
             {topBar}
 
             <FormCard title="Detalles de la Carrera">
+                <QuickActionsWidget onQuickAction={handleQuickAction} />
                 <div className="grid grid-cols-2 gap-4">
                     {/* ... (fields) ... */}
                     <FormField label="Taxímetro">

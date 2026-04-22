@@ -1,10 +1,9 @@
-import { firebaseSync } from './firebaseSync';
-﻿// services/api.ts - Reimplemented using IndexedDB
+// services/api.ts - Reimplemented using IndexedDB
 import { addItem, getAllItems, getItem, deleteItem, clearStore } from '../src/lib/indexedDB';
-// import { syncService } from './syncService'; // DESHABILITADO - archivo eliminado
+import { firebaseSync } from './firebaseSync';
 
 // Types (import from types.ts)
-import type { CarreraVista, Gasto, Turno, Proveedor, Concepto, Taller, Reminder, Ajustes, OtroIngreso } from '../types';
+import type { CarreraVista, Gasto, Turno, Proveedor, Concepto, Taller, Reminder, Ajustes, OtroIngreso, Excepcion } from '../types';
 import { getCustomReports } from './customReports';
 
 /** Helpers para normalización de tipos */
@@ -18,6 +17,17 @@ export const cleanN = (val: any): number => {
     s = s.replace(/[^\d.-]/g, '');
     return parseFloat(s) || 0;
 };
+
+/**
+ * Filtra una colección por un rango de fechas.
+ */
+export function filterByDateRange<T>(items: T[], dateGetter: (item: T) => any, start: Date, end: Date): T[] {
+    return items.filter(item => {
+        const d = dateGetter(item);
+        const date = d instanceof Date ? d : new Date(d);
+        return date >= start && date <= end;
+    });
+}
 
 export const parseDate = (d: any): Date => {
     if (!d) return new Date();
@@ -133,10 +143,7 @@ export async function getCarrerasByDate(date: Date): Promise<CarreraVista[]> {
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
 
-    return all.filter(c => {
-        const cDate = c.fechaHora instanceof Date ? c.fechaHora : new Date(c.fechaHora);
-        return cDate >= startOfDay && cDate <= endOfDay;
-    });
+    return filterByDateRange(all, c => c.fechaHora, startOfDay, endOfDay);
 }
 
 /** Gastos */
@@ -189,10 +196,7 @@ export async function getGastosByDate(date: Date): Promise<Gasto[]> {
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
 
-    return all.filter(g => {
-        const gDate = g.fecha instanceof Date ? g.fecha : new Date(g.fecha);
-        return gDate >= startOfDay && gDate <= endOfDay;
-    });
+    return filterByDateRange(all, g => g.fecha, startOfDay, endOfDay);
 }
 
 /** Turnos */
@@ -452,10 +456,7 @@ export async function deleteOtroIngreso(id: string): Promise<void> {
 
 export async function getOtrosIngresosByDateRange(start: Date, end: Date): Promise<OtroIngreso[]> {
     const all = await getOtrosIngresos();
-    return all.filter(oi => {
-        const d = oi.fecha instanceof Date ? oi.fecha : new Date(oi.fecha);
-        return d >= start && d <= end;
-    });
+    return filterByDateRange(all, oi => oi.fecha, start, end);
 }
 
 export async function restoreOtroIngreso(entry: any, skipSync = false): Promise<void> {
@@ -529,13 +530,6 @@ export async function getIngresosByYear(year: number): Promise<number[]> {
     carreras.forEach(c => {
         const d = c.fechaHora instanceof Date ? c.fechaHora : new Date(c.fechaHora);
         const month = d.getMonth();
-        const carreraYear = d.getFullYear();
-
-        // Debug logging for Nov/Dec
-        if (year === 2025 && (month === 10 || month === 11)) {
-            console.log(`Carrera encontrada: ${d.toISOString()}, A?o: ${carreraYear}, Mes: ${month}, Cobrado: ${c.cobrado}`);
-        }
-
         monthly[month] += (c.cobrado || 0);
     });
     otros.forEach(oi => {
@@ -543,11 +537,6 @@ export async function getIngresosByYear(year: number): Promise<number[]> {
         const month = d.getMonth();
         monthly[month] += (oi.importe || 0);
     });
-
-    // Debug summary
-    if (year === 2025) {
-        console.log('Resumen 2025 - Nov:', monthly[10], 'Dic:', monthly[11]);
-    }
 
     return monthly;
 }
@@ -579,10 +568,7 @@ export async function getTurnosByMonth(month: number, year: number): Promise<Tur
 
     // Create a helper for turnos range if not exists, or inline
     const all = await getTurnos();
-    return all.filter(t => {
-        const d = new Date(t.fechaInicio);
-        return d >= start && d <= end;
-    });
+    return filterByDateRange(all, t => t.fechaInicio, start, end);
 }
 
 export function subscribeToGastosByMonth(month: number, year: number, callback: (gastos: Gasto[]) => void, errorCallback?: (error: any) => void): () => void {
@@ -644,19 +630,6 @@ export async function getMaintenanceIntervals(): Promise<MaintenanceIntervals> {
 
 export async function saveMaintenanceIntervals(intervals: MaintenanceIntervals): Promise<void> {
     await addItem('settings', 'maintenanceIntervals', { ...intervals, key: 'maintenanceIntervals' });
-}
-
-/** Excepciones */
-export interface Excepcion {
-    id: string;
-    fechaDesde: string | Date;
-    fechaHasta: string | Date;
-    tipo: string;
-    nuevaLetra?: string;
-    nota?: string;
-    descripcion?: string;
-    aplicaPar?: boolean;
-    aplicaImpar?: boolean;
 }
 
 /** Vales Directory */
@@ -722,8 +695,6 @@ export async function restoreExcepcion(excepcion: any, skipSync = false): Promis
 }
 
 export async function isRestDay(date: Date): Promise<boolean> {
-    // Simplified: Only check exceptions for now. 
-    // Logic for letter-based rest days requires re-implementation.
     const excepciones = await getExcepciones();
     const dateStr = date.toISOString().split('T')[0];
 
@@ -806,9 +777,6 @@ export async function getGastosForCurrentMonth(): Promise<number> {
 
 export async function getWorkingDays(startDate: Date, endDate: Date): Promise<Date[]> {
     const dayData: Set<string> = new Set();
-    const cursor = new Date(startDate);
-
-    // Naively iterate? Better to get all carreras and extract unique dates
     const allCarreras = await getCarreras();
 
     allCarreras.forEach(c => {
@@ -821,15 +789,15 @@ export async function getWorkingDays(startDate: Date, endDate: Date): Promise<Da
     return Array.from(dayData).map(d => new Date(d));
 }
 
-// Duplicates removed
-
 // Helper for ranges
 async function getCarrerasByDateRange(start: Date, end: Date): Promise<CarreraVista[]> {
     const all = await getCarreras();
-    return all.filter(c => {
-        const d = c.fechaHora instanceof Date ? c.fechaHora : new Date(c.fechaHora);
-        return d >= start && d <= end;
-    });
+    return filterByDateRange(all, c => c.fechaHora, start, end);
+}
+
+async function getGastosByDateRange(start: Date, end: Date): Promise<Gasto[]> {
+    const all = await getGastos();
+    return filterByDateRange(all, g => g.fecha, start, end);
 }
 
 export interface DeleteProgress {
@@ -850,16 +818,8 @@ export async function deleteAllData(onProgress?: (progress: DeleteProgress) => v
             });
         }
 
-        // We don't have clearStore in api.ts but we can implement it or use deleteItem in loop
-        // But better to expose clearStore or just implement it here using existing primitives if possible
-        // Actually, IndexedDB has clear() method on objectStore.
-        // My library abstraction doesn't expose clearStore.
-        // I should probably add clearStore to lib/indexedDB.ts or just iterate and delete.
-        // For now, I'll naively get all keys and delete them.
-
         const items = await getAllItems(storeName);
         for (const item of items) {
-            // Assuming items have 'id' or 'key'
             const key = (item as any).id || (item as any).key;
             if (key) await deleteItem(storeName, key);
         }
@@ -868,14 +828,6 @@ export async function deleteAllData(onProgress?: (progress: DeleteProgress) => v
     if (onProgress) {
         onProgress({ percentage: 100, message: 'Completado' });
     }
-}
-
-async function getGastosByDateRange(start: Date, end: Date): Promise<Gasto[]> {
-    const all = await getGastos();
-    return all.filter(g => {
-        const d = g.fecha instanceof Date ? g.fecha : new Date(g.fecha);
-        return d >= start && d <= end;
-    });
 }
 
 /** Advanced Statistics Helpers */
@@ -891,7 +843,6 @@ export async function getIngresosByHour(startDate: Date, endDate: Date): Promise
 }
 
 export async function getIngresosByDayOfWeek(startDate: Date, endDate: Date): Promise<number[]> {
-    // Average earnings per day of week
     const carreras = await getCarrerasByDateRange(startDate, endDate);
     const dayTotals = new Array(7).fill(0);
     const dayCounts = new Array(7).fill(0);
@@ -899,12 +850,10 @@ export async function getIngresosByDayOfWeek(startDate: Date, endDate: Date): Pr
 
     carreras.forEach(c => {
         const d = c.fechaHora instanceof Date ? c.fechaHora : new Date(c.fechaHora);
-        // 0=Sunday, 1=Monday...
         dayTotals[d.getDay()] += (c.cobrado || 0);
         uniqueDays.add(d.toISOString().split('T')[0]);
     });
 
-    // Count occurrences of each weekday in the unique days
     uniqueDays.forEach(dateStr => {
         const d = new Date(dateStr);
         dayCounts[d.getDay()]++;
@@ -949,56 +898,18 @@ export async function getTotalGastosByYear(year: number): Promise<number> {
     const monthly = await getGastosByYear(year);
     return monthly.reduce((sum, val) => sum + val, 0);
 }
-async function _forceCloudSync_deleted(): Promise<string | null> {
-    const carreras = await getCarreras();
-    const gastos = await getGastos();
-    const turnos = await getTurnos();
-    const proveedores = await getProveedores();
-    const conceptos = await getConceptos();
-    const talleres = await getTalleres();
-    const recordatorios = await getReminders();
-    const ajustes = await getAjustes();
-    const excepciones = await getExcepciones();
-    const vales = await getValesDirectory();
-    const informes = await getCustomReports();
-    const breakConfig = await getBreakConfiguration();
-    const otrosIngresos = await getOtrosIngresos();
-
-    return null; /*
-    return await firebaseSync.uploadAllData(
-        carreras,
-        gastos,
-        turnos,
-        proveedores,
-        conceptos,
-        talleres,
-        recordatorios,
-        ajustes,
-        excepciones,
-        vales,
-        informes,
-        breakConfig,
-        otrosIngresos
-    );
-    */
-}
 
 export async function removeDuplicates(): Promise<{ gastosRemoved: number, carrerasRemoved: number }> {
-    // Gastos
     const allGastos = await getGastos();
-    const uniqueGastosMap = new Map<string, string>(); // hash -> id to keep
+    const uniqueGastosMap = new Map<string, string>();
     const gastosToDelete: string[] = [];
 
     for (const g of allGastos) {
         const d = g.fecha instanceof Date ? g.fecha : new Date(g.fecha);
-        // Create a unique hash for the content
         const hash = `${d.toISOString()}_${g.importe}_${(g.concepto || '').trim()}_${(g.proveedor || '').trim()}_${(g.taller || '').trim()}`;
-
         if (uniqueGastosMap.has(hash)) {
-            // Found a duplicate, mark for deletion
             gastosToDelete.push(g.id);
         } else {
-            // First time seeing this content, keep it
             uniqueGastosMap.set(hash, g.id);
         }
     }
@@ -1007,16 +918,13 @@ export async function removeDuplicates(): Promise<{ gastosRemoved: number, carre
         await deleteGasto(id);
     }
 
-    // Carreras
     const allCarreras = await getCarreras();
     const uniqueCarrerasMap = new Map<string, string>();
     const carrerasToDelete: string[] = [];
 
     for (const c of allCarreras) {
         const d = c.fechaHora instanceof Date ? c.fechaHora : new Date(c.fechaHora);
-        // Create a unique hash for the content
         const hash = `${d.toISOString()}_${c.cobrado}_${c.taximetro}_${c.formaPago}_${c.emisora}_${c.aeropuerto}`;
-
         if (uniqueCarrerasMap.has(hash)) {
             carrerasToDelete.push(c.id);
         } else {
@@ -1042,7 +950,6 @@ export async function deleteMonthlyData(month: number, year: number): Promise<vo
         getTurnosByMonth(month, year)
     ]);
 
-    // Eliminar todo el rastro del mes
     for (const c of carreras) await deleteCarrera(c.id);
     for (const g of gastos) await deleteItem('gastos', g.id);
     for (const o of otros) await deleteOtroIngreso(o.id);

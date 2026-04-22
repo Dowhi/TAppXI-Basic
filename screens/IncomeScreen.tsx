@@ -54,16 +54,17 @@ const ValesIcon: React.FC<{ className?: string }> = ({ className }) => (
 );
 
 const CellTowerIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-        <path d="M12 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" />
-        <path d="M12 2v2" />
-        <path d="M12 18v4" />
-        <path d="m4.93 4.93 1.41 1.41" />
-        <path d="m17.66 17.66 1.41 1.41" />
-        <path d="M2 12h2" />
-        <path d="M20 12h2" />
-        <path d="m4.93 19.07 1.41-1.41" />
-        <path d="m17.66 6.34 1.41-1.41" />
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={`text-white ${className || ''}`}>
+        {/* Tower Base */}
+        <path d="M12 8.5L5 22h2.5l1.5-3h6l1.5 3H19L12 8.5zm-2.2 8.5l1.2-2.5h2l1.2 2.5h-4.4z" />
+        {/* Top Dot */}
+        <circle cx="12" cy="7" r="2.2" />
+        {/* Right Signal Waves */}
+        <path d="M16.5 4.5a6.5 6.5 0 0 1 0 10l1.8 1.8a9 9 0 0 0 0-13.6l-1.8 1.8z" />
+        <path d="M19.5 1.5a11 11 0 0 1 0 16l1.8 1.8a13.5 13.5 0 0 0 0-19.6l-1.8 1.8z" />
+        {/* Left Signal Waves */}
+        <path d="M7.5 14.5a6.5 6.5 0 0 1 0-10l-1.8-1.8a9 9 0 0 0 0 13.6l1.8-1.8z" />
+        <path d="M4.5 17.5a11 11 0 0 1 0-16L2.7-0.3a13.5 13.5 0 0 0 0 19.6l1.8-1.8z" />
     </svg>
 );
 
@@ -92,15 +93,14 @@ const BroadcastIcon: React.FC<{ className?: string }> = ({ className }) => (
 );
 
 const FlightTakeoffIcon: React.FC<{ className?: string; title?: string }> = ({ className, title }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
         <title>{title}</title>
-        <path d="M2 22h20" />
-        <path d="M6 12 10 4l2-1h1.5l-2 7h5l1-1h1.5l-1 5-2.1-1.4-5.4 1.4Z" />
+        <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.2-1.1.6L3 8l6 4-4 4-2.5-1-1.5 1.5 4.5 1.5 1.5 4.5 1.5-1.5-1-2.5 4-4 4 6l1.2-.7c.4-.2.7-.6.6-1.1Z" />
     </svg>
 );
 
 const TrainIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
         <rect width="16" height="16" x="4" y="3" rx="2" />
         <path d="M4 11h16" />
         <path d="M12 3v8" />
@@ -112,7 +112,7 @@ const TrainIcon: React.FC<{ className?: string }> = ({ className }) => (
 );
 
 const RoadIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
         <rect width="18" height="18" x="3" y="3" rx="2" />
         <path d="M9 3v18" />
         <path d="M15 3v18" />
