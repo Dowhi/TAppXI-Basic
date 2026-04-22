@@ -14,6 +14,7 @@ interface BackupSectionProps {
     onUploadToDrive: () => void;
     onExportToSheets: () => void;
     onSyncFromFirestore: () => void;
+    onRestoreFromDrive: () => void;
 }
 
 const BackupSection: React.FC<BackupSectionProps> = ({
@@ -28,7 +29,8 @@ const BackupSection: React.FC<BackupSectionProps> = ({
     onRestoreFromJSONFile,
     onUploadToDrive,
     onExportToSheets,
-    onSyncFromFirestore
+    onSyncFromFirestore,
+    onRestoreFromDrive
 }) => {
     const { isDark } = useTheme();
 
@@ -92,9 +94,17 @@ const BackupSection: React.FC<BackupSectionProps> = ({
                     <button 
                         onClick={onSyncFromFirestore}
                         disabled={syncingCloud}
-                        className="col-span-2 p-3 bg-indigo-600 text-white rounded-lg text-sm font-bold disabled:opacity-50"
+                        className="p-3 bg-indigo-600 text-white rounded-lg text-sm font-bold disabled:opacity-50"
                     >
                         {syncingCloud ? 'Sincronizando...' : 'Restaurar desde Cloud (Firestore)'}
+                    </button>
+
+                    <button 
+                        onClick={onRestoreFromDrive}
+                        disabled={!isLoggedIn || syncingCloud}
+                        className={`p-3 rounded-lg border text-sm font-bold transition-colors ${isDark ? 'bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-zinc-300' : 'bg-zinc-50 border-zinc-200 hover:bg-zinc-100 text-zinc-600'}`}
+                    >
+                        Restaurar desde Drive
                     </button>
                 </div>
             </div>

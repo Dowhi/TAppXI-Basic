@@ -671,6 +671,7 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                     onUploadToDrive={handleSubirDrive}
                     onExportToSheets={handleExportarHojas}
                     onSyncFromFirestore={handleSyncFromFirestore}
+                    onRestoreFromDrive={handleListBackups}
                 />
 
                 <ReportingSection 
@@ -771,6 +772,57 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                             </div>
                             <p className="text-red-500 font-mono font-bold">{deletionProgress}%</p>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {showRestoreModal && (
+                <div className="fixed inset-0 flex items-center justify-center z-[100] px-4">
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setShowRestoreModal(false)} />
+                    <div className={`${isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-200'} border p-6 rounded-3xl shadow-2xl relative z-10 max-w-md w-full max-h-[80vh] flex flex-col animate-in zoom-in-95 duration-200`}>
+                        <div className="mb-6">
+                            <h3 className="text-xl font-bold">Restaurar Copia de Seguridad</h3>
+                            <p className="text-xs text-zinc-500">Selecciona un archivo de Google Drive para restaurar.</p>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+                            {loadingBackups ? (
+                                <div className="flex flex-col items-center py-10 space-y-3">
+                                    <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                                    <p className="text-xs font-bold uppercase tracking-widest opacity-50">Buscando copias...</p>
+                                </div>
+                            ) : backupsList.length === 0 ? (
+                                <div className="text-center py-10 opacity-50 italic text-sm">No se encontraron copias en Drive.</div>
+                            ) : (
+                                backupsList.map(file => (
+                                    <button
+                                        key={file.id}
+                                        onClick={() => handleRestoreBackup(file.id, file.name, file.mimeType)}
+                                        className={`w-full p-4 rounded-2xl border text-left flex items-center gap-4 transition-all hover:scale-[1.02] active:scale-[0.98] ${isDark ? 'bg-zinc-800/50 border-zinc-700 hover:border-blue-500/50' : 'bg-zinc-50 border-zinc-100 hover:border-blue-600/30'}`}
+                                    >
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${file.mimeType.includes('spreadsheet') ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-600/10 text-blue-600'}`}>
+                                            {file.mimeType.includes('spreadsheet') ? (
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                            ) : (
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                                            )}
+                                        </div>
+                                        <div className="flex-1 overflow-hidden">
+                                            <p className="font-bold text-sm truncate">{file.name}</p>
+                                            <p className="text-[10px] opacity-50">{file.mimeType.includes('spreadsheet') ? 'Google Sheets' : 'Copia TAppXI'}</p>
+                                        </div>
+                                        <svg className="w-4 h-4 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                    </button>
+                                ))
+                            )}
+                        </div>
+
+                        <button
+                            onClick={() => setShowRestoreModal(false)}
+                            className={`w-full mt-6 py-4 rounded-2xl font-bold transition-all ${isDark ? 'bg-zinc-800 hover:bg-zinc-700' : 'bg-zinc-100 hover:bg-zinc-200'}`}
+                        >
+                            Cerrar
+                        </button>
                     </div>
                 </div>
             )}
