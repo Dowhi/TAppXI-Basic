@@ -697,13 +697,14 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
 
                 <DataActionsSection 
                     isCleaning={isCleaning}
+                    isDeleting={isDeleting}
                     onCleanDuplicates={handleCleanDuplicates}
-                    onEliminacionTotal={handleEliminacionTotal}
+                    onDeleteAllData={handleEliminacionTotal}
                     archiving={archiving}
                     archiveMonths={archiveMonths}
                     archiveResult={archiveResult}
                     onArchiveData={handleArchiveOldData}
-                    onSetArchiveMonths={setArchiveMonths}
+                    setArchiveMonths={setArchiveMonths}
                 />
 
                 <DeveloperSection 

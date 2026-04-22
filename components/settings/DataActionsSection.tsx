@@ -6,6 +6,7 @@ interface DataActionsSectionProps {
     isDeleting: boolean;
     archiving: boolean;
     archiveMonths: number;
+    archiveResult: string | null;
     setArchiveMonths: (n: number) => void;
     onCleanDuplicates: () => void;
     onDeleteAllData: () => void;
@@ -17,6 +18,7 @@ const DataActionsSection: React.FC<DataActionsSectionProps> = ({
     isDeleting,
     archiving,
     archiveMonths,
+    archiveResult,
     setArchiveMonths,
     onCleanDuplicates,
     onDeleteAllData,
@@ -69,6 +71,11 @@ const DataActionsSection: React.FC<DataActionsSectionProps> = ({
                             />
                             <span className="text-xs text-zinc-400">meses</span>
                         </div>
+                        {archiveResult && (
+                            <p className="text-[10px] text-amber-500 font-medium py-1 px-2 bg-amber-500/5 rounded border border-amber-500/10">
+                                {archiveResult}
+                            </p>
+                        )}
                     </div>
 
                     {/* Dangerous Actions */}
