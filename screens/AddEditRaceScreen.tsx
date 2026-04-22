@@ -21,6 +21,26 @@ const EuroIcon: React.FC<{ className?: string }> = ({ className }) => <img src={
 const CreditCardIcon: React.FC<{ className?: string }> = ({ className }) => <img src={`${import.meta.env.BASE_URL}pos-terminal.png`} alt="Tarjeta" className={`w-full h-full object-contain drop-shadow-md scale-125 grayscale contrast-110 opacity-85 ${className || ''}`} />;
 const BizumIcon: React.FC<{ className?: string }> = ({ className }) => <img src={`${import.meta.env.BASE_URL}bizum-icon-new.png`} alt="Bizum" className={`w-full h-full object-contain drop-shadow-md scale-125 grayscale contrast-110 opacity-85 ${className || ''}`} />;
 const ValesIcon: React.FC<{ className?: string }> = ({ className }) => <img src={`${import.meta.env.BASE_URL}vales-icon-new.png`} alt="Vales" className={`w-full h-full object-contain drop-shadow-md scale-125 grayscale contrast-110 opacity-85 ${className || ''}`} />;
+const UrbanaIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M6 22V10a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12" />
+        <path d="M18 22h3" />
+        <path d="M3 22h3" />
+        <path d="M2 18h2" />
+        <path d="M20 18h2" />
+        <path d="M10 12h4" />
+        <path d="M10 16h4" />
+    </svg>
+);
+const InterurbanaIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+        <rect x="7" y="2" width="4" height="8" rx="1" />
+        <rect x="13" y="2" width="4" height="8" rx="1" />
+        <rect x="2" y="11" width="20" height="2" rx="0.5" />
+        <rect x="4" y="14" width="7" height="8" rx="1" />
+        <rect x="13" y="14" width="7" height="8" rx="1" />
+    </svg>
+);
 
 const FormCard: React.FC<{ title: string; children: React.ReactNode; className?: string }> = ({ title, children, className }) => (
     <div className={`bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-4 ${className}`}>
@@ -275,7 +295,7 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
             setCobrado(amount.toString());
             setCobradoManuallySet(true);
             handlePaymentSelection('Tarjeta');
-            setTipoCarrera('Interurbana');
+            setTipoCarrera('Urbana');
             setEsAeropuerto(true);
         }
     };
@@ -723,28 +743,34 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                     </FormField>
 
                     <FormField label="Tipo de Carrera" className="col-span-2">
-                        <div className="flex gap-4">
-                            <label className="flex items-center gap-2 cursor-pointer">
+                        <div className="flex gap-6">
+                            <label className={`flex items-center gap-3 cursor-pointer p-2 rounded-xl transition-all border-2 ${tipoCarrera === 'Urbana' ? 'bg-blue-600/10 border-blue-500/50' : 'bg-zinc-800/30 border-transparent hover:bg-zinc-800/50'}`}>
                                 <input
                                     type="radio"
                                     name="tipoCarrera"
                                     value="Urbana"
                                     checked={tipoCarrera === 'Urbana'}
                                     onChange={(e) => setTipoCarrera(e.target.value as 'Urbana' | 'Interurbana')}
-                                    className="w-5 h-5 text-blue-600 bg-zinc-700 border-zinc-600 focus:ring-blue-500"
+                                    className="hidden"
                                 />
-                                <span className="text-base font-semibold text-zinc-300">Urbana</span>
+                                <div className={`p-1.5 rounded-lg ${tipoCarrera === 'Urbana' ? 'bg-blue-500 text-white' : 'bg-zinc-700 text-zinc-400'}`}>
+                                    <UrbanaIcon className="w-5 h-5" />
+                                </div>
+                                <span className={`text-base font-bold ${tipoCarrera === 'Urbana' ? 'text-blue-400' : 'text-zinc-400'}`}>Urbana</span>
                             </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
+                            <label className={`flex items-center gap-3 cursor-pointer p-2 rounded-xl transition-all border-2 ${tipoCarrera === 'Interurbana' ? 'bg-blue-600/10 border-blue-500/50' : 'bg-zinc-800/30 border-transparent hover:bg-zinc-800/50'}`}>
                                 <input
                                     type="radio"
                                     name="tipoCarrera"
                                     value="Interurbana"
                                     checked={tipoCarrera === 'Interurbana'}
                                     onChange={(e) => setTipoCarrera(e.target.value as 'Urbana' | 'Interurbana')}
-                                    className="w-5 h-5 text-blue-600 bg-zinc-700 border-zinc-600 focus:ring-blue-500"
+                                    className="hidden"
                                 />
-                                <span className="text-base font-semibold text-zinc-300">Interurbana</span>
+                                <div className={`p-1.5 rounded-lg ${tipoCarrera === 'Interurbana' ? 'bg-blue-500 text-white' : 'bg-zinc-700 text-zinc-400'}`}>
+                                    <InterurbanaIcon className="w-5 h-5" />
+                                </div>
+                                <span className={`text-base font-bold ${tipoCarrera === 'Interurbana' ? 'text-blue-400' : 'text-zinc-400'}`}>Interurbana</span>
                             </label>
                         </div>
                     </FormField>

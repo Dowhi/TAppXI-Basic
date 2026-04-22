@@ -111,13 +111,14 @@ const TrainIcon: React.FC<{ className?: string }> = ({ className }) => (
     </svg>
 );
 
-const RoadIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
-        <rect width="18" height="18" x="3" y="3" rx="2" />
-        <path d="M9 3v18" />
-        <path d="M15 3v18" />
-        <path d="M12 3v18" />
-        <path d="M3 12h18" />
+const InterurbanaIcon: React.FC<{ className?: string; title?: string }> = ({ className, title }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+        <title>{title}</title>
+        <rect x="7" y="2" width="4" height="8" rx="1" />
+        <rect x="13" y="2" width="4" height="8" rx="1" />
+        <rect x="2" y="11" width="20" height="2" rx="0.5" />
+        <rect x="4" y="14" width="7" height="8" rx="1" />
+        <rect x="13" y="14" width="7" height="8" rx="1" />
     </svg>
 );
 
@@ -573,7 +574,7 @@ const IncomeScreen: React.FC<IncomeScreenProps> = ({ navigateTo, navigateToEditR
                                     </span>
                                     <span className="flex-1 flex justify-center items-center">
                                         {(carrera.tipoCarrera || 'Urbana') === 'Interurbana' ? (
-                                            <RoadIcon className="w-7 h-7 text-orange-400" title="Interurbana" />
+                                            <InterurbanaIcon className="w-7 h-7 text-orange-400" title="Interurbana" />
                                         ) : carrera.aeropuerto ? (
                                             <FlightTakeoffIcon className="w-7 h-7 text-blue-400" title="Aeropuerto" />
                                         ) : carrera.estacion ? (
