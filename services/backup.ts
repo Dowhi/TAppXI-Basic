@@ -1124,12 +1124,12 @@ const processSpreadsheetBackupData = async (rowsMap: Record<string, any[][]>, on
             ...g,
             id: g.id || crypto.randomUUID(), // Asegurar que siempre hay ID
             importe: parseNumber(g.importe || g.total || g.totale),
-            baseImponible: parseNumber(g.baseimponible || g.base || g.baseimponiblee),
-            ivaImporte: parseNumber(g.ivaimporte || g.ivae),
-            ivaPorcentaje: parseNumber(g.ivaporcentaje || g.ivaporc),
+            baseImponible: parseNumber(g.baseImponible || g.baseimponible || g.base || g.baseimponiblee),
+            ivaImporte: parseNumber(g.ivaImporte || g.ivaimporte || g.ivae),
+            ivaPorcentaje: parseNumber(g.ivaPorcentaje || g.ivaporcentaje || g.ivaporc),
             kilometros: parseNumber(g.kilometros || g.km || g.kilometrostotales),
-            kilometrosVehiculo: parseNumber(g.kilometrosvehiculo || g.kmvehiculo),
-            kmParciales: parseNumber(g.kmparciales),
+            kilometrosVehiculo: parseNumber(g.kilometrosVehiculo || g.kilometrosvehiculo || g.kmvehiculo),
+            kmParciales: parseNumber(g.kmParciales || g.kmparciales),
             litros: parseNumber(g.litros),
             precioPorLitro: parseNumber(g.precioporlitro || g.preciol),
             descuento: parseNumber(g.descuento || g.descuentoe),
@@ -1150,8 +1150,8 @@ const processSpreadsheetBackupData = async (rowsMap: Record<string, any[][]>, on
         return {
             ...t,
             id: t.id || crypto.randomUUID(), // Asegurar que siempre hay ID
-            kilometrosInicio: parseNumber(t.kilometrosinicio || t.kminicio),
-            kilometrosFin: (t.kilometrosfin || t.kmfin) ? parseNumber(t.kilometrosfin || t.kmfin) : null,
+            kilometrosInicio: parseNumber(t.kilometrosInicio || t.kilometrosinicio || t.kminicio),
+            kilometrosFin: (t.kilometrosFin || t.kilometrosfin || t.kmfin) ? parseNumber(t.kilometrosFin || t.kilometrosfin || t.kmfin) : null,
             fechaInicio: fechaInicio, // No fallback
             fechaFin: fechaFin || null,
         };
@@ -1226,12 +1226,13 @@ const processSpreadsheetBackupData = async (rowsMap: Record<string, any[][]>, on
     const excepciones = excepcionesRaw.map(e => ({
         ...e,
         id: e.id || crypto.randomUUID(), // Asegurar que siempre hay ID
-        fechaDesde: parseDate(e.fechadesde),
-        fechaHasta: parseDate(e.fechahasta) || parseDate(e.fechadesde),
-        createdAt: parseDate(e.createdat) || new Date(),
+        fechaDesde: parseDate(e.fechaDesde || e.fechadesde),
+        fechaHasta: parseDate(e.fechaHasta || e.fechahasta) || parseDate(e.fechaDesde || e.fechadesde),
+        createdAt: parseDate(e.createdAt || e.createdat) || new Date(),
+        tipo: e.tipo || 'Descanso'
     })).filter(e => {
         if (!e.fechaDesde) {
-            console.warn(`Skipping excepcion ${e.id}: invalid date`);
+            console.warn(`[Import] Omitiendo excepcion ${e.id} por fecha desde inválida.`, e);
             return false;
         }
         return true;
@@ -1241,7 +1242,14 @@ const processSpreadsheetBackupData = async (rowsMap: Record<string, any[][]>, on
     const conceptos = conceptosRaw.map(co => ({ ...co, id: co.id || crypto.randomUUID(), createdAt: apiParseDate(co.createdat) }));
     const talleres = talleresRaw.map(t => ({ ...t, id: t.id || crypto.randomUUID(), createdAt: apiParseDate(t.createdat) }));
     const vales = valesRaw.map(v => ({ ...v, id: v.id || crypto.randomUUID() }));
-    const reminders = remindersRaw.map(r => ({ ...r, id: r.id || crypto.randomUUID() }));
+    const reminders = remindersRaw.map(r => ({
+        ...r,
+        id: r.id || crypto.randomUUID(),
+        titulo: r.titulo || r.titulo || '',
+        fechaLimite: r.fechaLimite || r.fechalimite,
+        kilometrosLimite: parseNumber(r.kilometrosLimite || r.kilometroslimite || r.kmlimite),
+        completado: r.estado === 'Completado' || r.completado === true
+    }));
     const customReports = customReportsRaw.map(cr => ({ ...cr, id: cr.id || crypto.randomUUID() }));
     const otrosIngresos = otrosIngresosRaw.map(oi => ({
         ...oi,
