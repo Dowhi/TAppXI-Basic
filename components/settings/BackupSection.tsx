@@ -15,6 +15,10 @@ interface BackupSectionProps {
     onExportToSheets: () => void;
     onSyncFromFirestore: () => void;
     onRestoreFromDrive: () => void;
+    driveFolders: { id: string, name: string }[];
+    selectedFolderId: string;
+    onSelectFolder: (id: string) => void;
+    onRefreshFolders: () => void;
 }
 
 const BackupSection: React.FC<BackupSectionProps> = ({
@@ -30,7 +34,11 @@ const BackupSection: React.FC<BackupSectionProps> = ({
     onUploadToDrive,
     onExportToSheets,
     onSyncFromFirestore,
-    onRestoreFromDrive
+    onRestoreFromDrive,
+    driveFolders,
+    selectedFolderId,
+    onSelectFolder,
+    onRefreshFolders
 }) => {
     const { isDark } = useTheme();
 
@@ -58,6 +66,40 @@ const BackupSection: React.FC<BackupSectionProps> = ({
                 {lastBackupStatus && (
                     <div className={`p-2 rounded-lg text-xs ${isDark ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
                         Último backup auto: {lastBackupStatus}
+                    </div>
+                )}
+
+                {/* Folder Selection */}
+                {isLoggedIn && (
+                    <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                            <label className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>
+                                Carpeta de Trabajo en Drive
+                            </label>
+                            <button 
+                                onClick={(e) => { e.preventDefault(); onRefreshFolders(); }}
+                                className="text-[10px] text-blue-500 font-bold hover:underline"
+                            >
+                                ACTUALIZAR LISTA
+                            </button>
+                        </div>
+                        <select
+                            value={selectedFolderId}
+                            onChange={(e) => onSelectFolder(e.target.value)}
+                            className={`w-full p-3 rounded-xl text-sm font-medium border focus:ring-2 focus:ring-blue-500 outline-none transition-all ${
+                                isDark 
+                                ? 'bg-zinc-800 border-zinc-700 text-zinc-200' 
+                                : 'bg-zinc-50 border-zinc-200 text-zinc-800'
+                            }`}
+                        >
+                            <option value="">Seleccionar carpeta...</option>
+                            {driveFolders.map(folder => (
+                                <option key={folder.id} value={folder.id}>{folder.name}</option>
+                            ))}
+                        </select>
+                        <p className="text-[10px] opacity-40 italic">
+                            Los backups y hojas se guardarán en esta carpeta.
+                        </p>
                     </div>
                 )}
 

@@ -26,6 +26,7 @@ const DISCOVERY_DOCS = [
 ];
 
 const SCOPES = [
+    "https://www.googleapis.com/auth/drive.readonly",
     "https://www.googleapis.com/auth/drive.file",
     "https://www.googleapis.com/auth/spreadsheets"
 ].join(" ");
@@ -325,21 +326,31 @@ export const listFiles = async (query: string): Promise<any[]> => {
     const gapi = (window as any).gapi;
 
     try {
-        const response = await gapi.client.request({
-            path: "/drive/v3/files",
-            method: "GET",
-            params: {
-                q: query,
-                fields: "files(id, name, createdTime, mimeType)",
-                orderBy: "createdTime desc",
-            },
-        });
+        let allFiles: any[] = [];
+        let pageToken: string | undefined = undefined;
 
-        if (!response || !response.result || !response.result.files) {
-            return [];
-        }
+        do {
+            const response = await gapi.client.request({
+                path: "/drive/v3/files",
+                method: "GET",
+                params: {
+                    q: query,
+                    fields: "nextPageToken, files(id, name, createdTime, mimeType)",
+                    orderBy: "createdTime desc",
+                    pageSize: 1000,
+                    spaces: 'drive',
+                    pageToken: pageToken
+                },
+            });
 
-        return response.result.files;
+            if (response && response.result && response.result.files) {
+                allFiles = allFiles.concat(response.result.files);
+            }
+
+            pageToken = response?.result?.nextPageToken;
+        } while (pageToken);
+
+        return allFiles;
     } catch (e: any) {
         console.error("Error listFiles", e);
         throw new Error(extractGapiErrorMessage(e));
@@ -374,6 +385,40 @@ export const getFileContent = async (fileId: string): Promise<any> => {
         }
     } catch (e: any) {
         console.error("Error getFileContent", e);
+        throw new Error(extractGapiErrorMessage(e));
+    }
+};
+
+/**
+ * Obtiene el contenido de un archivo de Google Drive como ArrayBuffer (para binarios)
+ */
+export const getFileBinary = async (fileId: string): Promise<ArrayBuffer> => {
+    await ensureGoogleSignIn();
+    const gapi = (window as any).gapi;
+
+    try {
+        const response = await gapi.client.drive.files.get({
+            fileId: fileId,
+            alt: 'media',
+        });
+
+        // gapi.client.request con alt=media para archivos binarios
+        // suele devolver la respuesta en response.body como string binario
+        // o podemos usar fetch directamente con el token
+        const token = gapi.client.getToken().access_token;
+        const fetchResp = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!fetchResp.ok) {
+            throw new Error(`Error descargando archivo: ${fetchResp.statusText}`);
+        }
+
+        return await fetchResp.arrayBuffer();
+    } catch (e: any) {
+        console.error("Error getFileBinary", e);
         throw new Error(extractGapiErrorMessage(e));
     }
 };
@@ -638,20 +683,34 @@ export const findOrCreateFolder = async (folderName: string): Promise<string> =>
 /**
  * Lista archivos dentro de una carpeta de Drive, ordenados por fecha de creación ASC (el más antiguo primero).
  */
-export const listFilesInFolder = async (folderId: string): Promise<{ id: string; name: string; createdTime: string }[]> => {
+export const listFilesInFolder = async (folderId: string): Promise<{ id: string; name: string; createdTime: string; mimeType?: string }[]> => {
     await ensureGoogleSignIn();
     const gapi = (window as any).gapi;
 
-    const resp = await gapi.client.request({
-        path: '/drive/v3/files',
-        method: 'GET',
-        params: {
-            q: `'${folderId}' in parents and trashed = false`,
-            fields: 'files(id, name, createdTime)',
-            orderBy: 'createdTime asc',
-        },
-    });
-    return resp?.result?.files || [];
+    let allFiles: any[] = [];
+    let pageToken: string | undefined = undefined;
+
+    do {
+        const resp = await gapi.client.request({
+            path: '/drive/v3/files',
+            method: 'GET',
+            params: {
+                q: `'${folderId}' in parents and trashed = false`,
+                fields: 'nextPageToken, files(id, name, createdTime, mimeType)',
+                orderBy: 'createdTime asc',
+                pageSize: 1000,
+                pageToken: pageToken
+            },
+        });
+        
+        if (resp && resp.result && resp.result.files) {
+            allFiles = allFiles.concat(resp.result.files);
+        }
+        
+        pageToken = resp?.result?.nextPageToken;
+    } while (pageToken);
+
+    return allFiles;
 };
 
 /**
@@ -674,17 +733,18 @@ export const listFolders = async (): Promise<{ id: string; name: string }[]> => 
     const gapi = (window as any).gapi;
 
     try {
-        const response = await gapi.client.request({
-            path: "/drive/v3/files",
-            method: "GET",
-            params: {
-                q: "mimeType = 'application/vnd.google-apps.folder' and trashed = false",
-                fields: "files(id, name)",
-                orderBy: "name",
-            },
+        // Usamos la API de Drive v3 para listar carpetas
+        const response = await gapi.client.drive.files.list({
+            q: "mimeType = 'application/vnd.google-apps.folder' and name contains 'TAppXI' and trashed = false",
+            fields: "files(id, name)",
+            orderBy: "name",
+            pageSize: 100,
+            spaces: 'drive'
         });
 
-        return response.result.files || [];
+        const folders = response.result.files || [];
+        console.log(`Encontradas ${folders.length} carpetas`);
+        return folders;
     } catch (e: any) {
         console.error("Error listFolders", e);
         throw new Error(extractGapiErrorMessage(e));

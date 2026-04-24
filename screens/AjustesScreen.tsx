@@ -5,7 +5,7 @@ import { useFontSize } from "../contexts/FontSizeContext";
 import ScreenTopBar from "../components/ScreenTopBar";
 import { Seccion } from "../types";
 import { saveAjustes, getAjustes, deleteAllData, DeleteProgress, removeDuplicates, syncFromFirestore } from "../services/api";
-import { downloadBackupJson, restoreBackup, restoreFromGoogleSheets, exportToGoogleSheets } from "../services/backup";
+import { downloadBackupJson, uploadBackupToGoogleDrive, restoreBackup, restoreFromGoogleSheets, restoreFromExcel, exportToGoogleSheets } from "../services/backup";
 import { listFiles, getFileContent, isGoogleLoggedIn, signOutGoogle, ensureGoogleSignIn, extractGapiErrorMessage, listFolders } from "../services/google";
 import { archiveOperationalDataOlderThan, getRelativeCutoffDate } from "../services/maintenance";
 import { exportToExcel, exportToCSV, exportToPDFAdvanced, exportToHacienda, ExportFilter } from "../services/exports";
@@ -153,10 +153,25 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
     const [selectedFolderId, setSelectedFolderId] = useState<string>(localStorage.getItem('tappxi_drive_export_folder') || '');
     const [lastBackupStatus, setLastBackupStatus] = useState<string | null>(localStorage.getItem('tappxi_last_auto_backup_status'));
 
-    useEffect(() => {
-        if (isLoggedIn) {
-            listFolders().then(setDriveFolders).catch(console.error);
+    const fetchFolders = async () => {
+        if (!isLoggedIn) return;
+        try {
+            const folders = await listFolders();
+            setDriveFolders(folders);
+            if (!selectedFolderId) {
+                const defaultFolder = folders.find(f => f.name.toLowerCase().includes('tappxi'));
+                if (defaultFolder) {
+                    setSelectedFolderId(defaultFolder.id);
+                    localStorage.setItem('tappxi_drive_export_folder', defaultFolder.id);
+                }
+            }
+        } catch (error) {
+            console.error("Error fetching folders:", error);
         }
+    };
+
+    useEffect(() => {
+        fetchFolders();
     }, [isLoggedIn]);
 
     useEffect(() => {
@@ -179,6 +194,11 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
         signOutGoogle();
         setIsLoggedIn(false);
         showAlert("Sesión de Google cerrada.");
+    };
+
+    const handleSelectFolder = (id: string) => {
+        setSelectedFolderId(id);
+        localStorage.setItem('tappxi_drive_export_folder', id);
     };
 
     const handleDownloadBackupJSON = async () => {
@@ -214,14 +234,24 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                         setRestoreMessage("Restauración completada");
 
                         setTimeout(() => {
-                            showAlert(
-                                `✅ Restauración completada exitosamente.\n\n` +
-                                `Carreras restauradas: ${stats.carreras}\n` +
-                                `Gastos restaurados: ${stats.gastos}\n` +
-                                `Turnos restaurados: ${stats.turnos}`
-                            );
-                            window.location.reload();
-                        }, 1500);
+                            const msg = [
+                                stats.ajustes ? `Ajustes: ${stats.ajustes}` : '',
+                                stats.carreras ? `Carreras: ${stats.carreras}` : '',
+                                stats.gastos ? `Gastos: ${stats.gastos}` : '',
+                                stats.turnos ? `Turnos: ${stats.turnos}` : '',
+                                stats.proveedores ? `Prov: ${stats.proveedores}` : '',
+                                stats.conceptos ? `Conc: ${stats.conceptos}` : '',
+                                stats.talleres ? `Tall: ${stats.talleres}` : '',
+                                stats.excepciones ? `Excep: ${stats.excepciones}` : '',
+                                stats.vales ? `Vales: ${stats.vales}` : '',
+                                stats.reminders ? `Recor: ${stats.reminders}` : '',
+                                stats.customReports ? `Rep: ${stats.customReports}` : '',
+                                stats.otrosIngresos ? `O.Ing: ${stats.otrosIngresos}` : ''
+                            ].filter(Boolean).join("\n");
+                            
+                            showAlert(`✅ Restauración completada:\n\n${msg || 'Sin datos'}`);
+                            setTimeout(() => window.location.reload(), 3000);
+                        }, 500);
                     } catch (err: any) {
                         console.error("Error restaurando backup:", err);
                         showAlert(`❌ Error al restaurar: ${err.message || err}`);
@@ -424,7 +454,7 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
         }
         setUploadingToDrive(true);
         try {
-            await downloadBackupJson();
+            await uploadBackupToGoogleDrive(selectedFolderId || undefined);
             showAlert("✅ Backup subido a Drive correctamente.");
         } catch (e) {
             console.error(e);
@@ -559,8 +589,47 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
         setLoadingBackups(true);
         setShowRestoreModal(true);
         try {
-            const files = await listFiles("(name contains 'tappxi') and trashed = false");
-            setBackupsList(files);
+            // Simplificamos la query para evitar que GAPI filtre de más
+            // Si hay carpeta, pedimos todo lo que no esté en la papelera dentro de ella
+            // Si no hay carpeta, usamos un filtro de tipo de archivo más amplio
+            let query = "trashed = false";
+            if (selectedFolderId) {
+                query = `'${selectedFolderId}' in parents and trashed = false`;
+            } else {
+                query = "(mimeType = 'application/json' or mimeType = 'application/vnd.google-apps.spreadsheet' or mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or mimeType = 'application/vnd.ms-excel' or name contains 'tappxi' or name contains 'backup') and trashed = false";
+            }
+            
+            const allFiles = await listFiles(query);
+            
+            // Filtramos en JavaScript para mayor flexibilidad y evitar fallos de GAPI
+            const filtered = allFiles.filter(file => {
+                const name = file.name.toLowerCase();
+                const mime = file.mimeType || '';
+                
+                const isBackupType = 
+                    mime === 'application/json' || 
+                    mime === 'application/vnd.google-apps.spreadsheet' ||
+                    mime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+                    mime === 'application/vnd.ms-excel' ||
+                    mime.includes('spreadsheet') ||
+                    mime.includes('excel') ||
+                    mime === 'text/csv';
+                
+                const hasBackupName = 
+                    name.includes('tappxi') || 
+                    name.includes('backup') || 
+                    name.endsWith('.json') || 
+                    name.endsWith('.xlsx') || 
+                    name.endsWith('.xls') ||
+                    name.endsWith('.csv');
+                
+                // If a specific folder is selected, show all files in it as requested by the user
+                if (selectedFolderId) return true;
+                
+                return isBackupType || hasBackupName;
+            });
+
+            setBackupsList(filtered);
         } catch (e) {
             showAlert("Error listando backups.");
         } finally {
@@ -573,15 +642,43 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
             setRestoring(true);
             try {
                 let stats;
-                if (mimeType === 'application/vnd.google-apps.spreadsheet') {
-                    stats = await restoreFromGoogleSheets(fileId, (p) => setRestoreProgress(p));
+                const isSpreadsheet = mimeType === 'application/vnd.google-apps.spreadsheet' || 
+                                     mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+                                     mimeType === 'application/vnd.ms-excel' ||
+                                     fileName.endsWith('.xlsx') || 
+                                     fileName.endsWith('.xls');
+
+                if (isSpreadsheet) {
+                    if (mimeType === 'application/vnd.google-apps.spreadsheet') {
+                        stats = await restoreFromGoogleSheets(fileId, (p) => setRestoreProgress(p));
+                    } else {
+                        // Es un archivo Excel (binary)
+                        stats = await restoreFromExcel(fileId, (p) => setRestoreProgress(p));
+                    }
                 } else {
                     const content = await getFileContent(fileId);
                     stats = await restoreBackup(content, (p) => setRestoreProgress(p));
                 }
-                showAlert("✅ Restaurado. Reiniciando...");
-                setTimeout(() => window.location.reload(), 2000);
+                
+                const msg = [
+                    stats.ajustes ? `Ajustes: ${stats.ajustes}` : '',
+                    stats.carreras ? `Carreras: ${stats.carreras}` : '',
+                    stats.gastos ? `Gastos: ${stats.gastos}` : '',
+                    stats.turnos ? `Turnos: ${stats.turnos}` : '',
+                    stats.proveedores ? `Prov: ${stats.proveedores}` : '',
+                    stats.conceptos ? `Conc: ${stats.conceptos}` : '',
+                    stats.talleres ? `Tall: ${stats.talleres}` : '',
+                    stats.excepciones ? `Excep: ${stats.excepciones}` : '',
+                    stats.vales ? `Vales: ${stats.vales}` : '',
+                    stats.reminders ? `Recor: ${stats.reminders}` : '',
+                    stats.customReports ? `Rep: ${stats.customReports}` : '',
+                    stats.otrosIngresos ? `O.Ing: ${stats.otrosIngresos}` : ''
+                ].filter(Boolean).join(" · ");
+                
+                showAlert(`✅ Restaurado: ${msg || 'Sin datos'}. Reiniciando...`);
+                setTimeout(() => window.location.reload(), 2500);
             } catch (e) {
+                console.error(e);
                 showAlert("Error restaurando.");
             } finally {
                 setRestoring(false);
@@ -672,6 +769,10 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                     onExportToSheets={handleExportarHojas}
                     onSyncFromFirestore={handleSyncFromFirestore}
                     onRestoreFromDrive={handleListBackups}
+                    driveFolders={driveFolders}
+                    selectedFolderId={selectedFolderId}
+                    onSelectFolder={handleSelectFolder}
+                    onRefreshFolders={fetchFolders}
                 />
 
                 <ReportingSection 
@@ -809,7 +910,12 @@ const AjustesScreen: React.FC<AjustesScreenProps> = ({ navigateTo }) => {
                                         </div>
                                         <div className="flex-1 overflow-hidden">
                                             <p className="font-bold text-sm truncate">{file.name}</p>
-                                            <p className="text-[10px] opacity-50">{file.mimeType.includes('spreadsheet') ? 'Google Sheets' : 'Copia TAppXI'}</p>
+                                            <p className="text-[10px] opacity-50">
+                                                {file.mimeType === 'application/vnd.google-apps.spreadsheet' ? '📘 Google Sheet' : 
+                                                 (file.mimeType || '').includes('spreadsheet') || (file.mimeType || '').includes('excel') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls') ? '📗 Excel' : 
+                                                 '📄 Copia JSON'} • 
+                                                {file.createdTime ? new Date(file.createdTime).toLocaleString() : ''}
+                                            </p>
                                         </div>
                                         <svg className="w-4 h-4 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                                     </button>

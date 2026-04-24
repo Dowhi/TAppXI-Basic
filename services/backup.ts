@@ -1,3 +1,4 @@
+import * as XLSX from 'xlsx';
 import {
     getCarreras,
     getGastos,
@@ -28,7 +29,7 @@ import {
     parseDate as apiParseDate
 } from './api';
 import { getCustomReports, restoreCustomReport } from './customReports';
-import { uploadFileToDrive, createSpreadsheetWithSheets, writeSheetValues, readSheetValues, getSpreadsheetDetails, findOrCreateFolder, listFilesInFolder, deleteFile, isGoogleLoggedIn } from './google';
+import { uploadFileToDrive, createSpreadsheetWithSheets, writeSheetValues, readSheetValues, getSpreadsheetDetails, findOrCreateFolder, listFilesInFolder, deleteFile, isGoogleLoggedIn, getFileBinary } from './google';
 
 interface BackupPayload {
     meta: {
@@ -165,36 +166,42 @@ export const downloadBackupJson = async () => {
     URL.revokeObjectURL(url);
 };
 
-// export const uploadBackupToGoogleDrive = async (): Promise<void> => {
-//     try {
-//         const data = await buildBackupPayload();
-//         const json = JSON.stringify(data, null, 2);
-//         const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
-//         const dateStr = new Date().toISOString().replace(/[:.]/g, '-');
-//         const fileName = `tappxi-backup-${dateStr}.json`;
-// 
-//         const result = await uploadFileToDrive({
-//             name: fileName,
-//             mimeType: 'application/json',
-//             content: blob,
-//         });
-// 
-//         if (!result || !result.id) {
-//             throw new Error("No se recibió confirmación de que el archivo se subió correctamente a Drive.");
-//         }
-// 
-//         console.log(`Backup subido exitosamente a Drive. ID: ${result.id}, Nombre: ${result.name || fileName}`);
-//     } catch (error: any) {
-//         const errorMsg = error?.message || String(error);
-//         throw new Error(
-//             `Error al subir backup a Google Drive: ${errorMsg}\n\n` +
-//             `Asegúrate de:\n` +
-//             `1. Tener conexión a internet\n` +
-//             `2. Haber autorizado el acceso a Google Drive\n` +
-//             `3. Tener espacio disponible en tu cuenta de Google Drive`
-//         );
-//     }
-// };
+export const uploadBackupToGoogleDrive = async (folderId?: string): Promise<void> => {
+    try {
+        const data = await buildBackupPayload();
+        const json = JSON.stringify(data, null, 2);
+        const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+        const dateStr = new Date().toISOString().replace(/[:.]/g, '-');
+        const fileName = `tappxi-backup-${dateStr}.json`;
+
+        let targetFolderId = folderId;
+        if (!targetFolderId) {
+            targetFolderId = await findOrCreateFolder('TAppXI');
+        }
+
+        const result = await uploadFileToDrive({
+            name: fileName,
+            mimeType: 'application/json',
+            content: blob,
+            parents: targetFolderId ? [targetFolderId] : undefined
+        });
+
+        if (!result || !result.id) {
+            throw new Error("No se recibió confirmación de que el archivo se subió correctamente a Drive.");
+        }
+
+        console.log(`Backup subido exitosamente a Drive. ID: ${result.id}, Nombre: ${result.name || fileName}`);
+    } catch (error: any) {
+        const errorMsg = error?.message || String(error);
+        throw new Error(
+            `Error al subir backup a Google Drive: ${errorMsg}\n\n` +
+            `Asegúrate de:\n` +
+            `1. Tener conexión a internet\n` +
+            `2. Haber autorizado el acceso a Google Drive\n` +
+            `3. Tener espacio disponible en tu cuenta de Google Drive`
+        );
+    }
+};
 
 export const restoreBackup = async (jsonData: any, onProgress?: (progress: number, message: string) => void): Promise<{ carreras: number; gastos: number; turnos: number }> => {
     if (!jsonData || !jsonData.meta || !jsonData.meta.app) {
@@ -202,9 +209,19 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
     }
 
     const stats = {
+        ajustes: 0,
+        config: 0,
         carreras: 0,
         gastos: 0,
-        turnos: 0
+        turnos: 0,
+        proveedores: 0,
+        conceptos: 0,
+        talleres: 0,
+        excepciones: 0,
+        vales: 0,
+        reminders: 0,
+        customReports: 0,
+        otrosIngresos: 0
     };
 
     const totalSteps = 13; // Ajustes, Config, Carreras, Gastos, Turnos, Proveedores, Conceptos, Talleres, Excepciones, Vales, Reminders, Reports, OtrosIngresos
@@ -231,6 +248,7 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
         if (jsonData.ajustes['tam\u00f1oFuente'] && !jsonData.ajustes.tamanoFuente) {
             await saveAjustes({ tamanoFuente: jsonData.ajustes['tam\u00f1oFuente'] }, true);
         }
+        stats.ajustes = 1;
     }
     currentStep++;
 
@@ -238,6 +256,7 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
     reportProgress("Restaurando configuración...");
     if (jsonData.breakConfiguration) {
         await saveBreakConfiguration(jsonData.breakConfiguration, true);
+        stats.config = 1;
     }
     currentStep++;
 
@@ -317,6 +336,7 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
         const total = jsonData.proveedores.length;
         for (let i = 0; i < total; i++) {
             await restoreProveedor(jsonData.proveedores[i], true);
+            stats.proveedores++;
             if (i % 10 === 0 && onProgress) {
                 onProgress(Math.round((5 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando proveedores (${i + 1}/${total})...`);
             }
@@ -330,6 +350,7 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
         const total = jsonData.conceptos.length;
         for (let i = 0; i < total; i++) {
             await restoreConcepto(jsonData.conceptos[i], true);
+            stats.conceptos++;
             if (i % 10 === 0 && onProgress) {
                 onProgress(Math.round((6 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando conceptos (${i + 1}/${total})...`);
             }
@@ -343,6 +364,7 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
         const total = jsonData.talleres.length;
         for (let i = 0; i < total; i++) {
             await restoreTaller(jsonData.talleres[i], true);
+            stats.talleres++;
             if (i % 10 === 0 && onProgress) {
                 onProgress(Math.round((7 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando talleres (${i + 1}/${total})...`);
             }
@@ -356,6 +378,7 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
         const total = jsonData.excepciones.length;
         for (let i = 0; i < total; i++) {
             await restoreExcepcion(jsonData.excepciones[i], true);
+            stats.excepciones++;
             if (i % 10 === 0 && onProgress) {
                 onProgress(Math.round((8 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando excepciones (${i + 1}/${total})...`);
             }
@@ -369,6 +392,7 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
         const total = jsonData.vales.length;
         for (let i = 0; i < total; i++) {
             await restoreValeDirectoryEntry(jsonData.vales[i], true);
+            stats.vales++;
             if (i % 10 === 0 && onProgress) {
                 onProgress(Math.round((9 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando vales (${i + 1}/${total})...`);
             }
@@ -382,6 +406,7 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
         const total = jsonData.reminders.length;
         for (let i = 0; i < total; i++) {
             await restoreReminder(jsonData.reminders[i], true);
+            stats.reminders++;
             if (i % 10 === 0 && onProgress) {
                 onProgress(Math.round((10 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando recordatorios (${i + 1}/${total})...`);
             }
@@ -395,6 +420,7 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
         const total = jsonData.customReports.length;
         for (let i = 0; i < total; i++) {
             await restoreCustomReport(jsonData.customReports[i], true);
+            stats.customReports++;
             if (i % 10 === 0 && onProgress) {
                 onProgress(Math.round((11 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando reportes (${i + 1}/${total})...`);
             }
@@ -408,6 +434,7 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
         const total = jsonData.otrosIngresos.length;
         for (let i = 0; i < total; i++) {
             await restoreOtroIngreso(jsonData.otrosIngresos[i], true);
+            stats.otrosIngresos++;
             if (i % 10 === 0 && onProgress) {
                 onProgress(Math.round((12 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando otros ingresos (${i + 1}/${total})...`);
             }
@@ -723,8 +750,17 @@ export const exportToGoogleSheets = async (folderId?: string): Promise<{ spreads
         if (data.breakConfiguration) {
             allAjustes['breakConfiguration'] = data.breakConfiguration;
         }
+
         Object.entries(allAjustes).forEach(([key, value]) => {
-            ajustesRows.push([key, JSON.stringify(value)]);
+            if (value === null || value === undefined) {
+                ajustesRows.push([key, '']);
+            } else if (typeof value === 'object') {
+                // Solo stringificar si es un objeto real (ej. datosFiscales)
+                ajustesRows.push([key, JSON.stringify(value)]);
+            } else {
+                // Primitivos (boolean, number, string) se pasan tal cual para que Sheets los reconozca
+                ajustesRows.push([key, value]);
+            }
         });
 
         const otrosIngresosRows: any[][] = [headers.otrosIngresos];
@@ -896,47 +932,354 @@ const parseDate = (val: any): Date | null => {
         if (isNaN(val.getTime())) return null;
         return val;
     }
+    
+    // Si es un número (probablemente fecha de Excel si no se parseó automáticamente)
+    if (typeof val === 'number') {
+        // Excel dates are days since 1899-12-30. 
+        // 25569 is the difference between 1970-01-01 and 1899-12-30 in days.
+        // If the number is > 30000, it's likely an Excel date.
+        if (val > 30000) {
+            const date = new Date((val - 25569) * 86400 * 1000);
+            if (!isNaN(date.getTime())) return date;
+        }
+        // De lo contrario, tratar como timestamp
+        const date = new Date(val);
+        if (!isNaN(date.getTime())) return date;
+        return null;
+    }
+
     if (typeof val === 'string') {
         const trimmed = val.trim();
         if (!trimmed || trimmed === '') return null;
 
-        // FIRST: Try Spanish format DD/MM/YYYY or DD/MM/YY
-        const spanishFormat = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/.exec(trimmed);
+        // FIRST: Try Spanish format DD/MM/YYYY or DD-MM-YYYY
+        const spanishFormat = /^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/.exec(trimmed);
         if (spanishFormat) {
             const [, day, month, yearStr] = spanishFormat;
             let year = parseInt(yearStr);
-            // Handle 2-digit years: 00-50 = 2000-2050, 51-99 = 1951-1999
             if (year < 100) {
                 year = year <= 50 ? 2000 + year : 1900 + year;
             }
             const date = new Date(year, parseInt(month) - 1, parseInt(day));
-            // Validate the date is real (e.g., not Feb 31)
             if (date.getFullYear() === year &&
                 date.getMonth() === parseInt(month) - 1 &&
                 date.getDate() === parseInt(day)) {
                 return date;
             }
-            console.warn(`Invalid Spanish date: ${trimmed} parsed to ${date.toISOString()}`);
         }
 
-        // SECOND: Try ISO format or other standard formats
+        // SECOND: Try ISO or standard Date.parse
         const date = new Date(trimmed);
         if (!isNaN(date.getTime())) {
             return date;
         }
 
-        console.warn(`Failed to parse date: "${trimmed}"`);
-        return null;
-    }
-    if (typeof val === 'number') {
-        const date = new Date(val);
-        if (!isNaN(date.getTime())) return date;
+        // THIRD: Try swapping MM/DD for DD/MM if it failed
+        if (trimmed.includes('/')) {
+            const parts = trimmed.split('/');
+            if (parts.length >= 3) {
+                const swapped = `${parts[1]}/${parts[0]}/${parts[2]}`;
+                const dateSwapped = new Date(swapped);
+                if (!isNaN(dateSwapped.getTime())) return dateSwapped;
+            }
+        }
+
+        console.warn(`Failed to parse date string: "${trimmed}"`);
         return null;
     }
     return null;
 };
 
-export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?: (progress: number, message: string) => void): Promise<{ carreras: number; gastos: number; turnos: number }> => {
+const processSpreadsheetBackupData = async (rowsMap: Record<string, any[][]>, onProgress?: (progress: number, message: string) => void) => {
+    const {
+        carrerasRows = [],
+        gastosRows = [],
+        serviciosRows = [],
+        turnosRows = [],
+        proveedoresRows = [],
+        conceptosRows = [],
+        talleresRows = [],
+        ajustesRows = [],
+        excepcionesRows = [],
+        valesRows = [],
+        remindersRows = [],
+        customReportsRows = [],
+        otrosIngresosRows = [],
+        valesCarrerasRows = []
+    } = rowsMap;
+
+    // Usamos alias para compatibilidad si el archivo tiene nombres antiguos
+    const getRows = (rows: any[][]) => fromRows(rows);
+
+    const carrerasRaw = getRows(carrerasRows);
+    const gastosRaw = getRows(gastosRows);
+    const serviciosRaw = getRows(serviciosRows);
+    const turnosRaw = getRows(turnosRows);
+    const proveedoresRaw = getRows(proveedoresRows);
+    const conceptosRaw = getRows(conceptosRows);
+    const talleresRaw = getRows(talleresRows);
+    const excepcionesRaw = getRows(excepcionesRows);
+    const valesRaw = getRows(valesRows);
+    const remindersRaw = getRows(remindersRows);
+    const customReportsRaw = getRows(customReportsRows);
+    const otrosIngresosRaw = getRows(otrosIngresosRows);
+    const valesCarrerasRaw = getRows(valesCarrerasRows);
+
+    console.log(`[Import] Filas detectadas: 
+        Carreras: ${carrerasRaw.length}, 
+        Gastos: ${gastosRaw.length}, 
+        Turnos: ${turnosRaw.length}, 
+        Ajustes: ${ajustesRows.length - 1}`);
+
+    const processDateWithTime = (item: any, dateKey: string = 'fecha', timeKey: string = 'hora'): Date | null => {
+        const dateStr = item[dateKey];
+        const timeStr = item[timeKey];
+        if (!dateStr) return null;
+        const date = parseDate(dateStr);
+        if (!date) return null;
+
+        if (timeStr !== undefined && timeStr !== null) {
+            if (typeof timeStr === 'string' && timeStr.includes(':')) {
+                const [hours, minutes] = timeStr.split(':').map(n => parseInt(n, 10));
+                if (!isNaN(hours) && !isNaN(minutes)) {
+                    date.setHours(hours, minutes, 0, 0);
+                }
+            } else if (typeof timeStr === 'number') {
+                // Manejar tiempo numérico de Excel/Google Sheets (fracción del día)
+                const totalMinutes = Math.round(timeStr * 24 * 60);
+                const hours = Math.floor(totalMinutes / 60);
+                const minutes = totalMinutes % 60;
+                date.setHours(hours, minutes, 0, 0);
+            }
+        }
+        return date;
+    };
+
+    const carreras = carrerasRaw.map(c => {
+        const fechaHora = c.fechahora ? parseDate(c.fechahora) : processDateWithTime(c, 'fecha', 'hora');
+        let valeInfo = c.valeinfo;
+
+        // 1. Intentar reconstruir desde columnas individuales (backups antiguos)
+        if (!valeInfo && (c.empresa || c.empresavale)) {
+            valeInfo = {
+                empresa: c.empresa || c.empresavale,
+                codigoEmpresa: c.codigoEmpresa || c.codempresa || c.codigo,
+                despacho: c.despacho || c.ndespacho,
+                numeroAlbaran: c.numeroAlbaran || c.nalbaran,
+                autoriza: c.autoriza
+            };
+        }
+
+        // 2. Intentar buscar en la nueva hoja Vales_Carreras
+        if (!valeInfo) {
+            const associatedVale = valesCarrerasRaw.find(v => v.carreraId === c.id);
+            if (associatedVale) {
+                valeInfo = {
+                    empresa: associatedVale.empresa,
+                    codigoEmpresa: associatedVale.codigoEmpresa,
+                    despacho: associatedVale.despacho,
+                    numeroAlbaran: associatedVale.numeroAlbaran,
+                    autoriza: associatedVale.autoriza
+                };
+            }
+        }
+
+        return {
+            ...c,
+            id: c.id || crypto.randomUUID(),
+            taximetro: parseNumber(c.taximetro),
+            cobrado: parseNumber(c.cobrado),
+            fechaHora: fechaHora, // No fallback to new Date()
+            valeInfo,
+            turnoId: c.turnoId || c.idturno || undefined,
+            emisora: c.emisora === 'Sí' || c.emisora === true,
+            aeropuerto: c.aeropuerto === 'Sí' || c.aeropuerto === true,
+            estacion: c.estacion === 'Sí' || c.estacion === true,
+        };
+    }).filter(c => {
+        // Skip carreras with invalid dates
+        if (!c.fechaHora) {
+            console.warn(`[Import] Omitiendo carrera ID: ${c.id} por fecha inválida.`, c);
+            return false;
+        }
+        return true;
+    });
+
+    console.log(`[Import] Carreras válidas tras procesado: ${carreras.length}`);
+
+    const gastos = gastosRaw.map(g => {
+        // Reconstruir servicios si existen en la hoja Detalle_Servicios
+        const servicios = serviciosRaw
+            .filter(s => s.gastoid === g.id)
+            .map(s => ({
+                id: s.id || crypto.randomUUID(),
+                referencia: s.referencia,
+                descripcion: s.descripcion,
+                importe: parseNumber(s.importe),
+                cantidad: parseNumber(s.cantidad),
+                descuentoPorcentaje: parseNumber(s.descuentoPorcentaje || s['desc. %'])
+            }));
+
+        return {
+            ...g,
+            id: g.id || crypto.randomUUID(), // Asegurar que siempre hay ID
+            importe: parseNumber(g.importe || g.total || g.totale),
+            baseImponible: parseNumber(g.baseimponible || g.base || g.baseimponiblee),
+            ivaImporte: parseNumber(g.ivaimporte || g.ivae),
+            ivaPorcentaje: parseNumber(g.ivaporcentaje || g.ivaporc),
+            kilometros: parseNumber(g.kilometros || g.km || g.kilometrostotales),
+            kilometrosVehiculo: parseNumber(g.kilometrosvehiculo || g.kmvehiculo),
+            kmParciales: parseNumber(g.kmparciales),
+            litros: parseNumber(g.litros),
+            precioPorLitro: parseNumber(g.precioporlitro || g.preciol),
+            descuento: parseNumber(g.descuento || g.descuentoe),
+            fecha: parseDate(g.fecha), // No fallback
+            servicios: servicios.length > 0 ? servicios : (g.servicios || [])
+        };
+    }).filter(g => {
+        if (!g.fecha) {
+            console.warn(`Skipping gasto ${g.id}: invalid date`);
+            return false;
+        }
+        return true;
+    });
+
+    const turnos = turnosRaw.map(t => {
+        const fechaInicio = processDateWithTime(t, 'fechainicio', 'horainicio');
+        const fechaFin = processDateWithTime(t, 'fechafin', 'horafin');
+        return {
+            ...t,
+            id: t.id || crypto.randomUUID(), // Asegurar que siempre hay ID
+            kilometrosInicio: parseNumber(t.kilometrosinicio || t.kminicio),
+            kilometrosFin: (t.kilometrosfin || t.kmfin) ? parseNumber(t.kilometrosfin || t.kmfin) : null,
+            fechaInicio: fechaInicio, // No fallback
+            fechaFin: fechaFin || null,
+        };
+    }).filter(t => {
+        if (!t.fechaInicio) {
+            console.warn(`Skipping turno ${t.id}: invalid start date`);
+            return false;
+        }
+        return true;
+    });
+
+    const cleanObject = (obj: any): any => {
+        if (obj === null || obj === undefined) return null;
+        if (Array.isArray(obj)) return obj.map(cleanObject);
+        if (typeof obj === 'object') {
+            const cleaned: any = {};
+            for (const key in obj) {
+                if (obj[key] !== undefined) cleaned[key] = cleanObject(obj[key]);
+            }
+            return cleaned;
+        }
+        return obj;
+    };
+
+    let ajustes = null;
+    if (ajustesRows.length > 1) {
+        ajustes = {};
+        for (let i = 1; i < ajustesRows.length; i++) {
+            const [key, value] = ajustesRows[i];
+            if (key) {
+                const keys = key.split('.');
+                let current = ajustes;
+                for (let j = 0; j < keys.length - 1; j++) {
+                    if (!current[keys[j]]) current[keys[j]] = {};
+                    current = current[keys[j]];
+                }
+                let finalValue = value;
+                if (typeof value === 'string') {
+                    let trimmed = value.trim();
+                    // Si parece JSON (objeto, array o string con comillas), intentar parsear
+                    if (trimmed.startsWith('{') || trimmed.startsWith('[') || trimmed.startsWith('"')) {
+                        try {
+                            finalValue = JSON.parse(trimmed);
+                        } catch (e) {
+                            // Si falla el parseo de comillas, seguimos con el valor original
+                        }
+                    }
+                    
+                    // Re-evaluar el valor final (podría ser un string después de JSON.parse o el original)
+                    if (typeof finalValue === 'string') {
+                        let finalTrimmed = finalValue.trim();
+                        if (finalTrimmed.toUpperCase() === 'TRUE') {
+                            finalValue = true;
+                        } else if (finalTrimmed.toUpperCase() === 'FALSE') {
+                            finalValue = false;
+                        } else if (!isNaN(Number(finalTrimmed)) && finalTrimmed !== '') {
+                            finalValue = Number(finalTrimmed);
+                        }
+                    }
+                }
+                current[keys[keys.length - 1]] = finalValue;
+            }
+        }
+        ajustes = cleanObject(ajustes);
+    }
+
+    let breakConfiguration = ajustes?.breakConfiguration || null;
+    if (ajustes && ajustes.breakConfiguration) {
+        delete ajustes.breakConfiguration;
+    }
+
+    const excepciones = excepcionesRaw.map(e => ({
+        ...e,
+        id: e.id || crypto.randomUUID(), // Asegurar que siempre hay ID
+        fechaDesde: parseDate(e.fechadesde),
+        fechaHasta: parseDate(e.fechahasta) || parseDate(e.fechadesde),
+        createdAt: parseDate(e.createdat) || new Date(),
+    })).filter(e => {
+        if (!e.fechaDesde) {
+            console.warn(`Skipping excepcion ${e.id}: invalid date`);
+            return false;
+        }
+        return true;
+    });
+
+    const proveedores = proveedoresRaw.map(p => ({ ...p, id: p.id || crypto.randomUUID(), createdAt: apiParseDate(p.createdat) }));
+    const conceptos = conceptosRaw.map(co => ({ ...co, id: co.id || crypto.randomUUID(), createdAt: apiParseDate(co.createdat) }));
+    const talleres = talleresRaw.map(t => ({ ...t, id: t.id || crypto.randomUUID(), createdAt: apiParseDate(t.createdat) }));
+    const vales = valesRaw.map(v => ({ ...v, id: v.id || crypto.randomUUID() }));
+    const reminders = remindersRaw.map(r => ({ ...r, id: r.id || crypto.randomUUID() }));
+    const customReports = customReportsRaw.map(cr => ({ ...cr, id: cr.id || crypto.randomUUID() }));
+    const otrosIngresos = otrosIngresosRaw.map(oi => ({
+        ...oi,
+        id: oi.id || crypto.randomUUID(),
+        fecha: processDateWithTime(oi, 'fecha', 'hora'),
+        importe: parseNumber(oi.importe)
+    })).filter(oi => {
+        if (!oi.fecha) {
+            console.warn(`Skipping otro ingreso ${oi.id}: invalid date`);
+            return false;
+        }
+        return true;
+    });
+
+    if (onProgress) onProgress(90, "Guardando datos...");
+
+    const fullPayload = {
+        meta: { app: 'TAppXI', version: '1.0', createdAt: new Date().toISOString() },
+        ajustes,
+        breakConfiguration,
+        excepciones,
+        carreras,
+        gastos,
+        turnos,
+        proveedores,
+        conceptos,
+        talleres,
+        vales,
+        reminders,
+        customReports,
+        otrosIngresos
+    };
+
+    const stats = await restoreBackup(fullPayload, onProgress);
+    return stats;
+};
+
+export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?: (progress: number, message: string) => void): Promise<any> => {
     try {
         console.log(`Iniciando restauración desde Sheet ID: ${spreadsheetId}`);
         if (onProgress) onProgress(0, "Descargando datos de Google Sheets...");
@@ -985,253 +1328,70 @@ export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?
 
         if (onProgress) onProgress(10, "Procesando datos...");
 
-        // Usamos alias para compatibilidad si el archivo tiene nombres antiguos
-        const getRows = (rows: any[][]) => fromRows(rows);
-
-        const carrerasRaw = getRows(carrerasRows);
-        const gastosRaw = getRows(gastosRows);
-        const serviciosRaw = getRows(serviciosRows);
-        const turnosRaw = getRows(turnosRows);
-        const proveedoresRaw = getRows(proveedoresRows);
-        const conceptosRaw = getRows(conceptosRows);
-        const talleresRaw = getRows(talleresRows);
-        const excepcionesRaw = getRows(excepcionesRows);
-        const valesRaw = getRows(valesRows);
-        const remindersRaw = getRows(remindersRows);
-        const customReportsRaw = getRows(customReportsRows);
-        const otrosIngresosRaw = getRows(otrosIngresosRows);
-        const valesCarrerasRaw = getRows(valesCarrerasRows);
-
-        const processDateWithTime = (item: any, dateKey: string = 'fecha', timeKey: string = 'hora'): Date | null => {
-            const dateStr = item[dateKey];
-            const timeStr = item[timeKey];
-            if (!dateStr) return null;
-            const date = parseDate(dateStr);
-            if (!date) return null;
-
-            if (timeStr !== undefined && timeStr !== null) {
-                if (typeof timeStr === 'string' && timeStr.includes(':')) {
-                    const [hours, minutes] = timeStr.split(':').map(n => parseInt(n, 10));
-                    if (!isNaN(hours) && !isNaN(minutes)) {
-                        date.setHours(hours, minutes, 0, 0);
-                    }
-                } else if (typeof timeStr === 'number') {
-                    // Manejar tiempo numérico de Excel/Google Sheets (fracción del día)
-                    const totalMinutes = Math.round(timeStr * 24 * 60);
-                    const hours = Math.floor(totalMinutes / 60);
-                    const minutes = totalMinutes % 60;
-                    date.setHours(hours, minutes, 0, 0);
-                }
-            }
-            return date;
-        };
-
-        const carreras = carrerasRaw.map(c => {
-            const fechaHora = c.fechahora ? parseDate(c.fechahora) : processDateWithTime(c, 'fecha', 'hora');
-            let valeInfo = c.valeinfo;
-
-            // 1. Intentar reconstruir desde columnas individuales (backups antiguos)
-            if (!valeInfo && (c.empresa || c.empresavale)) {
-                valeInfo = {
-                    empresa: c.empresa || c.empresavale,
-                    codigoEmpresa: c.codigoEmpresa || c.codempresa || c.codigo,
-                    despacho: c.despacho || c.ndespacho,
-                    numeroAlbaran: c.numeroAlbaran || c.nalbaran,
-                    autoriza: c.autoriza
-                };
-            }
-
-            // 2. Intentar buscar en la nueva hoja Vales_Carreras
-            if (!valeInfo) {
-                const associatedVale = valesCarrerasRaw.find(v => v.carreraId === c.id);
-                if (associatedVale) {
-                    valeInfo = {
-                        empresa: associatedVale.empresa,
-                        codigoEmpresa: associatedVale.codigoEmpresa,
-                        despacho: associatedVale.despacho,
-                        numeroAlbaran: associatedVale.numeroAlbaran,
-                        autoriza: associatedVale.autoriza
-                    };
-                }
-            }
-
-            return {
-                ...c,
-                id: c.id || crypto.randomUUID(),
-                taximetro: parseNumber(c.taximetro),
-                cobrado: parseNumber(c.cobrado),
-                fechaHora: fechaHora, // No fallback to new Date()
-                valeInfo,
-                turnoId: c.turnoId || c.idturno || undefined,
-                emisora: c.emisora === 'Sí' || c.emisora === true,
-                aeropuerto: c.aeropuerto === 'Sí' || c.aeropuerto === true,
-                estacion: c.estacion === 'Sí' || c.estacion === true,
-            };
-        }).filter(c => {
-            // Skip carreras with invalid dates
-            if (!c.fechaHora) {
-                console.warn(`Skipping carrera ${c.id}: invalid date`);
-                return false;
-            }
-            return true;
-        });
-
-        const gastos = gastosRaw.map(g => {
-            // Reconstruir servicios si existen en la hoja Detalle_Servicios
-            const servicios = serviciosRaw
-                .filter(s => s.gastoid === g.id)
-                .map(s => ({
-                    id: s.id || crypto.randomUUID(),
-                    referencia: s.referencia,
-                    descripcion: s.descripcion,
-                    importe: parseNumber(s.importe),
-                    cantidad: parseNumber(s.cantidad),
-                    descuentoPorcentaje: parseNumber(s.descuentoPorcentaje || s['desc. %'])
-                }));
-
-            return {
-                ...g,
-                id: g.id || crypto.randomUUID(), // Asegurar que siempre hay ID
-                importe: parseNumber(g.importe || g.total || g.totale),
-                baseImponible: parseNumber(g.baseimponible || g.base || g.baseimponiblee),
-                ivaImporte: parseNumber(g.ivaimporte || g.ivae),
-                ivaPorcentaje: parseNumber(g.ivaporcentaje || g.ivaporc),
-                kilometros: parseNumber(g.kilometros || g.km || g.kilometrostotales),
-                kilometrosVehiculo: parseNumber(g.kilometrosvehiculo || g.kmvehiculo),
-                kmParciales: parseNumber(g.kmparciales),
-                litros: parseNumber(g.litros),
-                precioPorLitro: parseNumber(g.precioporlitro || g.preciol),
-                descuento: parseNumber(g.descuento || g.descuentoe),
-                fecha: parseDate(g.fecha), // No fallback
-                servicios: servicios.length > 0 ? servicios : (g.servicios || [])
-            };
-        }).filter(g => {
-            if (!g.fecha) {
-                console.warn(`Skipping gasto ${g.id}: invalid date`);
-                return false;
-            }
-            return true;
-        });
-
-        const turnos = turnosRaw.map(t => {
-            const fechaInicio = processDateWithTime(t, 'fechainicio', 'horainicio');
-            const fechaFin = processDateWithTime(t, 'fechafin', 'horafin');
-            return {
-                ...t,
-                id: t.id || crypto.randomUUID(), // Asegurar que siempre hay ID
-                kilometrosInicio: parseNumber(t.kilometrosinicio || t.kminicio),
-                kilometrosFin: (t.kilometrosfin || t.kmfin) ? parseNumber(t.kilometrosfin || t.kmfin) : null,
-                fechaInicio: fechaInicio, // No fallback
-                fechaFin: fechaFin || null,
-            };
-        }).filter(t => {
-            if (!t.fechaInicio) {
-                console.warn(`Skipping turno ${t.id}: invalid start date`);
-                return false;
-            }
-            return true;
-        });
-
-        const cleanObject = (obj: any): any => {
-            if (obj === null || obj === undefined) return null;
-            if (Array.isArray(obj)) return obj.map(cleanObject);
-            if (typeof obj === 'object') {
-                const cleaned: any = {};
-                for (const key in obj) {
-                    if (obj[key] !== undefined) cleaned[key] = cleanObject(obj[key]);
-                }
-                return cleaned;
-            }
-            return obj;
-        };
-
-        let ajustes = null;
-        if (ajustesRows.length > 1) {
-            ajustes = {};
-            for (let i = 1; i < ajustesRows.length; i++) {
-                const [key, value] = ajustesRows[i];
-                if (key) {
-                    const keys = key.split('.');
-                    let current = ajustes;
-                    for (let j = 0; j < keys.length - 1; j++) {
-                        if (!current[keys[j]]) current[keys[j]] = {};
-                        current = current[keys[j]];
-                    }
-                    let finalValue = value;
-                    if (typeof value === 'string' && (value.startsWith('{') || value.startsWith('['))) {
-                        try { finalValue = JSON.parse(value); } catch { }
-                    }
-                    current[keys[keys.length - 1]] = finalValue;
-                }
-            }
-            ajustes = cleanObject(ajustes);
-        }
-
-        let breakConfiguration = ajustes?.breakConfiguration || null;
-        if (ajustes && ajustes.breakConfiguration) {
-            delete ajustes.breakConfiguration;
-        }
-
-        const excepciones = excepcionesRaw.map(e => ({
-            ...e,
-            id: e.id || crypto.randomUUID(), // Asegurar que siempre hay ID
-            fechaDesde: parseDate(e.fechadesde),
-            fechaHasta: parseDate(e.fechahasta) || parseDate(e.fechadesde),
-            createdAt: parseDate(e.createdat) || new Date(),
-        })).filter(e => {
-            if (!e.fechaDesde) {
-                console.warn(`Skipping excepcion ${e.id}: invalid date`);
-                return false;
-            }
-            return true;
-        });
-
-        const proveedores = proveedoresRaw.map(p => ({ ...p, id: p.id || crypto.randomUUID(), createdAt: apiParseDate(p.createdat) }));
-        const conceptos = conceptosRaw.map(c => ({ ...c, id: c.id || crypto.randomUUID(), createdAt: apiParseDate(c.createdat) }));
-        const talleres = talleresRaw.map(t => ({ ...t, id: t.id || crypto.randomUUID(), createdAt: apiParseDate(t.createdat) }));
-        const vales = valesRaw.map(v => ({ ...v, id: v.id || crypto.randomUUID() }));
-        const reminders = remindersRaw.map(r => ({ ...r, id: r.id || crypto.randomUUID() }));
-        const customReports = customReportsRaw.map(cr => ({ ...cr, id: cr.id || crypto.randomUUID() }));
-        const otrosIngresos = otrosIngresosRaw.map(oi => ({
-            ...oi,
-            id: oi.id || crypto.randomUUID(),
-            fecha: processDateWithTime(oi, 'fecha', 'hora'),
-            importe: parseNumber(oi.importe)
-        })).filter(oi => {
-            if (!oi.fecha) {
-                console.warn(`Skipping otro ingreso ${oi.id}: invalid date`);
-                return false;
-            }
-            return true;
-        });
-
-        if (onProgress) onProgress(90, "Guardando datos...");
-
-        const fullPayload = {
-            meta: { app: 'TAppXI', version: '1.0', createdAt: new Date().toISOString() },
-            ajustes,
-            breakConfiguration,
-            excepciones,
-            carreras,
-            gastos,
-            turnos,
-            proveedores,
-            conceptos,
-            talleres,
-            vales,
-            reminders,
-            customReports,
-            otrosIngresos
-        };
-
-        const stats = await restoreBackup(fullPayload, onProgress);
-        return stats;
+        return processSpreadsheetBackupData({
+            carrerasRows,
+            gastosRows,
+            serviciosRows,
+            turnosRows,
+            proveedoresRows,
+            conceptosRows,
+            talleresRows,
+            ajustesRows,
+            excepcionesRows,
+            valesRows,
+            remindersRows,
+            customReportsRows,
+            otrosIngresosRows,
+            valesCarrerasRows
+        }, onProgress);
 
     } catch (error: any) {
         console.error("Error en restoreFromGoogleSheets:", error);
         throw new Error(`Error al restaurar desde Google Sheets: ${error.message}`);
     }
 };
+
+export const restoreFromExcel = async (fileId: string, onProgress?: (progress: number, message: string) => void): Promise<any> => {
+    try {
+        console.log(`Iniciando restauración desde Excel ID: ${fileId}`);
+        if (onProgress) onProgress(0, "Descargando archivo Excel...");
+
+        const binary = await getFileBinary(fileId);
+        const workbook = XLSX.read(binary, { type: 'array', cellDates: true });
+
+        if (onProgress) onProgress(10, "Procesando hojas...");
+
+        const safeRead = (sheetName: string): any[][] => {
+            const sheet = workbook.Sheets[sheetName];
+            if (!sheet) return [];
+            return XLSX.utils.sheet_to_json(sheet, { header: 1 });
+        };
+
+        const rowsMap = {
+            carrerasRows: safeRead('Carreras'),
+            gastosRows: safeRead('Gastos'),
+            serviciosRows: safeRead('Detalle_Servicios'),
+            turnosRows: safeRead('Turnos'),
+            proveedoresRows: safeRead('Proveedores'),
+            conceptosRows: safeRead('Conceptos'),
+            talleresRows: safeRead('Talleres'),
+            ajustesRows: safeRead('Ajustes'),
+            excepcionesRows: safeRead('Excepciones'),
+            valesRows: safeRead('Directorio_Vales'),
+            remindersRows: safeRead('Recordatorios'),
+            customReportsRows: safeRead('Informes_Personalizados'),
+            otrosIngresosRows: safeRead('Otros_Ingresos'),
+            valesCarrerasRows: safeRead('Vales_Carreras')
+        };
+
+        return processSpreadsheetBackupData(rowsMap, onProgress);
+
+    } catch (error: any) {
+        console.error("Error en restoreFromExcel:", error);
+        throw new Error(`Error al restaurar desde Excel: ${error.message}`);
+    }
+};
+
 
 /**
  * Realiza una copia de seguridad automática en la carpeta "TAppXI" de Google Drive.
