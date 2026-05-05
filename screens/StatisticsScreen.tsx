@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Seccion, CarreraVista } from '../types';
 import ScreenTopBar from '../components/ScreenTopBar';
-import { getCarrerasByDate, getGastosByDate, isRestDay, getCarreras, getOtrosIngresosByDateRange } from '../services/api';
+import { getCarrerasByDate, getGastosByDate, isRestDay, getCarreras, getOtrosIngresosByDateRange, getTurnosByDate } from '../services/api';
 import { analyzeZoneTimeStats, getTopHours, getTopZones, ZoneTimeAnalysis } from '../services/zoneTimeAnalysis';
+import { calculateTurnoTimes } from '../services/timeUtils';
 
 interface StatisticsScreenProps {
     navigateTo: (page: Seccion) => void;
@@ -14,8 +15,14 @@ interface DayData {
     gastos: number;
     balance: number;
     numCarreras: number;
+    horasBrutasMs: number;
+    horasNetasMs: number;
     isRestDay?: boolean;
 }
+
+// Constants for time conversions
+const MS_PER_HOUR = 3600000;
+const MS_PER_MINUTE = 60000;
 
 const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
     const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | '3months'>('month');
@@ -27,25 +34,34 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
 
     // Calcular fechas según el período seleccionado
     const dateRange = useMemo(() => {
-        const end = new Date();
-        end.setHours(23, 59, 59, 999);
         const start = new Date();
+        const end = new Date();
 
         switch (selectedPeriod) {
             case 'week':
-                start.setDate(start.getDate() - 7);
+                // Últimos 7 días: hoy + 6 días anteriores
+                start.setDate(start.getDate() - 6);
+                start.setHours(0, 0, 0, 0);
+                end.setHours(23, 59, 59, 999);
                 break;
             case 'month':
-                // Mes actual: del día 1 del mes en curso hasta hoy
+                // Mes actual: del día 1 del mes en curso hasta el último día del mes
                 start.setDate(1);
+                start.setHours(0, 0, 0, 0);
+                end.setMonth(end.getMonth() + 1);
+                end.setDate(0); // Get last day of current month
+                end.setHours(23, 59, 59, 999);
                 break;
             case '3months':
-                // Últimos 3 meses: del día 1 de hace 2 meses hasta hoy
+                // Últimos 3 meses: del día 1 de hace 2 meses hasta el último día del mes actual
                 start.setMonth(start.getMonth() - 2);
                 start.setDate(1);
+                start.setHours(0, 0, 0, 0);
+                end.setMonth(end.getMonth() + 1);
+                end.setDate(0); // Get last day of current month
+                end.setHours(23, 59, 59, 999);
                 break;
         }
-        start.setHours(0, 0, 0, 0);
         return { start, end };
     }, [selectedPeriod]);
 
@@ -62,37 +78,41 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                     cursor.setDate(cursor.getDate() + 1);
                 }
 
+                // Removed debug logging for production
+
                 const results = await Promise.all(
                     dates.map(async (date) => {
                         try {
-                            // Verificar si es día de descanso
-                            const restDay = await isRestDay(date);
-
-                            // Si es día de descanso, retornar datos vacíos (no se incluyen en estadísticas)
-                            if (restDay) {
-                                return {
-                                    date,
-                                    ingresos: 0,
-                                    gastos: 0,
-                                    balance: 0,
-                                    numCarreras: 0,
-                                    isRestDay: true, // Marcar como día de descanso
-                                } as DayData & { isRestDay?: boolean };
-                            }
-
                             const mañana = new Date(date);
                             mañana.setDate(date.getDate() + 1);
 
-                            const [carreras, otrosIngresos, gastos] = await Promise.all([
+                            const [carreras, otrosIngresos, gastos, turnos] = await Promise.all([
                                 getCarrerasByDate(date),
                                 getOtrosIngresosByDateRange(date, mañana),
                                 getGastosByDate(date),
+                                getTurnosByDate(date),
                             ]);
+
+                            // debug logging removed
 
                             const ingresosCarreras = carreras.reduce((sum, c) => sum + (c.cobrado || 0), 0);
                             const ingresosOtros = otrosIngresos.reduce((sum, oi) => sum + (oi.importe || 0), 0);
                             const totalIngresos = ingresosCarreras + ingresosOtros;
                             const totalGastos = gastos.reduce((sum, g) => sum + (g.importe || 0), 0);
+
+                            // debug logs removed
+
+                            let diaHorasBrutasMs = 0;
+                            let diaHorasNetasMs = 0;
+                            turnos.forEach(t => {
+                                const tTimes = calculateTurnoTimes(t);
+                                diaHorasBrutasMs += tTimes.horasBrutasMs;
+                                diaHorasNetasMs += tTimes.horasNetasMs;
+                            });
+
+                            // A day is a rest day if it's explicitly marked as such OR by letter logic inside isRestDay
+                            const isExplicitRest = await isRestDay(date);
+                            const isRestDayValue = isExplicitRest;
 
                             return {
                                 date,
@@ -100,7 +120,9 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                                 gastos: totalGastos,
                                 balance: totalIngresos - totalGastos,
                                 numCarreras: carreras.length,
-                                isRestDay: false,
+                                horasBrutasMs: diaHorasBrutasMs,
+                                horasNetasMs: diaHorasNetasMs,
+                                isRestDay: isRestDayValue,
                             } as DayData;
                         } catch (error) {
                             console.error(`Error cargando datos para ${date.toISOString()}:`, error);
@@ -110,8 +132,10 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                                 gastos: 0,
                                 balance: 0,
                                 numCarreras: 0,
-                                isRestDay: false,
-                            } as DayData & { isRestDay?: boolean };
+                                horasBrutasMs: 0,
+                                horasNetasMs: 0,
+                                isRestDay: false, // Default to not rest day on error to avoid skewing stats
+                            } as DayData;
                         }
                     })
                 );
@@ -149,10 +173,10 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
 
     // Calcular estadísticas (solo días trabajados)
     const stats = useMemo(() => {
-        // Filtrar solo días trabajados (excluir días de descanso)
-        const workingDays = dayData.filter((d: any) => !d.isRestDay);
+        // Días potenciales para trabajar = días que NO son descanso
+        const potentialDays = dayData.filter((d: DayData) => !d.isRestDay);
 
-        if (workingDays.length === 0) {
+        if (potentialDays.length === 0) {
             return {
                 totalIngresos: 0,
                 totalGastos: 0,
@@ -166,52 +190,67 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                 peorDia: null as DayData | null,
                 diasConIngresos: 0,
                 diasConGastos: 0,
-                diasTrabajados: 0,
-                diasDescanso: 0
+                diasPotenciales: 0,
+                diasTrabajadosReal: 0,
+                diasDescanso: 0,
+                totalHorasBrutasMs: 0,
+                totalHorasNetasMs: 0,
             };
         }
-
-        const totalIngresos = workingDays.reduce((sum, d) => sum + d.ingresos, 0);
-        const totalGastos = workingDays.reduce((sum, d) => sum + d.gastos, 0);
+        const totalIngresos = potentialDays.reduce((sum, d) => sum + d.ingresos, 0);
+        const totalGastos = potentialDays.reduce((sum, d) => sum + d.gastos, 0);
         const totalBalance = totalIngresos - totalGastos;
-        const totalCarreras = workingDays.reduce((sum, d) => sum + d.numCarreras, 0);
+        const totalCarreras = potentialDays.reduce((sum, d) => sum + d.numCarreras, 0);
 
-        const diasConIngresos = workingDays.filter(d => d.ingresos > 0).length;
-        const diasConGastos = workingDays.filter(d => d.gastos > 0).length;
-        // Días trabajados = todos los días NO marcados como descanso
-        const diasTrabajados = workingDays.length;
-        const diasDescanso = dayData.length - diasTrabajados;
+    // días con ingresos entre TODOS los días (incluyendo días marcados como descanso)
+    const diasConIngresosAll = dayData.filter(d => d.ingresos > 0).length;
+    const diasConIngresosPotenciales = potentialDays.filter(d => d.ingresos > 0).length;
+    const diasConGastos = potentialDays.filter(d => d.gastos > 0).length;
+    const diasPotenciales = potentialDays.length; // días donde podrías trabajar (no descanso)
+    const diasTrabajadosReal = diasConIngresosAll; // días con ingresos (realmente trabajados)
+        const diasDescanso = dayData.filter((d: DayData) => d.isRestDay).length;
 
-        const mejorDia = workingDays.reduce((best, current) =>
+        const totalHorasBrutasMs = potentialDays.reduce((sum, d) => sum + (d.horasBrutasMs || 0), 0);
+        const totalHorasNetasMs = potentialDays.reduce((sum, d) => sum + (d.horasNetasMs || 0), 0);
+
+        const mejorDia = potentialDays.reduce((best, current) =>
             current.balance > (best?.balance || -Infinity) ? current : best, null as DayData | null
         );
 
-        const peorDia = workingDays.reduce((worst, current) =>
+        const peorDia = potentialDays.reduce((worst, current) =>
             current.balance < (worst?.balance || Infinity) ? current : worst, null as DayData | null
         );
+
+        // debug logs removed
 
         return {
             totalIngresos,
             totalGastos,
             totalBalance,
-            promedioDiarioIngresos: totalIngresos / diasTrabajados,
-            promedioDiarioGastos: totalGastos / diasTrabajados,
-            promedioDiarioBalance: totalBalance / diasTrabajados,
+            promedioDiarioIngresos: diasPotenciales > 0 ? totalIngresos / diasPotenciales : 0,
+            promedioDiarioGastos: diasPotenciales > 0 ? totalGastos / diasPotenciales : 0,
+            promedioDiarioBalance: diasPotenciales > 0 ? totalBalance / diasPotenciales : 0,
             totalCarreras,
-            promedioCarrerasPorDia: totalCarreras / diasTrabajados,
+            promedioCarrerasPorDia: diasPotenciales > 0 ? totalCarreras / diasPotenciales : 0,
             mejorDia,
             peorDia,
-            diasConIngresos,
+            diasConIngresos: diasConIngresosAll,
             diasConGastos,
-            diasTrabajados,
-            diasDescanso
+            diasConIngresosPotenciales,
+            diasPotenciales,
+            diasTrabajadosReal,
+            diasDescanso,
+            totalHorasBrutasMs,
+            totalHorasNetasMs
         };
     }, [dayData]);
 
     // Función para renderizar gráfico de barras (solo días trabajados)
     const renderBarChart = (data: DayData[], maxValue: number, height: number = 150) => {
-        // Filtrar solo días trabajados
-        const workingDays = data.filter((d: any) => !d.isRestDay);
+    // Filtrar días que se considerarán en el gráfico.
+    // Incluimos los días que NO son descanso, y además cualquier día que tenga ingresos (aunque esté marcado como descanso),
+    // para reflejar semanas/meses donde se han realizado carreras en días de descanso.
+    const workingDays = data.filter((d: DayData) => !d.isRestDay || d.ingresos > 0);
         if (workingDays.length === 0) return null;
 
         const svgWidth = 400; // Ancho fijo para cálculos, se escalará con width="100%"
@@ -314,8 +353,9 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
 
     // Función para renderizar gráfico de línea de balance (solo días trabajados)
     const renderLineChart = (data: DayData[], height: number = 150) => {
-        // Filtrar solo días trabajados
-        const workingDays = data.filter((d: any) => !d.isRestDay);
+    // Filtrar días que se considerarán en el gráfico.
+    // Incluimos los días que NO son descanso, y además cualquier día que tenga ingresos (aunque esté marcado como descanso).
+    const workingDays = data.filter((d: DayData) => !d.isRestDay || d.ingresos > 0);
         if (workingDays.length === 0) return null;
 
         const maxBalance = Math.max(...workingDays.map(d => Math.abs(d.balance)), 1);
@@ -389,7 +429,7 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
     };
 
     // Filtrar solo días trabajados para el gráfico
-    const workingDaysForChart = dayData.filter((d: any) => !d.isRestDay);
+    const workingDaysForChart = dayData.filter((d: DayData) => !d.isRestDay);
     const maxValue = Math.max(
         ...workingDaysForChart.map(d => Math.max(d.ingresos, d.gastos)),
         1
@@ -408,6 +448,7 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                             ? 'bg-cyan-500 text-white'
                             : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                             }`}
+                        aria-label="Seleccionar período de 7 días"
                     >
                         7 Días
                     </button>
@@ -417,6 +458,7 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                             ? 'bg-cyan-500 text-white'
                             : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                             }`}
+                        aria-label="Seleccionar período de 1 mes"
                     >
                         1 Mes
                     </button>
@@ -426,6 +468,7 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                             ? 'bg-cyan-500 text-white'
                             : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                             }`}
+                        aria-label="Seleccionar período de 3 meses"
                     >
                         3 Meses
                     </button>
@@ -518,6 +561,24 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                                         </div>
                                     </div>
                                 </div>
+                                
+                                <div className="bg-zinc-800 rounded-lg p-3">
+                                    <div className="text-zinc-400 text-xs mb-1">Horas Trabajadas (Brutas / Netas)</div>
+                                    <div className="flex justify-between items-end">
+                                        <div>
+                                            <div className="text-white text-lg font-bold">
+                                            {Math.floor(stats.totalHorasBrutasMs / MS_PER_HOUR)}h {Math.floor((stats.totalHorasBrutasMs % MS_PER_HOUR) / MS_PER_MINUTE)}m
+                                            </div>
+                                            <div className="text-zinc-500 text-xs">Total Turnos</div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-emerald-400 text-lg font-bold">
+                                                {Math.floor(stats.totalHorasNetasMs / MS_PER_HOUR)}h {Math.floor((stats.totalHorasNetasMs % MS_PER_HOUR) / MS_PER_MINUTE)}m
+                                            </div>
+                                            <div className="text-emerald-500 text-xs">Tiempo Real</div>
+                                        </div>
+                                    </div>
+                                </div>
 
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="bg-zinc-800 rounded-lg p-3">
@@ -578,25 +639,25 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
 
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="bg-zinc-800 rounded-lg p-3">
-                                        <div className="text-zinc-400 text-xs mb-1">Días Trabajados</div>
+                                        <div className="text-zinc-400 text-xs mb-1">Días Potenciales</div>
                                         <div className="text-white text-lg font-bold">
-                                            {stats.diasTrabajados || 0}
+                                            {stats.diasPotenciales || 0}
                                         </div>
                                         <div className="text-zinc-500 text-xs mt-1">
-                                            Días descanso: {stats.diasDescanso || 0}
+                                            Trabajados: {stats.diasTrabajadosReal || 0} • Potenciales: {stats.diasPotenciales || 0} • Descanso: {stats.diasDescanso || 0}
                                         </div>
                                     </div>
                                     <div className="bg-zinc-800 rounded-lg p-3">
                                         <div className="text-zinc-400 text-xs mb-1">Días con Ingresos</div>
                                         <div className="text-white text-lg font-bold">
-                                            {stats.diasConIngresos} / {stats.diasTrabajados || 0}
+                                            {stats.diasConIngresos} / {stats.diasPotenciales || 0}
                                         </div>
                                     </div>
                                 </div>
                                 <div className="bg-zinc-800 rounded-lg p-3">
                                     <div className="text-zinc-400 text-xs mb-1">Días con Gastos</div>
                                     <div className="text-white text-lg font-bold">
-                                        {stats.diasConGastos} / {stats.diasTrabajados || 0}
+                                        {stats.diasConGastos} / {stats.diasPotenciales || 0}
                                     </div>
                                 </div>
                             </div>
@@ -609,6 +670,7 @@ const StatisticsScreen: React.FC<StatisticsScreenProps> = ({ navigateTo }) => {
                                 <button
                                     onClick={() => setShowZoneTimeAnalysis(!showZoneTimeAnalysis)}
                                     className="text-cyan-400 hover:text-cyan-300 text-sm font-semibold"
+                                    aria-label={showZoneTimeAnalysis ? 'Ocultar análisis de zonas y horarios' : 'Mostrar análisis de zonas y horarios'}
                                 >
                                     {showZoneTimeAnalysis ? 'Ocultar' : 'Mostrar'}
                                 </button>

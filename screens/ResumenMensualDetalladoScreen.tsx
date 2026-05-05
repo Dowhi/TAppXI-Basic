@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import ScreenTopBar from '../components/ScreenTopBar';
 import { Seccion } from '../types';
 import { getCarrerasByMonth, getGastosByMonth, getTurnosByMonth, cleanN, parseDate } from '../services/api';
+import { calculateTurnoTimes } from '../services/timeUtils';
 
 // Icons
 const ArrowLeftIcon = () => (
@@ -58,18 +59,17 @@ const ResumenMensualDetalladoScreen: React.FC<ResumenMensualDetalladoScreenProps
 
     // Calcular métricas
     const metrics = useMemo(() => {
-        // Días únicos con carreras o turnos
-        const diasUnicos = new Set<number>();
-        carreras.forEach(c => diasUnicos.add(parseSafeDate(c.fechaHora).getDate()));
-        turnos.forEach(t => diasUnicos.add(parseSafeDate(t.fechaInicio).getDate()));
+        // Días únicos con actividad real
+        const diasUnicos = new Set<string>();
+        carreras.forEach(c => diasUnicos.add(parseSafeDate(c.fechaHora).toISOString().split('T')[0]));
+        turnos.forEach(t => diasUnicos.add(parseSafeDate(t.fechaInicio).toISOString().split('T')[0]));
         const dias = diasUnicos.size;
 
         // Carreras totales
         const totalCarreras = carreras.length;
 
-        // Turnos únicos
-        const turnosUnicos = new Set(turnos.map(t => t.id));
-        const turno1 = turnosUnicos.size;
+        // Turnos totales
+        const turno1 = turnos.length;
 
         // Sumas por forma de pago
         const sumaTarjeta = carreras
@@ -102,18 +102,15 @@ const ResumenMensualDetalladoScreen: React.FC<ResumenMensualDetalladoScreenProps
 
         // Los helpers cleanN y parseDate ahora se importan de api.ts
 
-        // Horas trabajadas (solo turnos cerrados con fechaFin válido)
-        let totalMs = 0;
+        let brutaMs = 0;
+        let netaMs = 0;
         turnos.forEach(t => {
-            if (!t.fechaFin) return; // ignorar turnos activos sin cerrar
-            const start = parseDate(t.fechaInicio);
-            const end = parseDate(t.fechaFin);
-            if (start && end) {
-                const diff = end.getTime() - start.getTime();
-                if (diff > 0) totalMs += diff;
-            }
+            const times = calculateTurnoTimes(t);
+            brutaMs += times.horasBrutasMs;
+            netaMs += times.horasNetasMs;
         });
-        const horas = Math.round((totalMs / (1000 * 60 * 60)) * 10) / 10;
+        const brutaHoras = Math.round((brutaMs / (1000 * 60 * 60)) * 10) / 10;
+        const netaHoras = Math.round((netaMs / (1000 * 60 * 60)) * 10) / 10;
 
         // Kilómetros
         let kilometros = 0;
@@ -181,7 +178,8 @@ const ResumenMensualDetalladoScreen: React.FC<ResumenMensualDetalladoScreenProps
             countVales,
             propinas,
             aeropuerto,
-            horas,
+            brutaHoras,
+            netaHoras,
             kilometros,
             ingresosVarios,
             combustible,
@@ -219,7 +217,7 @@ const ResumenMensualDetalladoScreen: React.FC<ResumenMensualDetalladoScreenProps
     };
 
     return (
-        <div className="bg-zinc-950 min-h-screen text-zinc-100 flex flex-col p-3 space-y-2" style={{ maxHeight: '100vh', overflow: 'hidden' }}>
+        <div className="bg-zinc-950 min-h-screen text-zinc-100 flex flex-col p-3 space-y-2 pb-20">
             <ScreenTopBar
                 title="Mensual Detallado"
                 navigateTo={navigateTo}
@@ -259,8 +257,8 @@ const ResumenMensualDetalladoScreen: React.FC<ResumenMensualDetalladoScreenProps
             {loading ? (
                 <div className="flex-1 flex items-center justify-center text-zinc-500">Cargando...</div>
             ) : (
-                <div className="flex-1 overflow-hidden min-h-0">
-                    <div className="grid grid-cols-3 gap-1 h-full" style={{ gridAutoRows: 'minmax(56px, auto)' }}>
+                <div className="flex-1 overflow-y-auto min-h-0 pr-1 custom-scrollbar">
+                    <div className="grid grid-cols-3 gap-1" style={{ gridAutoRows: 'minmax(56px, auto)' }}>
                         {/* Fila 1 */}
                         <DataBox label="Días" value={formatNumber(metrics.dias)} />
                         <DataBox label="Carreras" value={formatNumber(metrics.carreras)} />
@@ -279,7 +277,8 @@ const ResumenMensualDetalladoScreen: React.FC<ResumenMensualDetalladoScreenProps
                         {/* Fila 4 */}
                         <DataBox label="Propinas" value={formatCurrency(metrics.propinas)} />
                         <DataBox label="Aeropuertos" value={formatCurrency(metrics.aeropuerto)} />
-                        <DataBox label="Horas" value={formatNumber(metrics.horas)} />
+                        <DataBox label="Horas B" value={formatNumber(metrics.brutaHoras)} />
+                        <DataBox label="Horas N" value={formatNumber(metrics.netaHoras)} />
 
                         {/* Fila 5 */}
                         <DataBox label="Kilometros" value={formatNumber(metrics.kilometros)} />

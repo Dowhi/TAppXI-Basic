@@ -73,5 +73,5 @@ export const markReportAsUsed = async (id: string): Promise<void> => {
 
 export const restoreCustomReport = async (report: any, skipSync = false): Promise<void> => {
     await addItem(STORE_NAME, report.id, report);
-    if (!skipSync) syncService.create('Informes', report);
+    if (!skipSync) firebaseSync.create('Informes', report);
 };

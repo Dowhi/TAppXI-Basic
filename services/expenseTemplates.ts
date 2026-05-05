@@ -34,6 +34,21 @@ export interface ExpenseTemplate {
 
 const STORAGE_KEY = 'expenseTemplates';
 
+const normalizeTemplate = (template: any): ExpenseTemplate | null => {
+    if (!template || typeof template !== 'object') return null;
+    const nombre = String(template.nombre || template.name || '').trim();
+    if (!nombre) return null;
+
+    return {
+        ...template,
+        id: String(template.id || Date.now().toString() + Math.random().toString(36).slice(2)),
+        nombre,
+        createdAt: template.createdAt || template.createdat || new Date().toISOString(),
+        lastUsed: template.lastUsed || template.lastused,
+        useCount: Number(template.useCount ?? template.usecount ?? 0) || 0,
+    };
+};
+
 /**
  * Obtener todas las plantillas
  */
@@ -45,6 +60,23 @@ export const getTemplates = (): ExpenseTemplate[] => {
     } catch (error) {
         console.error('Error leyendo plantillas:', error);
         return [];
+    }
+};
+
+/**
+ * Restaurar todas las plantillas desde un backup.
+ */
+export const restoreTemplates = (templates: any[]): number => {
+    try {
+        const normalized = (templates || [])
+            .map(normalizeTemplate)
+            .filter((template): template is ExpenseTemplate => template !== null);
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+        return normalized.length;
+    } catch (error) {
+        console.error('Error restaurando plantillas:', error);
+        return 0;
     }
 };
 

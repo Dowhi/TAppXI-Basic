@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom'; // Assuming we can use navigation or passing a handler
+// import { useNavigate } from 'react-router-dom'; // Assuming we can use navigation or passing a handler
 import { Seccion } from '../types';
 
 // Icons

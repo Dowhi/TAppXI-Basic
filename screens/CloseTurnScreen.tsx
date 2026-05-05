@@ -3,6 +3,7 @@ import { Seccion, Turno } from '../types';
 import KineticHeader from '../components/KineticHeader';
 import ScreenTopBar from '../components/ScreenTopBar';
 import { getActiveTurno, closeTurno, subscribeToActiveTurno } from '../services/api';
+import PredictionWidget from '../components/PredictionWidget';
 
 interface CloseTurnScreenProps {
     navigateTo: (page: Seccion) => void;
@@ -165,6 +166,10 @@ const CloseTurnScreen: React.FC<CloseTurnScreenProps> = ({ navigateTo }) => {
                         {error}
                     </div>
                 )}
+                {/* Sugerencia para mañana */}
+                <div className="pt-2">
+                    <PredictionWidget />
+                </div>
 
                 {/* Botón de cerrar */}
                 <button

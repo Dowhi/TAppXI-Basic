@@ -29,7 +29,8 @@ import {
     parseDate as apiParseDate
 } from './api';
 import { getCustomReports, restoreCustomReport } from './customReports';
-import { uploadFileToDrive, createSpreadsheetWithSheets, writeSheetValues, readSheetValues, getSpreadsheetDetails, findOrCreateFolder, listFilesInFolder, deleteFile, isGoogleLoggedIn, getFileBinary } from './google';
+import { getTemplates, restoreTemplates } from './expenseTemplates';
+import { uploadFileToDrive, createSpreadsheetWithSheets, writeSheetValues, readSheetValues, getSpreadsheetDetails, findOrCreateFolder, listFilesInFolder, deleteFile, isGoogleLoggedIn, getFileBinary, extractGapiErrorMessage } from './google';
 
 interface BackupPayload {
     meta: {
@@ -48,6 +49,7 @@ interface BackupPayload {
     talleres: any[];
     vales: any[];
     reminders: any[];
+    expenseTemplates: any[];
     customReports: any[];
     otrosIngresos: any[];
 }
@@ -96,6 +98,7 @@ export const buildBackupPayload = async (): Promise<BackupPayload> => {
         talleres,
         vales,
         reminders,
+        expenseTemplates,
         customReports,
         otrosIngresos,
     ] = await Promise.all([
@@ -110,6 +113,7 @@ export const buildBackupPayload = async (): Promise<BackupPayload> => {
         safeGet(() => getTalleres(), []),
         safeGet(() => getValesDirectory(), []),
         safeGet(() => getReminders(), []),
+        safeGet(async () => getTemplates(), []),
         safeGet(() => getCustomReports(), []),
         safeGet(() => getOtrosIngresos(), []),
     ]);
@@ -131,6 +135,7 @@ export const buildBackupPayload = async (): Promise<BackupPayload> => {
         talleres: talleres ? safeSerializeDate(talleres) : [],
         vales: vales ? safeSerializeDate(vales) : [],
         reminders: reminders ? safeSerializeDate(reminders) : [],
+        expenseTemplates: expenseTemplates ? safeSerializeDate(expenseTemplates) : [],
         customReports: customReports ? safeSerializeDate(customReports) : [],
         otrosIngresos: otrosIngresos ? safeSerializeDate(otrosIngresos) : [],
     };
@@ -192,7 +197,7 @@ export const uploadBackupToGoogleDrive = async (folderId?: string): Promise<void
 
         console.log(`Backup subido exitosamente a Drive. ID: ${result.id}, Nombre: ${result.name || fileName}`);
     } catch (error: any) {
-        const errorMsg = error?.message || String(error);
+        const errorMsg = extractGapiErrorMessage(error);
         throw new Error(
             `Error al subir backup a Google Drive: ${errorMsg}\n\n` +
             `Asegúrate de:\n` +
@@ -203,7 +208,22 @@ export const uploadBackupToGoogleDrive = async (folderId?: string): Promise<void
     }
 };
 
-export const restoreBackup = async (jsonData: any, onProgress?: (progress: number, message: string) => void): Promise<{ carreras: number; gastos: number; turnos: number }> => {
+export const restoreBackup = async (jsonData: any, onProgress?: (progress: number, message: string) => void): Promise<{ 
+    ajustes: number;
+    config: number;
+    carreras: number; 
+    gastos: number; 
+    turnos: number;
+    proveedores: number;
+    conceptos: number;
+    talleres: number;
+    excepciones: number;
+    vales: number;
+    reminders: number;
+    expenseTemplates: number;
+    customReports: number;
+    otrosIngresos: number;
+}> => {
     if (!jsonData || !jsonData.meta || !jsonData.meta.app) {
         throw new Error("El archivo no parece ser un backup válido de TAppXI.");
     }
@@ -220,11 +240,12 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
         excepciones: 0,
         vales: 0,
         reminders: 0,
+        expenseTemplates: 0,
         customReports: 0,
         otrosIngresos: 0
     };
 
-    const totalSteps = 13; // Ajustes, Config, Carreras, Gastos, Turnos, Proveedores, Conceptos, Talleres, Excepciones, Vales, Reminders, Reports, OtrosIngresos
+    const totalSteps = 14; // Ajustes, Config, Carreras, Gastos, Turnos, Proveedores, Conceptos, Talleres, Excepciones, Vales, Reminders, Templates, Reports, OtrosIngresos
     let currentStep = 0;
 
     const reportProgress = (msg: string) => {
@@ -414,6 +435,13 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
     }
     currentStep++;
 
+    // Restaurar Plantillas de Gastos
+    reportProgress("Restaurando plantillas de gastos...");
+    if (jsonData.expenseTemplates && Array.isArray(jsonData.expenseTemplates)) {
+        stats.expenseTemplates = restoreTemplates(jsonData.expenseTemplates);
+    }
+    currentStep++;
+
     // Restaurar Reportes Personalizados
     reportProgress("Restaurando reportes personalizados...");
     if (jsonData.customReports && Array.isArray(jsonData.customReports)) {
@@ -422,7 +450,7 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
             await restoreCustomReport(jsonData.customReports[i], true);
             stats.customReports++;
             if (i % 10 === 0 && onProgress) {
-                onProgress(Math.round((11 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando reportes (${i + 1}/${total})...`);
+                onProgress(Math.round((12 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando reportes (${i + 1}/${total})...`);
             }
         }
     }
@@ -436,7 +464,7 @@ export const restoreBackup = async (jsonData: any, onProgress?: (progress: numbe
             await restoreOtroIngreso(jsonData.otrosIngresos[i], true);
             stats.otrosIngresos++;
             if (i % 10 === 0 && onProgress) {
-                onProgress(Math.round((12 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando otros ingresos (${i + 1}/${total})...`);
+                onProgress(Math.round((13 / totalSteps) * 100 + (i / total) * (100 / totalSteps)), `Restaurando otros ingresos (${i + 1}/${total})...`);
             }
         }
     }
@@ -522,6 +550,7 @@ export const exportToGoogleSheets = async (folderId?: string): Promise<{ spreads
             'Gastos',
             'Detalle_Servicios',
             'Turnos',
+            'Detalle_Descansos',
             'Proveedores',
             'Conceptos',
             'Talleres',
@@ -529,10 +558,10 @@ export const exportToGoogleSheets = async (folderId?: string): Promise<{ spreads
             'Excepciones',
             'Directorio_Vales',
             'Recordatorios',
+            'Plantillas_Gastos',
             'Informes_Personalizados',
             'Otros_Ingresos',
-            'Vales_Carreras',
-            'Detalle_Descansos'
+            'Vales_Carreras'
         ];
 
         const { spreadsheetId } = await createSpreadsheetWithSheets(`TAppXI Export ${dateStr}`, sheetTitles);
@@ -574,6 +603,7 @@ export const exportToGoogleSheets = async (folderId?: string): Promise<{ spreads
             excepciones: ['Fecha Desde', 'Fecha Hasta', 'Tipo', 'Nueva Letra', 'Nota', 'Descripcion', 'ID'],
             vales: ['Empresa', 'Código', 'Dirección', 'Teléfono', 'ID'],
             recordatorios: ['Título', 'Tipo', 'Fecha Límite', 'Km Límite', 'Estado', 'ID'],
+            plantillasGastos: ['Nombre', 'Tipo', 'Importe', 'Forma Pago', 'Proveedor', 'Concepto', 'Taller', 'Nº Factura', 'Base', 'IVA %', 'IVA €', 'Kilómetros', 'Km Vehículo', 'Descuento', 'Servicios (JSON)', 'Notas', 'Created At', 'Last Used', 'Use Count', 'ID'],
             informes: ['Nombre', 'Configuración (JSON)', 'ID'],
             ajustes: ['Clave', 'Valor'],
             otrosIngresos: ['Fecha', 'Concepto', 'Importe', 'Forma Pago', 'Notas', 'ID'],
@@ -614,7 +644,7 @@ export const exportToGoogleSheets = async (folderId?: string): Promise<{ spreads
                     c.valeInfo.despacho || '',
                     c.valeInfo.numeroAlbaran || '',
                     c.valeInfo.autoriza || '',
-                    crypto.randomUUID()
+                    c.id + '_vale'
                 ]);
             }
         });
@@ -647,7 +677,7 @@ export const exportToGoogleSheets = async (folderId?: string): Promise<{ spreads
             ]);
 
             if (g.servicios && Array.isArray(g.servicios)) {
-                g.servicios.forEach((s: any) => {
+                g.servicios.forEach((s: any, index: number) => {
                     serviciosRows.push([
                         g.id,
                         s.referencia || '',
@@ -655,7 +685,7 @@ export const exportToGoogleSheets = async (folderId?: string): Promise<{ spreads
                         s.importe || 0,
                         s.cantidad || 1,
                         s.descuentoPorcentaje || 0,
-                        s.id || crypto.randomUUID()
+                        s.id || (g.id + '_s_' + index)
                     ]);
                 });
             }
@@ -681,7 +711,7 @@ export const exportToGoogleSheets = async (folderId?: string): Promise<{ spreads
             ]);
 
             if (t.descansos && Array.isArray(t.descansos)) {
-                t.descansos.forEach((d: any) => {
+                t.descansos.forEach((d: any, index: number) => {
                     const dStart = d.fechaInicio instanceof Date ? d.fechaInicio : apiParseDate(d.fechaInicio);
                     const dEnd = d.fechaFin ? (d.fechaFin instanceof Date ? d.fechaFin : apiParseDate(d.fechaFin)) : null;
                     const duration = (dEnd && dStart) ? Math.round((dEnd.getTime() - dStart.getTime()) / 60000) : '';
@@ -695,7 +725,7 @@ export const exportToGoogleSheets = async (folderId?: string): Promise<{ spreads
                         dEnd ? fmtTime(dEnd) : '',
                         d.kilometrosFin || '',
                         duration,
-                        d.id || crypto.randomUUID()
+                        d.id || (t.id + '_d_' + index)
                     ]);
                 });
             }
@@ -729,6 +759,32 @@ export const exportToGoogleSheets = async (folderId?: string): Promise<{ spreads
         const remindersRows: any[][] = [headers.recordatorios];
         (data.reminders || []).forEach((r: any) => {
             remindersRows.push([r.titulo, r.tipo, r.fechaLimite, r.kilometrosLimite || '', r.completado ? 'Completado' : 'Pendiente', r.id]);
+        });
+
+        const expenseTemplatesRows: any[][] = [headers.plantillasGastos];
+        (data.expenseTemplates || []).forEach((t: any) => {
+            expenseTemplatesRows.push([
+                t.nombre || '',
+                t.tipo || '',
+                t.importe || '',
+                t.formaPago || '',
+                t.proveedor || '',
+                t.concepto || '',
+                t.taller || '',
+                t.numeroFactura || '',
+                t.baseImponible || '',
+                t.ivaPorcentaje || 0,
+                t.ivaImporte || '',
+                t.kilometros || '',
+                t.kilometrosVehiculo || '',
+                t.descuento || '',
+                t.servicios ? JSON.stringify(t.servicios) : '',
+                t.notas || '',
+                t.createdAt || '',
+                t.lastUsed || '',
+                t.useCount || 0,
+                t.id
+            ]);
         });
 
         const customReportsRows: any[][] = [headers.informes];
@@ -790,6 +846,7 @@ export const exportToGoogleSheets = async (folderId?: string): Promise<{ spreads
             { title: 'Excepciones', rows: excepcionesRows },
             { title: 'Directorio_Vales', rows: valesRows },
             { title: 'Recordatorios', rows: remindersRows },
+            { title: 'Plantillas_Gastos', rows: expenseTemplatesRows },
             { title: 'Informes_Personalizados', rows: customReportsRows },
             { title: 'Otros_Ingresos', rows: otrosIngresosRows },
             { title: 'Vales_Carreras', rows: valesCarrerasRows }
@@ -874,8 +931,13 @@ const normalizeHeader = (header: string): string => {
         'estación': 'estacion',
         'forma pago': 'formaPago',
         'forma de pago': 'formaPago',
+        'created at': 'createdAt',
+        'last used': 'lastUsed',
+        'use count': 'useCount',
+        'servicios (json)': 'servicios',
         'tipo': 'tipoCarrera',
         'dirección_vales': 'Vales',
+        'plantillas_gastos': 'Plantillas_Gastos',
         'informes_personalizados': 'CustomReports',
         'detalle_servicios': 'Servicios',
         'vales_carreras': 'Vales_Carreras',
@@ -1003,9 +1065,11 @@ const processSpreadsheetBackupData = async (rowsMap: Record<string, any[][]>, on
         excepcionesRows = [],
         valesRows = [],
         remindersRows = [],
+        expenseTemplatesRows = [],
         customReportsRows = [],
         otrosIngresosRows = [],
-        valesCarrerasRows = []
+        valesCarrerasRows = [],
+        descansosRows = []
     } = rowsMap;
 
     // Usamos alias para compatibilidad si el archivo tiene nombres antiguos
@@ -1021,14 +1085,17 @@ const processSpreadsheetBackupData = async (rowsMap: Record<string, any[][]>, on
     const excepcionesRaw = getRows(excepcionesRows);
     const valesRaw = getRows(valesRows);
     const remindersRaw = getRows(remindersRows);
+    const expenseTemplatesRaw = getRows(expenseTemplatesRows);
     const customReportsRaw = getRows(customReportsRows);
     const otrosIngresosRaw = getRows(otrosIngresosRows);
     const valesCarrerasRaw = getRows(valesCarrerasRows);
+    const descansosRaw = getRows(descansosRows);
 
     console.log(`[Import] Filas detectadas: 
         Carreras: ${carrerasRaw.length}, 
         Gastos: ${gastosRaw.length}, 
         Turnos: ${turnosRaw.length}, 
+        Plantillas: ${expenseTemplatesRaw.length},
         Ajustes: ${ajustesRows.length - 1}`);
 
     const processDateWithTime = (item: any, dateKey: string = 'fecha', timeKey: string = 'hora'): Date | null => {
@@ -1147,13 +1214,27 @@ const processSpreadsheetBackupData = async (rowsMap: Record<string, any[][]>, on
     const turnos = turnosRaw.map(t => {
         const fechaInicio = processDateWithTime(t, 'fechainicio', 'horainicio');
         const fechaFin = processDateWithTime(t, 'fechafin', 'horafin');
+        
+        // Reconstruir descansos
+        const descansos = descansosRaw
+            .filter(d => d.turnoid === t.id)
+            .map(d => ({
+                id: d.id || (t.id + '_d_' + Math.random().toString(36).substr(2, 9)),
+                fechaInicio: processDateWithTime(d, 'fechainicio', 'horainicio'),
+                fechaFin: processDateWithTime(d, 'fechafin', 'horafin'),
+                kilometrosInicio: parseNumber(d.kilometrosinicio || d.kminicio),
+                kilometrosFin: parseNumber(d.kilometrosfin || d.kmfin)
+            }))
+            .filter(d => d.fechaInicio !== null);
+
         return {
             ...t,
-            id: t.id || crypto.randomUUID(), // Asegurar que siempre hay ID
+            id: t.id || crypto.randomUUID(),
             kilometrosInicio: parseNumber(t.kilometrosInicio || t.kilometrosinicio || t.kminicio),
             kilometrosFin: (t.kilometrosFin || t.kilometrosfin || t.kmfin) ? parseNumber(t.kilometrosFin || t.kilometrosfin || t.kmfin) : null,
-            fechaInicio: fechaInicio, // No fallback
+            fechaInicio: fechaInicio,
             fechaFin: fechaFin || null,
+            descansos: descansos.length > 0 ? descansos : (t.descansos || [])
         };
     }).filter(t => {
         if (!t.fechaInicio) {
@@ -1250,6 +1331,23 @@ const processSpreadsheetBackupData = async (rowsMap: Record<string, any[][]>, on
         kilometrosLimite: parseNumber(r.kilometrosLimite || r.kilometroslimite || r.kmlimite),
         completado: r.estado === 'Completado' || r.completado === true
     }));
+    const expenseTemplates = expenseTemplatesRaw.map(t => ({
+        ...t,
+        id: t.id || crypto.randomUUID(),
+        nombre: t.nombre || '',
+        tipo: t.tipo || t.tipoCarrera,
+        importe: parseNumber(t.importe),
+        baseImponible: parseNumber(t.baseImponible || t.base),
+        ivaPorcentaje: parseNumber(t.ivaPorcentaje || t.ivaporcentaje || t.ivaporc),
+        ivaImporte: parseNumber(t.ivaImporte || t.ivaimporte || t.ivae),
+        kilometros: parseNumber(t.kilometros || t.km),
+        kilometrosVehiculo: parseNumber(t.kilometrosVehiculo || t.kmvehiculo),
+        descuento: parseNumber(t.descuento),
+        useCount: parseNumber(t.useCount || t.usecount),
+        createdAt: t.createdAt || t.createdat || new Date().toISOString(),
+        lastUsed: t.lastUsed || t.lastused || undefined,
+        servicios: Array.isArray(t.servicios) ? t.servicios : []
+    })).filter(t => t.nombre);
     const customReports = customReportsRaw.map(cr => ({ ...cr, id: cr.id || crypto.randomUUID() }));
     const otrosIngresos = otrosIngresosRaw.map(oi => ({
         ...oi,
@@ -1279,6 +1377,7 @@ const processSpreadsheetBackupData = async (rowsMap: Record<string, any[][]>, on
         talleres,
         vales,
         reminders,
+        expenseTemplates,
         customReports,
         otrosIngresos
     };
@@ -1314,9 +1413,11 @@ export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?
             excepcionesRows,
             valesRows,
             remindersRows,
+            expenseTemplatesRows,
             customReportsRows,
             otrosIngresosRows,
-            valesCarrerasRows
+            valesCarrerasRows,
+            descansosRows
         ] = await Promise.all([
             safeRead('Carreras'),
             safeRead('Gastos'),
@@ -1329,9 +1430,11 @@ export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?
             safeRead('Excepciones'),
             safeRead('Directorio_Vales'),
             safeRead('Recordatorios'),
+            safeRead('Plantillas_Gastos'),
             safeRead('Informes_Personalizados'),
             safeRead('Otros_Ingresos'),
-            safeRead('Vales_Carreras')
+            safeRead('Vales_Carreras'),
+            safeRead('Detalle_Descansos')
         ]);
 
         if (onProgress) onProgress(10, "Procesando datos...");
@@ -1348,9 +1451,11 @@ export const restoreFromGoogleSheets = async (spreadsheetId: string, onProgress?
             excepcionesRows,
             valesRows,
             remindersRows,
+            expenseTemplatesRows,
             customReportsRows,
             otrosIngresosRows,
-            valesCarrerasRows
+            valesCarrerasRows,
+            descansosRows
         }, onProgress);
 
     } catch (error: any) {
@@ -1387,9 +1492,11 @@ export const restoreFromExcel = async (fileId: string, onProgress?: (progress: n
             excepcionesRows: safeRead('Excepciones'),
             valesRows: safeRead('Directorio_Vales'),
             remindersRows: safeRead('Recordatorios'),
+            expenseTemplatesRows: safeRead('Plantillas_Gastos'),
             customReportsRows: safeRead('Informes_Personalizados'),
             otrosIngresosRows: safeRead('Otros_Ingresos'),
-            valesCarrerasRows: safeRead('Vales_Carreras')
+            valesCarrerasRows: safeRead('Vales_Carreras'),
+            descansosRows: safeRead('Detalle_Descansos')
         };
 
         return processSpreadsheetBackupData(rowsMap, onProgress);
@@ -1431,17 +1538,37 @@ export const autoBackupToDrive = async (replaceToday = false): Promise<void> => 
             const todayPrefix = `tappxi-backup-${new Date().toISOString().slice(0, 10)}`;
             const todayFiles = existing.filter(f => f.name.startsWith(todayPrefix));
             for (const f of todayFiles) {
-                await deleteFile(f.id);
-                console.log(`[AutoBackup] Backup de hoy reemplazado: ${f.name}`);
+                try {
+                    await deleteFile(f.id);
+                    console.log(`[AutoBackup] Backup de hoy reemplazado: ${f.name}`);
+                } catch (e: any) {
+                    // Si el archivo ya no existe (404), ignoramos el error ya que el objetivo de borrarlo se ha cumplido
+                    const is404 = e?.status === 404 || e?.result?.error?.code === 404 || extractGapiErrorMessage(e).includes('404');
+                    if (is404) {
+                        console.warn(`[AutoBackup] El archivo de hoy ya no existía en Drive: ${f.name}`);
+                    } else {
+                        throw e;
+                    }
+                }
             }
             // Actualizar la lista tras el borrado
             existing = existing.filter(f => !f.name.startsWith(todayPrefix));
         }
 
-        // 4. Si ya hay MAX_BACKUPS o más (de otros días), borrar el más antiguo
         if (existing.length >= MAX_BACKUPS) {
-            await deleteFile(existing[0].id);
-            console.log(`[AutoBackup] Copia antigua borrada: ${existing[0].name}`);
+            const oldest = existing[0];
+            try {
+                await deleteFile(oldest.id);
+                console.log(`[AutoBackup] Copia antigua borrada: ${oldest.name}`);
+            } catch (e: any) {
+                // Si el archivo ya no existe, ignoramos
+                const is404 = e?.status === 404 || e?.result?.error?.code === 404 || extractGapiErrorMessage(e).includes('404');
+                if (is404) {
+                    console.warn(`[AutoBackup] La copia antigua ya no existía en Drive: ${oldest.name}`);
+                } else {
+                    throw e;
+                }
+            }
         }
 
         // 5. Generar el JSON de backup
@@ -1464,7 +1591,7 @@ export const autoBackupToDrive = async (replaceToday = false): Promise<void> => 
         localStorage.setItem('tappxi_last_auto_backup', new Date().toISOString());
         console.log(`[AutoBackup] Completado con éxito: ${fileName}`);
     } catch (error: any) {
-        const errorMsg = error?.message || String(error);
+        const errorMsg = extractGapiErrorMessage(error);
         localStorage.setItem('tappxi_last_auto_backup_status', `Error: ${new Date().toLocaleTimeString()} - ${errorMsg}`);
         console.error('[AutoBackup] Error crítico durante copia automática:', error);
         throw error;

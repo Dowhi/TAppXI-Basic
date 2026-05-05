@@ -386,7 +386,7 @@ const fetchOpenSkyFlights = async (
             return [];
         }
 
-        return parseOpenSkyFlights(data, isArrival);
+        return parseOpenSkyFlights(data, isArrival) as any;
     } catch (error) {
         console.error(`Error fetching OpenSky ${type}:`, error);
         return null;

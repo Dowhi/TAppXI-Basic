@@ -5,6 +5,7 @@ import { firebaseSync } from './firebaseSync';
 // Types (import from types.ts)
 import type { CarreraVista, Gasto, Turno, Proveedor, Concepto, Taller, Reminder, Ajustes, OtroIngreso, Excepcion } from '../types';
 import { getCustomReports } from './customReports';
+import { calculateTurnoTimes } from './timeUtils';
 
 // Event system for real subscriptions
 type Listener<T> = (data: T) => void;
@@ -278,16 +279,23 @@ export async function deleteTurno(id: string): Promise<void> {
 }
 
 export async function getTurnosByDate(date: Date): Promise<Turno[]> {
-    const allTurnos = await getTurnos();
-    const targetDate = new Date(date);
-    targetDate.setHours(0, 0, 0, 0);
-    const targetISO = targetDate.toISOString().split('T')[0];
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(date);
+    end.setHours(23, 59, 59, 999);
+    return getTurnosByDateRange(start, end);
+}
 
-    return allTurnos.filter(t => {
-        const tDate = new Date(t.fechaInicio);
-        tDate.setHours(0, 0, 0, 0);
-        return tDate.toISOString().split('T')[0] === targetISO;
-    });
+export async function getTurnosByDateRange(start: Date, end: Date): Promise<Turno[]> {
+    const raw = await getAllItems<any>('turnos');
+    const startTime = start.getTime();
+    const endTime = end.getTime();
+    return raw
+        .map(normalizeTurno)
+        .filter(t => {
+            const tTime = t.fechaInicio.getTime();
+            return tTime >= startTime && tTime <= endTime;
+        });
 }
 
 export async function getRecentTurnos(limit: number): Promise<Turno[]> {
@@ -618,6 +626,28 @@ export async function getGastosByYear(year: number): Promise<number[]> {
     return monthly;
 }
 
+export async function getTurnosByYear(year: number): Promise<Turno[]> {
+    const start = new Date(year, 0, 1);
+    const end = new Date(year, 11, 31, 23, 59, 59, 999);
+    return getTurnosByDateRange(start, end);
+}
+
+export async function getHorasByYear(year: number): Promise<Array<{ brutaMs: number, netaMs: number }>> {
+    const turnos = await getTurnosByYear(year);
+    const monthly = new Array(12).fill(null).map(() => ({ brutaMs: 0, netaMs: 0 }));
+
+    turnos.forEach(t => {
+        const d = t.fechaInicio instanceof Date ? t.fechaInicio : new Date(t.fechaInicio);
+        const month = d.getMonth();
+        const times = calculateTurnoTimes(t);
+        monthly[month].brutaMs += times.horasBrutasMs;
+        monthly[month].netaMs += times.horasNetasMs;
+    });
+
+    return monthly;
+}
+
+
 export async function getRecentCarreras(limit: number): Promise<CarreraVista[]> {
     const carreras = await getCarreras();
     return carreras
@@ -628,11 +658,10 @@ export async function getRecentCarreras(limit: number): Promise<CarreraVista[]> 
 export async function getTurnosByMonth(month: number, year: number): Promise<Turno[]> {
     const start = new Date(year, month, 1);
     const end = new Date(year, month + 1, 0, 23, 59, 59, 999);
-
-    // Create a helper for turnos range if not exists, or inline
     const all = await getTurnos();
     return filterByDateRange(all, t => t.fechaInicio, start, end);
 }
+
 
 export function subscribeToGastosByMonth(month: number, year: number, callback: (gastos: Gasto[]) => void, errorCallback?: (error: any) => void): () => void {
     getGastosByMonth(month, year).then(callback).catch(err => {
@@ -758,17 +787,108 @@ export async function restoreExcepcion(excepcion: any, skipSync = false): Promis
 }
 
 export async function isRestDay(date: Date): Promise<boolean> {
-    const excepciones = await getExcepciones();
-    const dateStr = date.toISOString().split('T')[0];
+    try {
+        const excepciones = await getExcepciones();
+        const targetDate = new Date(date);
+        targetDate.setHours(0, 0, 0, 0);
 
-    return excepciones.some((e: any) => {
+        // Check for explicit "Descanso" exceptions (in case any exist)
+        const hasDescansoException = excepciones.some((e: any) => {
+            if (e.tipo !== 'Descanso') return false;
+            try {
+                const start = e.fechaDesde instanceof Date ? e.fechaDesde : new Date(e.fechaDesde);
+                const end = e.fechaHasta instanceof Date ? e.fechaHasta : new Date(e.fechaHasta);
+                
+                const s = new Date(start); s.setHours(0, 0, 0, 0);
+                const en = new Date(end); en.setHours(23, 59, 59, 999);
+                
+                return targetDate.getTime() >= s.getTime() && targetDate.getTime() <= en.getTime();
+            } catch {
+                return false;
+            }
+        });
+
+        if (hasDescansoException) return true;
+
+        // Check if it's a rest day by comparing taxi letters with user break letter
         try {
-            const eDate = e.fecha instanceof Date ? e.fecha : new Date(e.fecha);
-            return eDate.toISOString().split('T')[0] === dateStr;
-        } catch {
+            const breakConfig = await getBreakConfiguration();
+            if (!breakConfig || !breakConfig.startDate || !breakConfig.userBreakLetter) {
+                return false;
+            }
+
+            // Parse start date
+            const [ds, ms, ys] = breakConfig.startDate.split('/');
+            const startDate = new Date(parseInt(ys), parseInt(ms) - 1, parseInt(ds));
+            startDate.setHours(0, 0, 0, 0);
+
+            // Calculate taxi letter for this date
+            const lettersArray = ['A', 'B', 'C', 'D'];
+            const diffTime = targetDate.getTime() - startDate.getTime();
+            const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+            let taxiLetter = '';
+            if (diffDays >= 0) {
+                const startLetter = breakConfig.startDayLetter || breakConfig.initialBreakLetter || 'A';
+                const startIdx = lettersArray.indexOf(startLetter);
+                const startDow = startDate.getDay();
+                const startWd = startDow === 0 ? 6 : startDow - 1;
+                const mod = (v: number, d: number) => ((v % d) + d) % d;
+                const startWkMondayIdx = mod(startIdx - startWd, 4);
+
+                const dow = targetDate.getDay();
+                const isSat = dow === 6;
+                const isSun = dow === 0;
+
+                if (isSat || isSun) {
+                    // Weekend - parse weekend pattern
+                    const weekendPatternStr = breakConfig.weekendPattern || '';
+                    const normalizedPattern = weekendPatternStr
+                        .normalize('NFD')
+                        .replace(/[\u0300-\u036f]/g, '')
+                        .toLowerCase();
+
+                    const saturdayMatch = normalizedPattern.match(/sabado\s*:\s*([a-z]+)/);
+                    const sundayMatch = normalizedPattern.match(/domingo\s*:\s*([a-z]+)/);
+
+                    const saturdayLetter = (saturdayMatch?.[1] ?? 'ac').toUpperCase();
+                    const sundayLetter = (sundayMatch?.[1] ?? 'bd').toUpperCase();
+                    
+                    const weekNum = Math.floor((diffDays + startWd) / 7);
+                    const swap = weekNum % 2 === 1;
+                    taxiLetter = isSat
+                        ? (swap ? sundayLetter : saturdayLetter)
+                        : (swap ? saturdayLetter : sundayLetter);
+                } else {
+                    // Weekday
+                    const weekNum = Math.floor((diffDays + startWd) / 7);
+                    const wd = dow === 0 ? 6 : dow - 1;
+                    const mondayIdx = mod(startWkMondayIdx + weekNum, 4);
+                    const finalIdx = mod(mondayIdx + wd, 4);
+                    taxiLetter = lettersArray[finalIdx];
+                }
+            }
+
+            // Compare taxi letter with user break letter
+            if (!taxiLetter) return false;
+
+            const userLetter = breakConfig.userBreakLetter.toUpperCase();
+            const tl = taxiLetter.toUpperCase();
+
+            // Check if taxi letter matches user break letter
+            const isRest = tl === userLetter ||
+                (tl === 'AC' && (userLetter === 'A' || userLetter === 'C')) ||
+                (tl === 'BD' && (userLetter === 'B' || userLetter === 'D'));
+
+            return isRest;
+        } catch (error) {
+            console.error('Error calculating rest day by letter:', error);
             return false;
         }
-    });
+    } catch (error) {
+        console.error('Error in isRestDay:', error);
+        return false;
+    }
 }
 
 /** Restore Functions (Wrappers) */
@@ -839,26 +959,44 @@ export async function getGastosForCurrentMonth(): Promise<number> {
 }
 
 export async function getWorkingDays(startDate: Date, endDate: Date): Promise<Date[]> {
+    const [carreras, turnos] = await Promise.all([
+        getCarreras(),
+        getTurnos()
+    ]);
     const dayData: Set<string> = new Set();
-    const allCarreras = await getCarreras();
 
-    allCarreras.forEach(c => {
+    carreras.forEach(c => {
         const d = c.fechaHora instanceof Date ? c.fechaHora : new Date(c.fechaHora);
         if (d >= startDate && d <= endDate) {
             dayData.add(d.toISOString().split('T')[0]);
         }
     });
 
-    return Array.from(dayData).map(d => new Date(d));
+    turnos.forEach(t => {
+        const d = t.fechaInicio instanceof Date ? t.fechaInicio : new Date(t.fechaInicio);
+        if (d >= startDate && d <= endDate) {
+            dayData.add(d.toISOString().split('T')[0]);
+        }
+    });
+
+    return Array.from(dayData).sort().map(d => new Date(d));
 }
 
 // Helper for ranges
-async function getCarrerasByDateRange(start: Date, end: Date): Promise<CarreraVista[]> {
-    const all = await getCarreras();
-    return filterByDateRange(all, c => c.fechaHora, start, end);
+export async function getCarrerasByDateRange(start: Date, end: Date): Promise<CarreraVista[]> {
+    const raw = await getAllItems<any>('carreras');
+    const startTime = start.getTime();
+    const endTime = end.getTime();
+    return raw
+        .map(normalizeCarrera)
+        .filter(c => {
+            const cTime = c.fechaHora.getTime();
+            return cTime >= startTime && cTime <= endTime;
+        });
 }
 
-async function getGastosByDateRange(start: Date, end: Date): Promise<Gasto[]> {
+
+export async function getGastosByDateRange(start: Date, end: Date): Promise<Gasto[]> {
     const all = await getGastos();
     return filterByDateRange(all, g => g.fecha, start, end);
 }
@@ -960,6 +1098,30 @@ export async function getTotalIngresosByYear(year: number): Promise<number> {
 export async function getTotalGastosByYear(year: number): Promise<number> {
     const monthly = await getGastosByYear(year);
     return monthly.reduce((sum, val) => sum + val, 0);
+}
+
+export async function getHorasByMonthYear(month: number, year: number): Promise<{ brutasMs: number, netasMs: number }> {
+    const turnos = await getTurnosByMonth(month, year);
+    let brutasMs = 0;
+    let netasMs = 0;
+    turnos.forEach(t => {
+        const times = calculateTurnoTimes(t);
+        brutasMs += times.horasBrutasMs;
+        netasMs += times.horasNetasMs;
+    });
+    return { brutasMs, netasMs };
+}
+
+export async function getHorasByYearTotal(year: number): Promise<{ brutasMs: number, netasMs: number }> {
+    const turnos = await getTurnosByYear(year);
+    let brutasMs = 0;
+    let netasMs = 0;
+    turnos.forEach(t => {
+        const times = calculateTurnoTimes(t);
+        brutasMs += times.horasBrutasMs;
+        netasMs += times.horasNetasMs;
+    });
+    return { brutasMs, netasMs };
 }
 
 export async function removeDuplicates(): Promise<{ gastosRemoved: number, carrerasRemoved: number }> {

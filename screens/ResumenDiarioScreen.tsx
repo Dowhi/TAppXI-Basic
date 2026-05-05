@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import ScreenTopBar from '../components/ScreenTopBar';
 import { Seccion, Turno, CarreraVista } from '../types';
 import { getTurnosByDate, getCarrerasByDate, getGastosByDate } from '../services/api';
+import { calculateTurnoTimes } from '../services/timeUtils';
 
 // Icons
 const CalendarIcon = () => (
@@ -107,13 +108,7 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
                 sumaVales,
                 turnoIndex: numeroTurno,
                 kmTotal: (turno.kilometrosFin && turno.kilometrosInicio) ? turno.kilometrosFin - turno.kilometrosInicio : 0,
-                horasTotal: (() => {
-                    if (!turno.fechaFin) return 'En curso';
-                    const diff = new Date(turno.fechaFin).getTime() - new Date(turno.fechaInicio).getTime();
-                    const hours = Math.floor(diff / (1000 * 60 * 60));
-                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                    return `${hours}h ${minutes}m`;
-                })()
+                ...calculateTurnoTimes(turno)
             };
         });
     }, [turnos, carreras]);
@@ -322,11 +317,19 @@ const ResumenDiarioScreen: React.FC<ResumenDiarioScreenProps> = ({ navigateTo })
                                 </div>
                                 <div className="flex justify-between">
                                     <span>Hora Fin:</span>
-                                    <span className="font-semibold">{formatTime(turno.fechaFin)}</span>
+                                    <span className="font-semibold">{turno.isActivo ? 'En curso' : formatTime(turno.fechaFin)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span>Tiempo Descanso:</span>
+                                    <span className="font-semibold">{turno.horasDescansoFormateadas}</span>
                                 </div>
                                 <div className="flex justify-between text-emerald-300">
-                                    <span>Horas Total:</span>
-                                    <span className="font-semibold">{turno.horasTotal}</span>
+                                    <span>Horas Netas (Reales):</span>
+                                    <span className="font-semibold">{turno.horasNetasFormateadas}</span>
+                                </div>
+                                <div className="flex justify-between text-blue-300">
+                                    <span>Horas Totales (Brutas):</span>
+                                    <span className="font-semibold">{turno.horasBrutasFormateadas}</span>
                                 </div>
                             </div>
 

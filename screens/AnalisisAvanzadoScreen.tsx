@@ -9,6 +9,8 @@ import {
     getGastosByMonthYear,
     getTotalIngresosByYear,
     getTotalGastosByYear,
+    getHorasByMonthYear,
+    getHorasByYearTotal,
     getAjustes,
     getWorkingDays,
 } from '../services/api';
@@ -26,10 +28,10 @@ const AnalisisAvanzadoScreen: React.FC<AnalisisAvanzadoScreenProps> = ({ navigat
     const [objetivoDiario, setObjetivoDiario] = useState<number>(100);
     
     // Comparativas
-    const [mesActual, setMesActual] = useState({ ingresos: 0, gastos: 0 });
-    const [mesAnterior, setMesAnterior] = useState({ ingresos: 0, gastos: 0 });
-    const [añoActual, setAñoActual] = useState({ ingresos: 0, gastos: 0 });
-    const [añoAnterior, setAñoAnterior] = useState({ ingresos: 0, gastos: 0 });
+    const [mesActual, setMesActual] = useState({ ingresos: 0, gastos: 0, horasBrutasMs: 0, horasNetasMs: 0 });
+    const [mesAnterior, setMesAnterior] = useState({ ingresos: 0, gastos: 0, horasBrutasMs: 0, horasNetasMs: 0 });
+    const [añoActual, setAñoActual] = useState({ ingresos: 0, gastos: 0, horasBrutasMs: 0, horasNetasMs: 0 });
+    const [añoAnterior, setAñoAnterior] = useState({ ingresos: 0, gastos: 0, horasBrutasMs: 0, horasNetasMs: 0 });
     const [metasVsLogros, setMetasVsLogros] = useState({
         objetivoMensual: 0,
         objetivoHastaAhora: 0,
@@ -101,6 +103,10 @@ const AnalisisAvanzadoScreen: React.FC<AnalisisAvanzadoScreenProps> = ({ navigat
                     gastosAñoActual,
                     ingresosAñoAnterior,
                     gastosAñoAnterior,
+                    hMesActual,
+                    hMesAnterior,
+                    hAñoActual,
+                    hAñoAnterior,
                     ajustes,
                 ] = await Promise.all([
                     getIngresosByMonthYear(currentMonth, currentYear),
@@ -111,13 +117,37 @@ const AnalisisAvanzadoScreen: React.FC<AnalisisAvanzadoScreenProps> = ({ navigat
                     getTotalGastosByYear(currentYear),
                     getTotalIngresosByYear(prevYearFull),
                     getTotalGastosByYear(prevYearFull),
+                    getHorasByMonthYear(currentMonth, currentYear),
+                    getHorasByMonthYear(prevMonth, prevYear),
+                    getHorasByYearTotal(currentYear),
+                    getHorasByYearTotal(prevYearFull),
                     getAjustes(),
                 ]);
 
-                setMesActual({ ingresos: ingresosMesActual, gastos: gastosMesActual });
-                setMesAnterior({ ingresos: ingresosMesAnterior, gastos: gastosMesAnterior });
-                setAñoActual({ ingresos: ingresosAñoActual, gastos: gastosAñoActual });
-                setAñoAnterior({ ingresos: ingresosAñoAnterior, gastos: gastosAñoAnterior });
+                setMesActual({ 
+                    ingresos: ingresosMesActual, 
+                    gastos: gastosMesActual,
+                    horasBrutasMs: hMesActual.brutasMs,
+                    horasNetasMs: hMesActual.netasMs
+                });
+                setMesAnterior({ 
+                    ingresos: ingresosMesAnterior, 
+                    gastos: gastosMesAnterior,
+                    horasBrutasMs: hMesAnterior.brutasMs,
+                    horasNetasMs: hMesAnterior.netasMs
+                });
+                setAñoActual({ 
+                    ingresos: ingresosAñoActual, 
+                    gastos: gastosAñoActual,
+                    horasBrutasMs: hAñoActual.brutasMs,
+                    horasNetasMs: hAñoActual.netasMs
+                });
+                setAñoAnterior({ 
+                    ingresos: ingresosAñoAnterior, 
+                    gastos: gastosAñoAnterior,
+                    horasBrutasMs: hAñoAnterior.brutasMs,
+                    horasNetasMs: hAñoAnterior.netasMs
+                });
                 
                 if (ajustes && ajustes.objetivoDiario !== undefined) {
                     setObjetivoDiario(Number(ajustes.objetivoDiario));
@@ -558,11 +588,17 @@ const AnalisisAvanzadoScreen: React.FC<AnalisisAvanzadoScreenProps> = ({ navigat
                                     <div className="text-zinc-400 text-xs mb-1">Mes Actual</div>
                                     <div className="text-white text-lg font-bold">{Number(mesActual.ingresos || 0).toFixed(2)}€</div>
                                     <div className="text-zinc-500 text-xs mt-1">Gastos: {Number(mesActual.gastos || 0).toFixed(2)}€</div>
+                                    <div className="text-cyan-400 text-xs mt-1">
+                                        Hrs B/N: {(mesActual.horasBrutasMs/3600000).toFixed(1)} / {(mesActual.horasNetasMs/3600000).toFixed(1)}h
+                                    </div>
                                 </div>
                                 <div className="bg-zinc-800 rounded-lg p-3">
                                     <div className="text-zinc-400 text-xs mb-1">Mes Anterior</div>
                                     <div className="text-white text-lg font-bold">{Number(mesAnterior.ingresos || 0).toFixed(2)}€</div>
                                     <div className="text-zinc-500 text-xs mt-1">Gastos: {Number(mesAnterior.gastos || 0).toFixed(2)}€</div>
+                                    <div className="text-cyan-400 text-xs mt-1">
+                                        Hrs B/N: {(mesAnterior.horasBrutasMs/3600000).toFixed(1)} / {(mesAnterior.horasNetasMs/3600000).toFixed(1)}h
+                                    </div>
                                 </div>
                             </div>
                             <div className="bg-zinc-800 rounded-lg p-3">
@@ -592,11 +628,17 @@ const AnalisisAvanzadoScreen: React.FC<AnalisisAvanzadoScreenProps> = ({ navigat
                                     <div className="text-zinc-400 text-xs mb-1">Año Actual</div>
                                     <div className="text-white text-lg font-bold">{Number(añoActual.ingresos || 0).toFixed(2)}€</div>
                                     <div className="text-zinc-500 text-xs mt-1">Gastos: {Number(añoActual.gastos || 0).toFixed(2)}€</div>
+                                    <div className="text-cyan-400 text-xs mt-1">
+                                        Hrs B/N: {(añoActual.horasBrutasMs/3600000).toFixed(1)} / {(añoActual.horasNetasMs/3600000).toFixed(1)}h
+                                    </div>
                                 </div>
                                 <div className="bg-zinc-800 rounded-lg p-3">
                                     <div className="text-zinc-400 text-xs mb-1">Año Anterior</div>
                                     <div className="text-white text-lg font-bold">{Number(añoAnterior.ingresos || 0).toFixed(2)}€</div>
                                     <div className="text-zinc-500 text-xs mt-1">Gastos: {Number(añoAnterior.gastos || 0).toFixed(2)}€</div>
+                                    <div className="text-cyan-400 text-xs mt-1">
+                                        Hrs B/N: {(añoAnterior.horasBrutasMs/3600000).toFixed(1)} / {(añoAnterior.horasNetasMs/3600000).toFixed(1)}h
+                                    </div>
                                 </div>
                             </div>
                             <div className="bg-zinc-800 rounded-lg p-3">

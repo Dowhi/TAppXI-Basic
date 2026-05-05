@@ -1,9 +1,9 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import ScreenTopBar from '../components/ScreenTopBar';
-import { Seccion } from '../types';
+import { Seccion, Excepcion } from '../types';
 import { useToast } from '../components/Toast';
 import { ErrorHandler } from '../services/errorHandler';
-import { addExcepcion, getExcepciones, deleteExcepcion, updateExcepcion, getBreakConfiguration, saveBreakConfiguration, Excepcion } from '../services/api';
+import { addExcepcion, getExcepciones, deleteExcepcion, updateExcepcion, getBreakConfiguration, saveBreakConfiguration } from '../services/api';
 
 interface BreakConfigurationScreenProps {
     navigateTo: (page: Seccion) => void;
@@ -32,7 +32,7 @@ const BreakConfigurationScreen: React.FC<BreakConfigurationScreenProps> = ({ nav
     // Estados para el formulario de excepción
     const [exceptionDateFrom, setExceptionDateFrom] = useState('');
     const [exceptionDateTo, setExceptionDateTo] = useState('');
-    const [exceptionType, setExceptionType] = useState('Festivo (sin descanso)');
+    const [exceptionType, setExceptionType] = useState<Excepcion['tipo']>('Festivo (sin descanso)');
     const [appliesToPar, setAppliesToPar] = useState(false);
     const [appliesToImpar, setAppliesToImpar] = useState(false);
     const [exceptionDescription, setExceptionDescription] = useState('');
@@ -45,7 +45,7 @@ const BreakConfigurationScreen: React.FC<BreakConfigurationScreenProps> = ({ nav
     const [selectedExceptionDateFrom, setSelectedExceptionDateFrom] = useState<Date | null>(null);
     const [selectedExceptionDateTo, setSelectedExceptionDateTo] = useState<Date | null>(null);
 
-    const exceptionTypes = [
+    const exceptionTypes: Excepcion['tipo'][] = [
         'Festivo (sin descanso)',
         'Cambio de Letra',
         'Vacaciones',

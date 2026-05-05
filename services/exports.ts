@@ -4,6 +4,7 @@ import jsPDF from 'jspdf';
 import * as autoTableModule from 'jspdf-autotable';
 import { CarreraVista, Gasto, Turno } from '../types';
 import { parseDate as apiParseDate } from './api';
+import { calculateTurnoTimes } from './timeUtils';
 
 export interface ExportFilter {
     fechaDesde?: Date;
@@ -19,6 +20,7 @@ export interface ExportData {
     carreras?: CarreraVista[];
     gastos?: Gasto[];
     turnos?: Turno[];
+    ajustes?: any;
 }
 
 /**
@@ -116,6 +118,10 @@ export const exportToExcel = (
         const turnosData = data.turnos.map(t => {
             const fInicio = t.fechaInicio instanceof Date ? t.fechaInicio : apiParseDate(t.fechaInicio);
             const fFin = t.fechaFin ? (t.fechaFin instanceof Date ? t.fechaFin : apiParseDate(t.fechaFin)) : null;
+            const times = calculateTurnoTimes(t);
+            const horasBrutas = times.horasBrutasMs / 3600000;
+            const horasNetas = times.horasNetasMs / 3600000;
+
             return {
                 'Fecha Inicio': fInicio.toLocaleDateString('es-ES'),
                 'Hora Inicio': fInicio.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
@@ -124,6 +130,8 @@ export const exportToExcel = (
                 'Hora Fin': fFin ? fFin.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '',
                 'Km Fin': t.kilometrosFin || '',
                 'Km Recorridos': t.kilometrosFin && t.kilometrosInicio ? (t.kilometrosFin - t.kilometrosInicio) : '',
+                'Horas Brutas': horasBrutas.toFixed(2),
+                'Horas Netas': horasNetas.toFixed(2),
                 'ID': t.id
             };
         });
@@ -133,7 +141,7 @@ export const exportToExcel = (
         // Ajustar anchos de columna
         wsTurnos['!cols'] = [
             { wch: 12 }, { wch: 8 }, { wch: 10 }, { wch: 12 },
-            { wch: 8 }, { wch: 10 }, { wch: 12 }, { wch: 20 }
+            { wch: 8 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 20 }
         ];
 
         XLSX.utils.book_append_sheet(workbook, wsTurnos, 'Turnos');
@@ -182,6 +190,8 @@ export const exportToExcel = (
         'Período Desde': filters.fechaDesde?.toLocaleDateString('es-ES') || '',
         'Período Hasta': filters.fechaHasta?.toLocaleDateString('es-ES') || '',
         'Fecha Exportación': new Date().toLocaleDateString('es-ES'),
+        'Total Horas Brutas': (data.turnos?.reduce((sum, t) => sum + calculateTurnoTimes(t).horasBrutasMs, 0) || 0) / 3600000,
+        'Total Horas Netas': (data.turnos?.reduce((sum, t) => sum + calculateTurnoTimes(t).horasNetasMs, 0) || 0) / 3600000,
     }];
 
     const wsResumen = XLSX.utils.json_to_sheet(resumenData);

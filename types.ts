@@ -206,3 +206,17 @@ export interface Reminder {
     createdAt: string;
     lastNotified?: string; // Última vez que se mostró la notificación
 }
+
+export interface Excepcion {
+    id: string;
+    fechaDesde: Date | string;
+    fechaHasta: Date | string;
+    tipo: 'Vacaciones' | 'Enfermedad' | 'Descanso' | 'Otro' | 'Festivo (sin descanso)' | 'Cambio de Letra' | 'Liberacion Especial';
+    nota?: string;
+    descripcion?: string;
+    activo?: boolean; // si la excepción está activa. Si se marca false, se considera deshabilitada
+    aplicaPar?: boolean;
+    aplicaImpar?: boolean;
+    nuevaLetra?: string;
+}
+

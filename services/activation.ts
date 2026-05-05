@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from 'uuid';
 
 const STORAGE_KEY_ACTIVATED = 'tappxi_activated';
 const STORAGE_KEY_DEVICE_ID = 'tappxi_device_id';

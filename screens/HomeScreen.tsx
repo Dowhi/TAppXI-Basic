@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Seccion, Turno, CarreraVista } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { calculateTurnoTimes } from '../services/timeUtils';
 import {
   getIngresosForCurrentMonth,
   getGastosForCurrentMonth,
@@ -693,25 +694,32 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction }) =>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-3 mb-3 text-sm">
+                    <div className="grid grid-cols-4 gap-2 mb-3 text-sm">
                       <div className="text-center">
-                        <p className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-600'
+                        <p className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-600'
                           }`}>Kms Inic.</p>
-                        <p className={`text-lg mt-1 ${isDark ? 'text-zinc-100' : 'text-zinc-900'}`}>
+                        <p className={`text-base mt-1 ${isDark ? 'text-zinc-100' : 'text-zinc-900'}`}>
                           {turnoActivo.kilometrosInicio}
                         </p>
                       </div>
                       <div className="text-center">
-                        <p className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-600'
+                        <p className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-600'
                           }`}>H. Inicio</p>
-                        <p className={`text-lg mt-1 ${isDark ? 'text-zinc-100' : 'text-zinc-900'}`}>
+                        <p className={`text-base mt-1 ${isDark ? 'text-zinc-100' : 'text-zinc-900'}`}>
                           {parseSafeDate(turnoActivo.fechaInicio).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
                         </p>
                       </div>
                       <div className="text-center">
-                        <p className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-600'
+                        <p className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-emerald-400' : 'text-emerald-600'
+                          }`}>T. Neto</p>
+                        <p className={`text-base mt-1 ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                          {calculateTurnoTimes(turnoActivo).horasNetasFormateadas}
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <p className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-cyan-400' : 'text-blue-600'
                           }`}>Carreras</p>
-                        <p className={`text-lg mt-1 ${isDark ? 'text-zinc-100' : 'text-zinc-900'}`}>
+                        <p className={`text-base mt-1 ${isDark ? 'text-zinc-100' : 'text-zinc-900'}`}>
                           {carrerasDelTurno.length}
                         </p>
                       </div>
@@ -758,7 +766,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction }) =>
 
 
           {/* Widget de Predicción */}
-          {!turnoActivo && <PredictionWidget />}
+          <PredictionWidget />
 
           {/* Accesos directos en 3 filas de 3 (ajustado para 9 acciones) */}
           <div className="grid grid-cols-3 gap-1">

@@ -1,84 +1,85 @@
-import { Turno } from '../types';
-import { getRecentTurnos } from './api';
+import { Turno, CarreraVista } from '../types';
+import { getRecentTurnos, getCarreras } from './api';
+import { calculateTurnoTimes } from './timeUtils';
 
 export interface Prediction {
-    suggestedStart: string; // "18:00"
-    reason: string; // "Basado en tus mejores viernes"
+    suggestedStart: string; // "08:00"
+    suggestedDuration: number; // in hours
     projectedEarnings: number;
+    projectedKms: number;
+    optimalBreakTime?: string; // "14:00"
+    reason: string;
     confidence: 'high' | 'medium' | 'low';
 }
 
 export const analyzeShiftPatterns = async (targetWeekday: number = new Date().getDay()): Promise<Prediction | null> => {
     try {
-        // Obtenemos los últimos 50 turnos para tener muestra suficiente
-        const turnos = await getRecentTurnos(50);
+        const [turnos, allCarreras] = await Promise.all([
+            getRecentTurnos(100), // More data for better stats
+            getCarreras()
+        ]);
 
-        // Filtrar por el día de la semana objetivo (0 = Domingo, 1 = Lunes...)
         const sameDayShifts = turnos.filter(t => {
             const d = t.fechaInicio instanceof Date ? t.fechaInicio : new Date(t.fechaInicio);
-            return d.getDay() === targetWeekday;
+            return d.getDay() === targetWeekday && t.fechaFin; // Only completed shifts
         });
 
-        if (sameDayShifts.length < 3) {
-            return null; // No hay suficientes datos
-        }
+        if (sameDayShifts.length < 2) return null;
 
-        // Analizar rentabilidad (Euros / Hora)
-        const scoredShifts = sameDayShifts.map(t => {
-            if (!t.fechaFin) return null;
+        let totalEarnings = 0;
+        let totalDurationHours = 0;
+        let totalKms = 0;
+        const startHours: number[] = [];
+        const breakStartHours: number[] = [];
 
-            const start = t.fechaInicio instanceof Date ? t.fechaInicio : new Date(t.fechaInicio);
-            const end = t.fechaFin instanceof Date ? t.fechaFin : new Date(t.fechaFin);
+        sameDayShifts.forEach(t => {
+            // Duration
+            const times = calculateTurnoTimes(t);
+            totalDurationHours += times.horasBrutasMs / (1000 * 60 * 60);
 
-            const durationMs = end.getTime() - start.getTime();
-            const durationHours = durationMs / (1000 * 60 * 60);
+            // Earnings for this shift
+            const shiftCarreras = allCarreras.filter(c => c.turnoId === t.id);
+            const shiftEarnings = shiftCarreras.reduce((sum, c) => sum + (c.cobrado || 0), 0);
+            totalEarnings += shiftEarnings;
 
-            if (durationHours < 1) return null; // Ignorar turnos muy cortos
+            // Kilometers
+            if (t.kilometrosFin && t.kilometrosInicio) {
+                totalKms += (t.kilometrosFin - t.kilometrosInicio);
+            }
 
-            // Ingresos totales del turno (recaudación)
-            // Nota: Turno no tiene campo directo de ingresos total a veces, asumimos que se puede calcular o el usuario lo introduce.
-            // Si Turno no tiene ingresos explícitos, usamos una heurística o dummy, 
-            // pero la interfaz Turno tiene 'recaudacion'? Vamos a revisar types.
-            // Asumiendo que podemos obtener ingresos (o pasamos a analizar Carreras si Turno no tiene $)
+            // Start Hour
+            startHours.push(new Date(t.fechaInicio).getHours());
 
-            // Si el objeto Turno no tiene recaudación, no podemos predecir rentabilidad.
-            // Revisando `types.ts` en memoria o archivos anteriores... 
-            // Si no hay 'recaudacion' en Turno, usamos la duración como proxy de "actividad" o necesitamos sumar carreras.
-            // Por simplicidad y robustez, asumiremos que Turno tiene campo de ingresos o que el usuario quiere maximizar TIEMPO de trabajo efectivo.
-            // PERO el prompt dice "maximizar ingresos".
-            // Vamos a asumir que "recaudacion" existe o lo simularemos si no está typado, o mejor:
-            // Usaremos la hora de inicio más frecuente de los turnos "buenos".
-
-            return {
-                startHour: start.getHours(),
-                date: start
-            };
-        }).filter(t => t !== null) as { startHour: number, date: Date }[];
-
-        // Agrupar por hora de inicio
-        const startCounts: Record<number, number> = {};
-        scoredShifts.forEach(s => {
-            const h = s.startHour;
-            startCounts[h] = (startCounts[h] || 0) + 1;
-        });
-
-        // Encontrar la hora más repetida (Moda)
-        let bestHour = -1;
-        let maxCount = 0;
-        Object.entries(startCounts).forEach(([h, count]) => {
-            if (count > maxCount) {
-                maxCount = count;
-                bestHour = parseInt(h);
+            // Breaks
+            if (t.descansos && t.descansos.length > 0) {
+                t.descansos.forEach(d => {
+                    breakStartHours.push(new Date(d.fechaInicio).getHours());
+                });
             }
         });
+
+        const count = sameDayShifts.length;
+        
+        // Find Mode for Start Hour
+        const getMode = (arr: number[]) => {
+            const counts: Record<number, number> = {};
+            arr.forEach(h => counts[h] = (counts[h] || 0) + 1);
+            return Object.entries(counts).reduce((a, b) => b[1] > a[1] ? b : a, ['-1', 0])[0];
+        };
+
+        const bestStartHour = parseInt(getMode(startHours));
+        const bestBreakHour = breakStartHours.length > 0 ? parseInt(getMode(breakStartHours)) : undefined;
 
         const dayNames = ['domingos', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábados'];
 
         return {
-            suggestedStart: `${bestHour.toString().padStart(2, '0')}:00`,
-            reason: `Basado en tus últimos ${sameDayShifts.length} ${dayNames[targetWeekday]}`,
-            projectedEarnings: 0, // Placeholder
-            confidence: sameDayShifts.length > 5 ? 'high' : 'medium'
+            suggestedStart: `${bestStartHour.toString().padStart(2, '0')}:00`,
+            suggestedDuration: totalDurationHours / count,
+            projectedEarnings: totalEarnings / count,
+            projectedKms: totalKms / count,
+            optimalBreakTime: bestBreakHour !== undefined ? `${bestBreakHour.toString().padStart(2, '0')}:00` : undefined,
+            reason: `Basado en tus últimos ${count} ${dayNames[targetWeekday]}`,
+            confidence: count > 8 ? 'high' : count > 4 ? 'medium' : 'low'
         };
 
     } catch (error) {

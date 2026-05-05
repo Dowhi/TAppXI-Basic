@@ -99,8 +99,9 @@ const FlightTakeoffIcon: React.FC<{ className?: string; title?: string }> = ({ c
     </svg>
 );
 
-const TrainIcon: React.FC<{ className?: string }> = ({ className }) => (
+const TrainIcon: React.FC<{ className?: string; title?: string }> = ({ className, title }) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <title>{title}</title>
         <rect width="16" height="16" x="4" y="3" rx="2" />
         <path d="M4 11h16" />
         <path d="M12 3v8" />

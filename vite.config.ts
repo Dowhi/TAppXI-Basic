@@ -8,15 +8,15 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   // Para GitHub Pages: si tu repositorio se llama "tappxi-web-replica", 
   // la base debe ser "/tappxi-web-replica/". Si está en la raíz del usuario (usuario.github.io), usar "/"
-  // Se puede configurar con la variable           VITE_BASE_PATH:
-  // Base path hardcoded to user's repo name to prevent 404s
-  const base = '/TAppXI-Basic/';
+  // Se puede configurar con la variable VITE_BASE_PATH
+  // En desarrollo local: usar "/", en producción/deploy: usar "/TAppXI-Basic/"
+  const base = mode === 'development' ? '/' : '/TAppXI-Basic/';
 
   return {
     base: base,
     server: {
       port: 8080,
-      strictPort: false,
+      strictPort: true,
       host: '0.0.0.0', // Permite acceso desde la red local (móvil)
       open: true,
     },

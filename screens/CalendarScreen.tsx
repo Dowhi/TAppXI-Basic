@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { jsPDF } from 'jspdf';
-import { Seccion } from '../types';
-import { getCarrerasByDate, getGastosByDate, getExcepciones, Excepcion } from '../services/api';
+import { Seccion, Excepcion } from '../types';
+import { getCarrerasByDate, getGastosByDate, getExcepciones } from '../services/api';
 import ScreenTopBar from '../components/ScreenTopBar';
 
 interface CalendarScreenProps {

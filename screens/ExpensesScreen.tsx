@@ -180,7 +180,7 @@ const ExpensesScreen: React.FC<{ navigateTo: (page: Seccion) => void; gastoId?: 
     useEffect(() => {
         const total = parseFloat(importeTotal) || 0;
         const desc = parseFloat(descuento) || 0;
-        const iva = parseFloat(ivaPorcentaje) || 0;
+        const iva = soportaIVA ? (parseFloat(ivaPorcentaje) || 0) : 0;
 
         const finalTotal = total - desc;
         setTotalNeto(finalTotal.toFixed(2));
@@ -243,8 +243,16 @@ const ExpensesScreen: React.FC<{ navigateTo: (page: Seccion) => void; gastoId?: 
                     setKilometros(g.kilometros?.toString() || '');
                     setKmParciales(g.kmParciales?.toString() || '');
                     setLitros(g.litros?.toString() || '');
-                    setIvaPorcentaje(g.ivaPorcentaje?.toString() || '21');
-                    setSoportaIVA(!!(g.ivaPorcentaje && g.ivaPorcentaje > 0));
+                    const loadedIvaPorcentaje = safeParse(g.ivaPorcentaje);
+                    const loadedIvaImporte = safeParse(g.ivaImporte);
+                    const loadedBase = safeParse(g.baseImponible);
+                    const loadedImporte = safeParse(g.importe);
+                    const loadedHasIva = loadedIvaPorcentaje > 0 && (
+                        loadedIvaImporte > 0 ||
+                        (loadedBase > 0 && Math.abs(loadedImporte - loadedBase) > 0.005)
+                    );
+                    setIvaPorcentaje(loadedHasIva ? loadedIvaPorcentaje.toString() : '21');
+                    setSoportaIVA(loadedHasIva);
                     setServices(g.servicios?.length ? g.servicios : [{}]);
                     setDescuento(g.descuento?.toString() || '');
                     setNotas(g.notas || '');
@@ -270,6 +278,7 @@ const ExpensesScreen: React.FC<{ navigateTo: (page: Seccion) => void; gastoId?: 
         setIsSaving(true);
         setError(null);
         try {
+            const effectiveIvaPorcentaje = soportaIVA ? safeParse(ivaPorcentaje) : 0;
             const data: any = {
                 importe: total,
                 fecha: fecha ? new Date(fecha) : new Date(),
@@ -277,8 +286,8 @@ const ExpensesScreen: React.FC<{ navigateTo: (page: Seccion) => void; gastoId?: 
                 tipo: activeTab,
                 numeroFactura: numeroFactura.trim() || null,
                 baseImponible: safeParse(baseImponible) || null,
-                ivaImporte: safeParse(ivaImporte) || null,
-                ivaPorcentaje: safeParse(ivaPorcentaje) || null,
+                ivaImporte: soportaIVA ? (safeParse(ivaImporte) || null) : 0,
+                ivaPorcentaje: effectiveIvaPorcentaje,
                 descuento: safeParse(descuento) || null,
                 notas: notas.trim() || null,
                 kilometros: safeParse(kilometros) || null,
@@ -350,7 +359,9 @@ const ExpensesScreen: React.FC<{ navigateTo: (page: Seccion) => void; gastoId?: 
         if (t.proveedor) setProveedorName(t.proveedor);
         if (t.concepto) setConceptoName(t.concepto);
         if (t.taller) setTallerName(t.taller);
-        if (t.ivaPorcentaje) setIvaPorcentaje(t.ivaPorcentaje.toString());
+        const templateHasIva = !!(t.ivaPorcentaje && t.ivaPorcentaje > 0);
+        setSoportaIVA(templateHasIva);
+        setIvaPorcentaje(templateHasIva ? t.ivaPorcentaje!.toString() : '21');
         if (t.tipo) setActiveTab(t.tipo);
         markTemplateAsUsed(t.id);
         setShowTemplates(false);
@@ -583,7 +594,7 @@ const ExpensesScreen: React.FC<{ navigateTo: (page: Seccion) => void; gastoId?: 
                             <TextInput readOnly value={baseImponible} className="text-center font-bold" />
                         </FormField>
                         <FormField label="Iva %">
-                            <TextInput readOnly value={ivaPorcentaje} className="text-center font-bold" />
+                            <TextInput readOnly value={soportaIVA ? ivaPorcentaje : '0'} className="text-center font-bold" />
                         </FormField>
                         <FormField label="Iva (€)">
                             <TextInput readOnly value={ivaImporte} className="text-center font-bold text-blue-400" />
@@ -751,7 +762,7 @@ const ExpensesScreen: React.FC<{ navigateTo: (page: Seccion) => void; gastoId?: 
                                     taller: tallerName,
                                     tipo: activeTab,
                                     formaPago: formaPago,
-                                    ivaPorcentaje: parseFloat(ivaPorcentaje)
+                                    ivaPorcentaje: soportaIVA ? parseFloat(ivaPorcentaje) : 0
                                 });
                                 setTemplates(getTemplates());
                                 setShowSaveTemplate(false);

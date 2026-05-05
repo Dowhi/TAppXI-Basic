@@ -3,6 +3,7 @@ import Card from '../components/NeumorphicCard';
 import ScreenTopBar from '../components/ScreenTopBar';
 import { Seccion, Turno, CarreraVista, Gasto } from '../types';
 import { getRecentTurnos, getRecentCarreras, getGastos } from '../services/api';
+import { calculateTurnoTimes } from '../services/timeUtils';
 
 // Icons
 // Icons (Tipo 2: Lineal Moderno, stroke-width=2)
@@ -178,6 +179,20 @@ const HistoricoScreen: React.FC<HistoricoScreenProps> = ({ navigateTo }) => {
                                                             <p className="text-zinc-500 text-xs">Total</p>
                                                             <p className="text-emerald-400 text-sm font-bold">
                                                                 {totalTurno.toFixed(2)}€
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-2 mt-2">
+                                                        <div>
+                                                            <p className="text-zinc-500 text-xs">Tiempo Bruto</p>
+                                                            <p className="text-blue-400 text-xs font-bold">
+                                                                {calculateTurnoTimes(turno).horasBrutasFormateadas}
+                                                            </p>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-zinc-500 text-xs">Tiempo Neto</p>
+                                                            <p className="text-emerald-400 text-xs font-bold">
+                                                                {calculateTurnoTimes(turno).horasNetasFormateadas}
                                                             </p>
                                                         </div>
                                                     </div>

@@ -91,6 +91,8 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigateTo }) => {
     const [showDatePickerDesde, setShowDatePickerDesde] = useState(false);
     const [showDatePickerHasta, setShowDatePickerHasta] = useState(false);
     const [showGastosFiltro, setShowGastosFiltro] = useState(false);
+    const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+    const [pdfFileName, setPdfFileName] = useState<string>('');
 
     // Column Selection State
     const [selectedExpenseCols, setSelectedExpenseCols] = useState<string[]>(EXPENSE_COLUMNS.map(c => c.id));
@@ -106,6 +108,18 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigateTo }) => {
         setFechaDesde(primerDia.toISOString().split('T')[0]);
         setFechaHasta(ultimoDia.toISOString().split('T')[0]);
     }, []);
+
+    useEffect(() => {
+        return () => {
+            if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+        };
+    }, [pdfPreviewUrl]);
+
+    const closePdfPreview = () => {
+        if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+        setPdfPreviewUrl(null);
+        setPdfFileName('');
+    };
 
     const generarInforme = async () => {
         if (!fechaDesde || !fechaHasta) {
@@ -222,9 +236,9 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigateTo }) => {
                 }
             }
 
-            // Generar PDF
+            // Generar PDF para previsualizar antes de descargar
             generarPDF(carrerasFiltradas, gastosFinales, turnosFiltrados, fechaDesdeObj, fechaHastaObj, filtros);
-            showToast('Informe generado correctamente', 'success');
+            showToast('Informe listo para revisar', 'success');
         } catch (error) {
             ErrorHandler.handle(error, 'ReportsScreen - generarInforme');
         } finally {
@@ -876,11 +890,14 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigateTo }) => {
             );
         }
 
-        // Guardar PDF
+        // Preparar PDF para previsualizacion
         const fechaDesdeStr = typeof fechaDesde === 'string' ? fechaDesde : (fechaDesde as Date).toISOString().split('T')[0];
         const fechaHastaStr = typeof fechaHasta === 'string' ? fechaHasta : (fechaHasta as Date).toISOString().split('T')[0];
         const nombreArchivo = `Informe_${fechaDesdeStr}_${fechaHastaStr}.pdf`;
-        doc.save(nombreArchivo);
+        if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+        const blob = doc.output('blob');
+        setPdfFileName(nombreArchivo);
+        setPdfPreviewUrl(URL.createObjectURL(blob));
     };
 
     // Obtener valores únicos para filtros
@@ -1139,6 +1156,39 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigateTo }) => {
                     </p>
                 </div>
             </div>
+
+            {pdfPreviewUrl && (
+                <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col p-3">
+                    <div className="bg-zinc-900 border border-zinc-700 rounded-t-xl px-4 py-3 flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                            <h3 className="text-white font-bold text-sm">Previsualizacion del informe</h3>
+                            <p className="text-zinc-400 text-xs truncate">{pdfFileName}</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                            <a
+                                href={pdfPreviewUrl}
+                                download={pdfFileName}
+                                className="bg-green-600 hover:bg-green-500 text-white font-bold text-xs px-3 py-2 rounded-lg transition-colors"
+                            >
+                                Descargar
+                            </a>
+                            <button
+                                onClick={closePdfPreview}
+                                className="bg-zinc-800 hover:bg-zinc-700 text-zinc-100 font-bold text-xs px-3 py-2 rounded-lg transition-colors"
+                            >
+                                Cerrar
+                            </button>
+                        </div>
+                    </div>
+                    <div className="flex-1 bg-zinc-950 border-x border-b border-zinc-700 rounded-b-xl overflow-hidden">
+                        <iframe
+                            title="Previsualizacion del informe PDF"
+                            src={pdfPreviewUrl}
+                            className="w-full h-full bg-white"
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

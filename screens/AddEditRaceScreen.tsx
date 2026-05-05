@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Seccion, CarreraVista } from '../types';
-import { getCarrera, addCarrera, updateCarrera, deleteCarrera, getValesDirectory, ValeDirectoryEntry, addValeDirectoryEntry } from '../services/api';
+import { getCarrera, addCarrera, updateCarrera, deleteCarrera, getValesDirectory, ValeDirectoryEntry, addValeDirectoryEntry, isRestDay, getExcepciones, deleteExcepcion, updateExcepcion } from '../services/api';
 import { useActiveTurno } from '../contexts/TurnoContext';
 import QuickActionsWidget from '../components/QuickActionsWidget';
 import { getCurrentMinimaRate, getCurrentAeropuertoRate } from '../services/tariffs';
@@ -139,6 +139,9 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
     const [cobradoManuallySet, setCobradoManuallySet] = useState(false);
     const [isLoading, setIsLoading] = useState(isEditing);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showRestModal, setShowRestModal] = useState(false);
+    const [coveringExcepciones, setCoveringExcepciones] = useState<any[]>([]);
+    const [pendingCarreraData, setPendingCarreraData] = useState<any | null>(null);
     const [showTaximetroKeyboard, setShowTaximetroKeyboard] = useState(false);
     const [tempTaximetroValue, setTempTaximetroValue] = useState('');
     const [showCobradoKeyboard, setShowCobradoKeyboard] = useState(false);
@@ -569,8 +572,6 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
             setValeForm(sanitizedValeInfo);
         }
 
-        setIsSubmitting(true);
-
         // Preservar la fecha/hora y el turno original si estamos editando
         const originalFechaHora = originalRace?.fechaHora;
         const originalTurnoId = originalRace?.turnoId;
@@ -594,6 +595,52 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
             notas: sanitizedNotas.length > 0 ? sanitizedNotas : null,
             turnoId: turnoIdToUse,
         };
+
+        // Before submitting, validate if the target date is a rest day
+        // Determine the date that will be used for the carrera (new Date() for new entries, originalFechaHora for edits)
+        const fechaToUse = isEditing && originalFechaHora ? new Date(originalFechaHora) : new Date();
+
+        try {
+            const rest = await isRestDay(fechaToUse);
+            if (rest) {
+                // Check if there are explicit 'Descanso' exceptions that cover this date
+                const excepciones = await getExcepciones();
+                const target = new Date(fechaToUse);
+                target.setHours(0,0,0,0);
+                const covering = excepciones.filter((e: any) => {
+                    if (e.tipo !== 'Descanso') return false;
+                    try {
+                        const s = new Date(e.fechaDesde); s.setHours(0,0,0,0);
+                        const en = new Date(e.fechaHasta); en.setHours(23,59,59,999);
+                        return target.getTime() >= s.getTime() && target.getTime() <= en.getTime();
+                    } catch { return false; }
+                });
+
+                if (covering.length > 0) {
+                    setCoveringExcepciones(covering);
+                    setPendingCarreraData(carreraData);
+                    setShowRestModal(true);
+                    return;
+                } else {
+                    // Día de descanso por lógica de letra pero sin excepción explícita.
+                    // Mostrar el modal para que el usuario confirme o cancele (en vez de usar window.confirm).
+                    setCoveringExcepciones([]);
+                    setPendingCarreraData(carreraData);
+                    setShowRestModal(true);
+                    return;
+                }
+            }
+        } catch (err) {
+            // If the check fails, notify and show modal as fallback to avoid data loss
+            showToast('No se pudo comprobar si hoy es día de descanso. Revisa la fecha antes de guardar.', 'warning');
+            // Show modal so user can decide
+            setCoveringExcepciones([]);
+            setPendingCarreraData(carreraData);
+            setShowRestModal(true);
+            return;
+        }
+
+        // (variables declared earlier; continue with save)
         try {
             if (isEditing && raceId) {
                 // Enviamos explícitamente la fechaHora original para asegurar que no se sobreescriba
@@ -614,6 +661,69 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleDisableExcepcionesAndSave = async () => {
+        if (!pendingCarreraData) return;
+        setShowRestModal(false);
+        setIsSubmitting(true);
+        try {
+            // Mark exceptions as inactive instead of deleting
+            for (const ex of coveringExcepciones) {
+                try {
+                    await updateExcepcion(ex.id, { activo: false });
+                } catch (e) {
+                    console.warn('No se pudo desactivar excepción', ex.id, e);
+                }
+            }
+
+            // Now perform the actual save
+            const originalFechaHora = originalRace?.fechaHora;
+            if (isEditing && raceId) {
+                const updates: any = { ...pendingCarreraData };
+                if (originalFechaHora) updates.fechaHora = originalFechaHora;
+                await updateCarrera(raceId, updates);
+            } else {
+                await addCarrera({ ...pendingCarreraData, fechaHora: new Date() });
+            }
+            navigateTo(Seccion.VistaCarreras);
+        } catch (error) {
+            ErrorHandler.handle(error, 'AddEditRaceScreen - handleDisableExcepcionesAndSave');
+        } finally {
+            setIsSubmitting(false);
+            setPendingCarreraData(null);
+            setCoveringExcepciones([]);
+        }
+    };
+
+    const handleSavePendingAsIs = async () => {
+        if (!pendingCarreraData) return;
+        setShowRestModal(false);
+        setIsSubmitting(true);
+        try {
+            const originalFechaHora = originalRace?.fechaHora;
+            if (isEditing && raceId) {
+                const updates: any = { ...pendingCarreraData };
+                if (originalFechaHora) updates.fechaHora = originalFechaHora;
+                await updateCarrera(raceId, updates);
+            } else {
+                await addCarrera({ ...pendingCarreraData, fechaHora: new Date() });
+            }
+            navigateTo(Seccion.VistaCarreras);
+        } catch (error) {
+            ErrorHandler.handle(error, 'AddEditRaceScreen - handleSavePendingAsIs');
+        } finally {
+            setIsSubmitting(false);
+            setPendingCarreraData(null);
+            setCoveringExcepciones([]);
+        }
+    };
+
+    const handleCancelModal = () => {
+        setShowRestModal(false);
+        setPendingCarreraData(null);
+        setCoveringExcepciones([]);
+        showToast('Operación cancelada: ajusta la fecha o las excepciones y vuelve a intentar.', 'warning');
     };
 
     const handleDelete = async () => {
@@ -903,6 +1013,50 @@ const AddEditRaceScreen: React.FC<AddEditRaceScreenProps> = ({ navigateTo, raceI
                             >
                                 Registrar
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal: Aviso día de descanso / excepciones */}
+            {showRestModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50 md:items-center" onClick={() => setShowRestModal(false)}>
+                    <div className="bg-zinc-900 w-full max-w-lg rounded-t-2xl md:rounded-2xl shadow-2xl border border-zinc-800 p-5" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-start justify-between mb-4">
+                            <div>
+                                <h3 className="text-lg font-semibold text-zinc-100">Día marcado como descanso</h3>
+                                <p className="text-zinc-400 text-sm mt-1">La fecha seleccionada coincide con un día de descanso según tu configuración.</p>
+                            </div>
+                            <button type="button" onClick={() => setShowRestModal(false)} className="text-zinc-400 hover:text-zinc-200">&times;</button>
+                        </div>
+
+                        {coveringExcepciones && coveringExcepciones.length > 0 ? (
+                            <div className="mb-4">
+                                <div className="text-zinc-400 text-sm mb-2">Excepciones que afectan a esta fecha:</div>
+                                <div className="space-y-2 max-h-40 overflow-y-auto">
+                                    {coveringExcepciones.map((ex: any) => (
+                                        <div key={ex.id} className="bg-zinc-800 rounded-lg p-3 border border-zinc-700">
+                                            <div className="flex justify-between items-center">
+                                                <div>
+                                                    <div className="text-sm font-semibold text-zinc-100">{ex.tipo || 'Excepción'}</div>
+                                                    <div className="text-zinc-500 text-xs">{new Date(ex.fechaDesde).toLocaleDateString('es-ES')} → {new Date(ex.fechaHasta).toLocaleDateString('es-ES')}</div>
+                                                </div>
+                                                <div className="text-zinc-400 text-xs">{ex.nota || ''}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="mb-4">
+                                <div className="text-zinc-400 text-sm">No hay excepciones explícitas que cubran esta fecha. ¿Deseas continuar?</div>
+                            </div>
+                        )}
+
+                        <div className="flex gap-3 mt-4">
+                            <button type="button" onClick={handleDisableExcepcionesAndSave} className="flex-1 bg-amber-600 hover:bg-amber-700 text-zinc-900 font-semibold px-3 py-2 rounded-lg">Desactivar excepción(es) y guardar</button>
+                            <button type="button" onClick={handleSavePendingAsIs} className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold px-3 py-2 rounded-lg">Guardar igualmente</button>
+                            <button type="button" onClick={handleCancelModal} className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-semibold px-3 py-2 rounded-lg">Revisar fecha</button>
                         </div>
                     </div>
                 </div>

@@ -10,6 +10,9 @@ interface ScreenTopBarProps {
     showBack?: boolean;
     rightSlot?: React.ReactNode;
     className?: string;
+    showSave?: boolean;
+    onSave?: () => void;
+    saving?: boolean;
 }
 
 const ScreenTopBar: React.FC<ScreenTopBarProps> = ({
@@ -20,6 +23,9 @@ const ScreenTopBar: React.FC<ScreenTopBarProps> = ({
     showBack = true,
     rightSlot,
     className = '',
+    showSave = false,
+    onSave,
+    saving = false,
 }) => {
     const handleBack = () => {
         if (onBack) {
@@ -29,7 +35,23 @@ const ScreenTopBar: React.FC<ScreenTopBarProps> = ({
         }
     };
 
-    const rightContent = rightSlot ?? <div className="w-6" />;
+    const rightContent = rightSlot ?? (
+        showSave ? (
+            <button
+                onClick={onSave}
+                disabled={saving}
+                className="bg-zinc-900 text-yellow-400 px-3 py-1 rounded-md text-sm font-bold active:scale-95 transition-all disabled:opacity-50"
+            >
+                {saving ? (
+                    <div className="w-4 h-4 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                    'GUARDAR'
+                )}
+            </button>
+        ) : (
+            <div className="w-6" />
+        )
+    );
 
     return (
         <div

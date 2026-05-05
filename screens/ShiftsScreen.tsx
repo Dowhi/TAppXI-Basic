@@ -7,6 +7,7 @@ import { useToast } from '../components/Toast';
 import { useTheme } from '../contexts/ThemeContext';
 import { ErrorHandler } from '../services/errorHandler';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { calculateTurnoTimes } from '../services/timeUtils';
 
 // Icons
 const TaxiIcon = () => (
@@ -399,6 +400,16 @@ const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
                                                 <span className="text-base font-black text-zinc-100">{formatTime(fechaInicio)}</span>
                                                 <span className="text-zinc-600 text-[10px] font-bold">→</span>
                                                 <span className={`text-sm font-black ${fechaFin ? 'text-zinc-400' : 'text-emerald-400'}`}>{fechaFin ? formatTime(fechaFin) : 'ACTIVO'}</span>
+                                            </div>
+                                            <div className="flex gap-4 mb-1.5">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[7px] uppercase text-zinc-500 font-bold">Tiempo Neto</span>
+                                                    <span className="text-[10px] font-black text-emerald-400">{calculateTurnoTimes(turno).horasNetasFormateadas}</span>
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[7px] uppercase text-zinc-500 font-bold">Tiempo Bruto</span>
+                                                    <span className="text-[10px] font-black text-blue-400">{calculateTurnoTimes(turno).horasBrutasFormateadas}</span>
+                                                </div>
                                             </div>
                                             <div className="flex gap-4">
                                                 <div className="flex flex-col">

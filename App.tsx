@@ -167,7 +167,7 @@ const App: React.FC = () => {
                 cobrado: amount,
                 formaPago: 'Efectivo',
                 tipoCarrera: 'Urbana',
-                suplementos: tariffName
+                notas: tariffName
             });
             navigateTo(Seccion.IntroducirCarrera);
         } else if (action === 'aeropuerto') {

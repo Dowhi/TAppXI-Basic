@@ -25,6 +25,14 @@ const TaxiRatesSection: React.FC<TaxiRatesSectionProps> = ({
 }) => {
     const { isDark } = useTheme();
 
+    const parseNumberInput = (value: string): number => {
+        const normalized = value.trim().replace(/\s+/g, '').replace(',', '.');
+        const parsed = parseFloat(normalized);
+        return Number.isFinite(parsed) ? parsed : 0;
+    };
+
+    const formatNumberValue = (value: number) => Number.isFinite(value) ? value : undefined;
+
     const inputClass = `w-full p-2.5 rounded-lg border text-sm font-medium transition-all ${isDark
             ? 'bg-zinc-800 border-zinc-700 text-white focus:border-blue-500'
             : 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:border-blue-500'
@@ -42,21 +50,21 @@ const TaxiRatesSection: React.FC<TaxiRatesSectionProps> = ({
                     <div>
                         <label className={labelClass}>Tarifa 1</label>
                         <div className="relative">
-                            <input type="number" step="0.01" value={tarifa1} onChange={(e) => { setHasUserChanged(true); setTarifa1(parseFloat(e.target.value)); }} className={inputClass} />
+                            <input type="number" step="0.01" value={formatNumberValue(tarifa1)} onChange={(e) => { setHasUserChanged(true); setTarifa1(parseNumberInput(e.target.value)); }} className={inputClass} />
                             <span className="absolute right-3 top-2.5 text-zinc-500 text-xs">€</span>
                         </div>
                     </div>
                     <div>
                         <label className={labelClass}>Tarifa 2</label>
                         <div className="relative">
-                            <input type="number" step="0.01" value={tarifa2} onChange={(e) => { setHasUserChanged(true); setTarifa2(parseFloat(e.target.value)); }} className={inputClass} />
+                            <input type="number" step="0.01" value={formatNumberValue(tarifa2)} onChange={(e) => { setHasUserChanged(true); setTarifa2(parseNumberInput(e.target.value)); }} className={inputClass} />
                             <span className="absolute right-3 top-2.5 text-zinc-500 text-xs">€</span>
                         </div>
                     </div>
                     <div>
                         <label className={labelClass}>Tarifa 3</label>
                         <div className="relative">
-                            <input type="number" step="0.01" value={tarifa3} onChange={(e) => { setHasUserChanged(true); setTarifa3(parseFloat(e.target.value)); }} className={inputClass} />
+                            <input type="number" step="0.01" value={formatNumberValue(tarifa3)} onChange={(e) => { setHasUserChanged(true); setTarifa3(parseNumberInput(e.target.value)); }} className={inputClass} />
                             <span className="absolute right-3 top-2.5 text-zinc-500 text-xs">€</span>
                         </div>
                     </div>
@@ -71,14 +79,14 @@ const TaxiRatesSection: React.FC<TaxiRatesSectionProps> = ({
                     <div>
                         <label className={labelClass}>TARIFA 4 (Día)</label>
                         <div className="relative">
-                            <input type="number" step="0.01" value={tarifaAeropuertoDia} onChange={(e) => { setHasUserChanged(true); setTarifaAeropuertoDia(parseFloat(e.target.value)); }} className={inputClass} />
+                            <input type="number" step="0.01" value={formatNumberValue(tarifaAeropuertoDia)} onChange={(e) => { setHasUserChanged(true); setTarifaAeropuertoDia(parseNumberInput(e.target.value)); }} className={inputClass} />
                             <span className="absolute right-3 top-2.5 text-zinc-500 text-xs">€</span>
                         </div>
                     </div>
                     <div>
                         <label className={labelClass}>TARIFA 5 (Noche)</label>
                         <div className="relative">
-                            <input type="number" step="0.01" value={tarifaAeropuertoNoche} onChange={(e) => { setHasUserChanged(true); setTarifaAeropuertoNoche(parseFloat(e.target.value)); }} className={inputClass} />
+                            <input type="number" step="0.01" value={formatNumberValue(tarifaAeropuertoNoche)} onChange={(e) => { setHasUserChanged(true); setTarifaAeropuertoNoche(parseNumberInput(e.target.value)); }} className={inputClass} />
                             <span className="absolute right-3 top-2.5 text-zinc-500 text-xs">€</span>
                         </div>
                     </div>
