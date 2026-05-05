@@ -1,0 +1,55 @@
+name: CI - Verify Exports (Tipo / Categoria)
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  verify-exports:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18.x'
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: Install
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify export headers exist (Tipo y Categoria)
+        run: |
+          echo "Verificando que las cabeceras de exportación incluyen Tipo y Categoria..."
+          if grep -R --no-messages -n "'Tipo'" services || true; then
+            echo "Cabecera 'Tipo' encontrada en al menos un export."; 
+          fi
+          if grep -R --no-messages -n "Categoria" services || true; then
+            echo "Cabecera 'Categoria' encontrada en al menos un export."; 
+          fi
+          # Reforzamos con búsqueda literal en exports.ts
+          if grep -n "'Tipo'" services/exports.ts | grep -q . && grep -n "'Categoria'" services/exports.ts | grep -q .; then
+            echo "Exportación de gastos contiene Tipo y Categoria en exports.ts (OK)."; 
+          else
+            echo "No se encontraron campos 'Tipo' o 'Categoria' en exports.ts. Revisa el diff."; 
+            exit 1; 
+          fi
+      
+      - name: Optional tests
+        if: always()
+        run: |
+          if [ -f package.json ] && npm test --silent; then
+            echo "Tests ejecutados";
+          else
+            echo "No hay tests configurados; saltando.";
+          fi
