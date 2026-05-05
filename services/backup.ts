@@ -593,7 +593,7 @@ export const exportToGoogleSheets = async (folderId?: string): Promise<{ spreads
         // Definir columnas EXACTAMENTE como en syncService.ts
         const headers = {
             carreras: ['Fecha', 'Hora', 'Taxímetro', 'Cobrado', 'Forma Pago', 'Tipo', 'Emisora', 'Aeropuerto', 'Estación', 'Notas', 'Empresa Vale', 'Cod. Empresa', 'Nº Despacho', 'Nº Albaran', 'Autoriza', 'ID Turno', 'ID'],
-            gastos: ['Fecha', 'Concepto', 'Proveedor', 'NIF', 'Taller', 'Base', 'IVA %', 'IVA €', 'Total', 'Nº Factura', 'Forma Pago', 'Km Totales', 'Km Vehículo', 'Km Parciales', 'Litros', 'Precio/L', 'Descuento', 'Notas', 'ID Turno', 'ID'],
+            gastos: ['Fecha', 'Concepto', 'Proveedor', 'NIF', 'Taller', 'Tipo', 'Categoria', 'Base', 'IVA %', 'IVA €', 'Total', 'Nº Factura', 'Forma Pago', 'Km Totales', 'Km Vehículo', 'Km Parciales', 'Litros', 'Precio/L', 'Descuento', 'Notas', 'ID Turno', 'ID'],
             servicios: ['Gasto ID', 'Referencia', 'Descripción', 'Importe', 'Cantidad', 'Desc. %', 'ID'],
             turnos: ['Fecha Inicio', 'Hora Inicio', 'Km Inicio', 'Fecha Fin', 'Hora Fin', 'Km Fin', 'Km Recorridos', 'ID'],
             descansos: ['Turno ID', 'Fecha Inicio', 'Hora Inicio', 'Km Inicio', 'Fecha Fin', 'Hora Fin', 'Km Fin', 'Duración (min)', 'ID'],
@@ -659,6 +659,8 @@ export const exportToGoogleSheets = async (folderId?: string): Promise<{ spreads
                 g.proveedor || '',
                 g.nif || '',
                 g.taller || '',
+                g.tipo || '',
+                g.categoria || '',
                 g.baseImponible || g.importe || 0,
                 g.ivaPorcentaje || 0,
                 g.ivaImporte || 0,
