@@ -82,6 +82,9 @@ export const exportToExcel = (
                 'Proveedor': g.proveedor || '',
                 'NIF Proveedor': g.nif || '',
                 'Taller': g.taller || '',
+                // Nuevos campos exportados para mantener consistencia con la UI
+                'Tipo': g.tipo || '',
+                'Categoria': g.categoria || '',
                 'Base Imponible (€)': g.baseImponible || g.importe || 0,
                 'IVA %': (g.ivaPorcentaje || 0).toString(),
                 'IVA (€)': g.ivaImporte || 0,
@@ -104,10 +107,10 @@ export const exportToExcel = (
 
         // Ajustar anchos de columna
         wsGastos['!cols'] = [
-            { wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 15 }, { wch: 20 },
-            { wch: 15 }, { wch: 8 }, { wch: 12 }, { wch: 12 },
-            { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
-            { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 30 }, { wch: 20 }, { wch: 20 }
+            { wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 15 }, { wch: 20 }, { wch: 15 },
+            { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+            { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+            { wch: 30 }, { wch: 20 }, { wch: 20 }, { wch: 20 }
         ];
 
         XLSX.utils.book_append_sheet(workbook, wsGastos, 'Gastos');
@@ -262,8 +265,8 @@ export const exportToCSV = (
 
     // Gastos
     if (data.gastos && data.gastos.length > 0) {
-        lines.push('=== GASTOS ===');
-        lines.push('Fecha,Concepto,Proveedor,NIF,Taller,Base Imponible,IVA %,IVA,Total,Nº Factura,Forma Pago,Km Totales,Km Vehículo,Km Parciales,Litros,Precio/L,Descuento,Notas,ID Turno,ID');
+    lines.push('=== GASTOS ===');
+    lines.push('Fecha,Concepto,Proveedor,NIF,Taller,Tipo,Categoria,Base Imponible,IVA %,IVA,Total,Nº Factura,Forma Pago,Km Totales,Km Vehículo,Km Parciales,Litros,Precio/L,Descuento,Notas,ID Turno,ID');
         data.gastos.forEach(g => {
             const fecha = g.fecha instanceof Date ? g.fecha : apiParseDate(g.fecha);
             lines.push([
@@ -272,6 +275,8 @@ export const exportToCSV = (
                 (g.proveedor || '').replace(/,/g, ';'),
                 (g.nif || '').replace(/,/g, ';'),
                 (g.taller || '').replace(/,/g, ';'),
+                g.tipo || '',
+                g.categoria || '',
                 (g.baseImponible || g.importe || 0).toFixed(2),
                 (g.ivaPorcentaje || 0).toString(),
                 (g.ivaImporte || 0).toFixed(2),
