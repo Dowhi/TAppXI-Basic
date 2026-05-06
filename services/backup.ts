@@ -899,6 +899,8 @@ const normalizeHeader = (header: string): string => {
         'base': 'baseImponible',
         'iva %': 'ivaPorcentaje',
         'iva €': 'ivaImporte',
+        'iva (€)': 'ivaImporte',
+        'iva (%)': 'ivaPorcentaje',
         'iva (importe)': 'ivaImporte',
         'ivaporc': 'ivaPorcentaje',
         'base imponible (€)': 'baseImponible',
@@ -937,7 +939,9 @@ const normalizeHeader = (header: string): string => {
         'last used': 'lastUsed',
         'use count': 'useCount',
         'servicios (json)': 'servicios',
-        'tipo': 'tipoCarrera',
+        'tipo': 'tipo',
+        'tipo de carrera': 'tipoCarrera',
+        'tipo carrera': 'tipoCarrera',
         'dirección_vales': 'Vales',
         'plantillas_gastos': 'Plantillas_Gastos',
         'informes_personalizados': 'CustomReports',
@@ -1159,6 +1163,7 @@ const processSpreadsheetBackupData = async (rowsMap: Record<string, any[][]>, on
             taximetro: parseNumber(c.taximetro),
             cobrado: parseNumber(c.cobrado),
             fechaHora: fechaHora, // No fallback to new Date()
+            tipoCarrera: c.tipoCarrera || c.tipo || 'Urbana',
             valeInfo,
             turnoId: c.turnoId || c.idturno || undefined,
             emisora: c.emisora === 'Sí' || c.emisora === true,
@@ -1192,6 +1197,7 @@ const processSpreadsheetBackupData = async (rowsMap: Record<string, any[][]>, on
         return {
             ...g,
             id: g.id || crypto.randomUUID(), // Asegurar que siempre hay ID
+            tipo: g.tipo || g.tipoCarrera || '',
             importe: parseNumber(g.importe || g.total || g.totale),
             baseImponible: parseNumber(g.baseImponible || g.baseimponible || g.base || g.baseimponiblee),
             ivaImporte: parseNumber(g.ivaImporte || g.ivaimporte || g.ivae),
