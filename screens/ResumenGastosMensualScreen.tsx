@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import ScreenTopBar from '../components/ScreenTopBar';
 import { Seccion } from '../types';
 import { getGastosByMonth, subscribeToGastosByMonth } from '../services/api';
@@ -70,14 +70,7 @@ const ResumenGastosMensualScreen: React.FC<ResumenGastosMensualScreenProps> = ({
             (gastosData) => {
                 console.log('✅ Gastos actualizados en tiempo real:', gastosData.length, 'gastos');
                 if (gastosData.length > 0) {
-                    console.log('📋 Primer gasto:', {
-                        id: gastosData[0].id,
-                        importe: gastosData[0].importe,
-                        concepto: gastosData[0].concepto,
-                        proveedor: gastosData[0].proveedor,
-                        taller: gastosData[0].taller,
-                        fecha: gastosData[0].fecha
-                    });
+                    console.log('📋 Primer gasto completo:', gastosData[0]);
                 }
                 setGastos(gastosData);
                 setLoading(false);

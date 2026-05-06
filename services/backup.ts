@@ -940,8 +940,11 @@ const normalizeHeader = (header: string): string => {
         'use count': 'useCount',
         'servicios (json)': 'servicios',
         'tipo': 'tipo',
+        'tipo de gasto': 'tipo',
         'tipo de carrera': 'tipoCarrera',
         'tipo carrera': 'tipoCarrera',
+        'categoría': 'categoria',
+        'categoria': 'categoria',
         'dirección_vales': 'Vales',
         'plantillas_gastos': 'Plantillas_Gastos',
         'informes_personalizados': 'CustomReports',
@@ -1197,7 +1200,8 @@ const processSpreadsheetBackupData = async (rowsMap: Record<string, any[][]>, on
         return {
             ...g,
             id: g.id || crypto.randomUUID(), // Asegurar que siempre hay ID
-            tipo: g.tipo || g.tipoCarrera || '',
+            tipo: String(g.tipo || g.tipoCarrera || g.tipodegasto || g.clase || '').trim(),
+            categoria: String(g.categoria || g.categoriagasto || '').trim(),
             importe: parseNumber(g.importe || g.total || g.totale),
             baseImponible: parseNumber(g.baseImponible || g.baseimponible || g.base || g.baseimponiblee),
             ivaImporte: parseNumber(g.ivaImporte || g.ivaimporte || g.ivae),
