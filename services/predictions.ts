@@ -93,10 +93,11 @@ export const calculateHourlyAveragesByDay = async (): Promise<HourlyAverages[]> 
         }
         
         // Construir resultado con promedios de acumulados
-        const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
         const result: HourlyAverages[] = [];
+        const order = [1, 2, 3, 4, 5, 6, 0]; // Lunes -> Domingo
         
-        for (let day = 0; day < 7; day++) {
+        for (const day of order) {
             const hourlyData = [];
             for (let hour = 0; hour < 24; hour++) {
                 const { acumulados, count } = dayHourMap[day][hour];
