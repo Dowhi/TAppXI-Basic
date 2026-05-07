@@ -26,39 +26,84 @@ export const calculateHourlyAveragesByDay = async (): Promise<HourlyAverages[]> 
     try {
         const carreras = await getCarreras();
         
-        // Estructura: [día (0-6)][hora (0-23)] = {total, count}
-        const dayHourMap: Record<number, Record<number, { total: number; count: number }>> = {};
+        // Agrupar carreras por día de la semana y turno
+        // Estructura: [día][turnoId] = array de carreras ordenadas por hora
+        const dayTurnoMap: Record<number, Record<string, CarreraVista[]>> = {};
         
-        // Inicializar estructura
         for (let day = 0; day < 7; day++) {
-            dayHourMap[day] = {};
-            for (let hour = 0; hour < 24; hour++) {
-                dayHourMap[day][hour] = { total: 0, count: 0 };
-            }
+            dayTurnoMap[day] = {};
         }
         
-        // Llenar datos
         carreras.forEach(c => {
             const date = c.fechaHora instanceof Date ? c.fechaHora : new Date(c.fechaHora);
             const day = date.getDay();
-            const hour = date.getHours();
-            const amount = c.cobrado || 0;
+            const turnoId = c.turnoId || 'sin-turno';
             
-            dayHourMap[day][hour].total += amount;
-            dayHourMap[day][hour].count += 1;
+            if (!dayTurnoMap[day][turnoId]) {
+                dayTurnoMap[day][turnoId] = [];
+            }
+            dayTurnoMap[day][turnoId].push(c);
         });
         
-        // Construir resultado
+        // Para cada día y hora, calcular el acumulado promedio entre turnos
+        const dayHourMap: Record<number, Record<number, { acumulados: number[]; count: number }>> = {};
+        
+        for (let day = 0; day < 7; day++) {
+            dayHourMap[day] = {};
+            for (let hour = 0; hour < 24; hour++) {
+                dayHourMap[day][hour] = { acumulados: [], count: 0 };
+            }
+        }
+        
+        // Por cada turno de cada día
+        for (let day = 0; day < 7; day++) {
+            Object.values(dayTurnoMap[day]).forEach(carrerasDelTurno => {
+                // Calcular acumulado por hora para este turno
+                let acumulado = 0;
+                const carrerasOrdenadas = [...carrerasDelTurno].sort((a, b) => {
+                    const dateA = a.fechaHora instanceof Date ? a.fechaHora : new Date(a.fechaHora);
+                    const dateB = b.fechaHora instanceof Date ? b.fechaHora : new Date(b.fechaHora);
+                    return dateA.getTime() - dateB.getTime();
+                });
+                
+                // Crear mapa de horas con acumulado
+                const acumuladoPorHora: Record<number, number> = {};
+                
+                carrerasOrdenadas.forEach(c => {
+                    const date = c.fechaHora instanceof Date ? c.fechaHora : new Date(c.fechaHora);
+                    const hour = date.getHours();
+                    acumulado += c.cobrado || 0;
+                    
+                    // Guardar el acumulado para cada hora (se sobrescribe si hay varias carreras en la misma hora)
+                    acumuladoPorHora[hour] = acumulado;
+                });
+                
+                // Llenar las horas que faltan con el acumulado anterior
+                let ultimoAcumulado = 0;
+                for (let hour = 0; hour < 24; hour++) {
+                    if (acumuladoPorHora[hour] !== undefined) {
+                        ultimoAcumulado = acumuladoPorHora[hour];
+                    }
+                    if (ultimoAcumulado > 0 || hour === 0) {
+                        dayHourMap[day][hour].acumulados.push(ultimoAcumulado);
+                        dayHourMap[day][hour].count++;
+                    }
+                }
+            });
+        }
+        
+        // Construir resultado con promedios de acumulados
         const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
         const result: HourlyAverages[] = [];
         
         for (let day = 0; day < 7; day++) {
             const hourlyData = [];
             for (let hour = 0; hour < 24; hour++) {
-                const { total, count } = dayHourMap[day][hour];
+                const { acumulados, count } = dayHourMap[day][hour];
+                const promedioAcumulado = count > 0 ? acumulados.reduce((a, b) => a + b, 0) / count : 0;
                 hourlyData.push({
                     hour,
-                    average: count > 0 ? total / count : 0,
+                    average: promedioAcumulado,
                     count
                 });
             }

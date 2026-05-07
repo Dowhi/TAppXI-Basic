@@ -57,10 +57,10 @@ const AveragesTableWidget: React.FC = () => {
             {/* Header */}
             <div className="mb-4">
                 <h3 className={`font-bold text-xl ${isDark ? 'text-cyan-300' : 'text-cyan-900'}`}>
-                    📊 Promedios por Hora
+                    📊 Acumulados Promedio por Hora
                 </h3>
                 <p className={`text-xs ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>
-                    Según tus turnos de semanas anteriores
+                    Ingresos acumulados según tus turnos de semanas anteriores
                 </p>
             </div>
 
@@ -156,7 +156,7 @@ const AveragesTableWidget: React.FC = () => {
                 <div className={`mt-4 p-4 rounded-lg ${isDark ? 'bg-zinc-800/50' : 'bg-zinc-50'}`}>
                     <div className="flex items-center justify-between mb-3">
                         <h4 className={`font-bold text-sm ${isDark ? 'text-zinc-100' : 'text-zinc-900'}`}>
-                            Detalle: {data[expandedDay]?.dayName}
+                            Acumulados: {data[expandedDay]?.dayName}
                         </h4>
                         <button
                             onClick={() => setExpandedDay(null)}
@@ -177,9 +177,9 @@ const AveragesTableWidget: React.FC = () => {
                                             : 'bg-white border-zinc-200 text-zinc-900'
                                     }`}
                                 >
-                                    <div className="text-xs font-bold text-zinc-500 mb-1">{h.hour}:00</div>
+                                    <div className="text-xs font-bold text-zinc-500 mb-1">Hasta {h.hour}:00</div>
                                     <div className="font-black text-sm">{formatCurrency(h.average)}</div>
-                                    <div className="text-[10px] text-zinc-400">({h.count} veces)</div>
+                                    <div className="text-[10px] text-zinc-400">({h.count} turnos)</div>
                                 </div>
                             ))}
                     </div>
