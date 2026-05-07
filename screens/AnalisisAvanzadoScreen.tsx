@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Seccion } from '../types';
 import ScreenTopBar from '../components/ScreenTopBar';
+import AveragesTableWidget from '../components/AveragesTableWidget';
 import {
     getIngresosByHour,
     getIngresosByDayOfWeek,
@@ -20,7 +21,7 @@ interface AnalisisAvanzadoScreenProps {
 }
 
 const AnalisisAvanzadoScreen: React.FC<AnalisisAvanzadoScreenProps> = ({ navigateTo }) => {
-    const [activeTab, setActiveTab] = useState<'horarios' | 'comparativas'>('horarios');
+    const [activeTab, setActiveTab] = useState<'horarios' | 'comparativas' | 'acumulados'>('horarios');
     const [loading, setLoading] = useState(true);
     const [ingresosPorHora, setIngresosPorHora] = useState<number[]>([]);
     const [ingresosPorDiaSemana, setIngresosPorDiaSemana] = useState<number[]>([]);
@@ -482,6 +483,16 @@ const AnalisisAvanzadoScreen: React.FC<AnalisisAvanzadoScreenProps> = ({ navigat
                 >
                     Comparativas
                 </button>
+                <button
+                    onClick={() => setActiveTab('acumulados')}
+                    className={`flex-1 py-2 px-4 rounded-md font-semibold text-sm transition-all ${
+                        activeTab === 'acumulados'
+                            ? 'bg-cyan-500 text-white'
+                            : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                    }`}
+                >
+                    Acumulados
+                </button>
             </div>
 
             {/* Contenido */}
@@ -698,6 +709,11 @@ const AnalisisAvanzadoScreen: React.FC<AnalisisAvanzadoScreenProps> = ({ navigat
                             </div>
                         </div>
                     </>
+                ) : activeTab === 'acumulados' ? (
+                    <>
+                        <AveragesTableWidget />
+                    </>
+                ) : null
                 )}
             </div>
         </div>

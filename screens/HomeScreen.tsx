@@ -17,7 +17,6 @@ import {
 import { useActiveTurno } from '../contexts/TurnoContext';
 import { filterRemindersForToday, checkMaintenanceReminders } from '../services/reminders';
 import PredictionWidget from '../components/PredictionWidget';
-import AveragesTableWidget from '../components/AveragesTableWidget';
 
 // --- ICONOS MODERNOS, ESTILO COHERENTE (20px, stroke-based) ---
 
@@ -768,9 +767,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction }) =>
 
           {/* Widget de Predicción */}
           <PredictionWidget />
-
-          {/* Widget de Promedios */}
-          <AveragesTableWidget />
 
           {/* Accesos directos en 3 filas de 3 (ajustado para 9 acciones) */}
           <div className="grid grid-cols-3 gap-1">
