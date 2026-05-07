@@ -586,7 +586,7 @@ const AnalisisAvanzadoScreen: React.FC<AnalisisAvanzadoScreenProps> = ({ navigat
                             </div>
                         )}
                     </>
-                ) : (
+                ) : activeTab === 'comparativas' ? (
                     <>
                         {/* Comparativa Mes Actual vs Anterior */}
                         <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
@@ -714,7 +714,7 @@ const AnalisisAvanzadoScreen: React.FC<AnalisisAvanzadoScreenProps> = ({ navigat
                         <AveragesTableWidget />
                     </>
                 ) : null
-                )}
+                }
             </div>
         </div>
     );
