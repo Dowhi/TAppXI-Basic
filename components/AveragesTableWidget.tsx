@@ -152,39 +152,43 @@ const AveragesTableWidget: React.FC = () => {
             </div>
 
             {/* Vista expandida para día seleccionado */}
-            {expandedDay !== null && (
-                <div className={`mt-4 p-4 rounded-lg ${isDark ? 'bg-zinc-800/50' : 'bg-zinc-50'}`}>
-                    <div className="flex items-center justify-between mb-3">
-                        <h4 className={`font-bold text-sm ${isDark ? 'text-zinc-100' : 'text-zinc-900'}`}>
-                            Acumulados: {data[expandedDay]?.dayName}
-                        </h4>
-                        <button
-                            onClick={() => setExpandedDay(null)}
-                            className={`text-sm px-2 py-1 rounded ${isDark ? 'bg-zinc-700 hover:bg-zinc-600 text-zinc-100' : 'bg-zinc-300 hover:bg-zinc-200 text-zinc-900'}`}
-                        >
-                            ✕
-                        </button>
+            {expandedDay !== null && (() => {
+                const expandedDayData = data.find(d => d.day === expandedDay);
+                if (!expandedDayData) return null;
+                return (
+                    <div className={`mt-4 p-4 rounded-lg ${isDark ? 'bg-zinc-800/50' : 'bg-zinc-50'}`}>
+                        <div className="flex items-center justify-between mb-3">
+                            <h4 className={`font-bold text-sm ${isDark ? 'text-zinc-100' : 'text-zinc-900'}`}>
+                                Acumulados: {expandedDayData.dayName}
+                            </h4>
+                            <button
+                                onClick={() => setExpandedDay(null)}
+                                className={`text-sm px-2 py-1 rounded ${isDark ? 'bg-zinc-700 hover:bg-zinc-600 text-zinc-100' : 'bg-zinc-300 hover:bg-zinc-200 text-zinc-900'}`}
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {expandedDayData.hourlyData
+                                .filter(h => h.count > 0)
+                                .map(h => (
+                                    <div
+                                        key={h.hour}
+                                        className={`p-2 rounded border ${
+                                            isDark
+                                                ? 'bg-zinc-700/50 border-zinc-600 text-zinc-100'
+                                                : 'bg-white border-zinc-200 text-zinc-900'
+                                        }`}
+                                    >
+                                        <div className="text-xs font-bold text-zinc-500 mb-1">Hasta {h.hour + 1}:00</div>
+                                        <div className="font-black text-sm">{formatCurrency(h.average)}</div>
+                                        <div className="text-[10px] text-zinc-400">({h.count} turnos)</div>
+                                    </div>
+                                ))}
+                        </div>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {data[expandedDay]?.hourlyData
-                            .filter(h => h.count > 0)
-                            .map(h => (
-                                <div
-                                    key={h.hour}
-                                    className={`p-2 rounded border ${
-                                        isDark
-                                            ? 'bg-zinc-700/50 border-zinc-600 text-zinc-100'
-                                            : 'bg-white border-zinc-200 text-zinc-900'
-                                    }`}
-                                >
-                                    <div className="text-xs font-bold text-zinc-500 mb-1">Hasta {h.hour + 1}:00</div>
-                                    <div className="font-black text-sm">{formatCurrency(h.average)}</div>
-                                    <div className="text-[10px] text-zinc-400">({h.count} turnos)</div>
-                                </div>
-                            ))}
-                    </div>
-                </div>
-            )}
+                );
+            })()}
         </div>
     );
 };
