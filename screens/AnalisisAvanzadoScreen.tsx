@@ -216,7 +216,7 @@ const AnalisisAvanzadoScreen: React.FC<AnalisisAvanzadoScreenProps> = ({ navigat
     const diasMasRentables = useMemo(() => {
         if (totalIngresosPorDiaSemana.length === 0) return [];
         
-        const diasNombres = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        const diasNombres = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
         
         const diasConIngresos = totalIngresosPorDiaSemana.map((ingresos, dia) => ({
             dia,
