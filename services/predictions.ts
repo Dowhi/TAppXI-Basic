@@ -12,6 +12,70 @@ export interface Prediction {
     confidence: 'high' | 'medium' | 'low';
 }
 
+export interface HourlyAverages {
+    day: number; // 0-6
+    dayName: string;
+    hourlyData: {
+        hour: number;
+        average: number;
+        count: number;
+    }[];
+}
+
+export const calculateHourlyAveragesByDay = async (): Promise<HourlyAverages[]> => {
+    try {
+        const carreras = await getCarreras();
+        
+        // Estructura: [día (0-6)][hora (0-23)] = {total, count}
+        const dayHourMap: Record<number, Record<number, { total: number; count: number }>> = {};
+        
+        // Inicializar estructura
+        for (let day = 0; day < 7; day++) {
+            dayHourMap[day] = {};
+            for (let hour = 0; hour < 24; hour++) {
+                dayHourMap[day][hour] = { total: 0, count: 0 };
+            }
+        }
+        
+        // Llenar datos
+        carreras.forEach(c => {
+            const date = c.fechaHora instanceof Date ? c.fechaHora : new Date(c.fechaHora);
+            const day = date.getDay();
+            const hour = date.getHours();
+            const amount = c.cobrado || 0;
+            
+            dayHourMap[day][hour].total += amount;
+            dayHourMap[day][hour].count += 1;
+        });
+        
+        // Construir resultado
+        const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        const result: HourlyAverages[] = [];
+        
+        for (let day = 0; day < 7; day++) {
+            const hourlyData = [];
+            for (let hour = 0; hour < 24; hour++) {
+                const { total, count } = dayHourMap[day][hour];
+                hourlyData.push({
+                    hour,
+                    average: count > 0 ? total / count : 0,
+                    count
+                });
+            }
+            result.push({
+                day,
+                dayName: dayNames[day],
+                hourlyData
+            });
+        }
+        
+        return result;
+    } catch (error) {
+        console.error("Error calculating hourly averages:", error);
+        return [];
+    }
+};
+
 export const analyzeShiftPatterns = async (targetWeekday: number = new Date().getDay()): Promise<Prediction | null> => {
     try {
         const [turnos, allCarreras] = await Promise.all([
