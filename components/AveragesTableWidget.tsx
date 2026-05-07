@@ -69,7 +69,7 @@ const AveragesTableWidget: React.FC = () => {
                 <table className="w-full text-xs border-collapse">
                     <thead>
                         <tr>
-                            <th className={`text-left px-2 py-2 font-bold sticky left-0 z-10 ${isDark ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-100 text-zinc-700'}`}>
+                            <th className={`text-left px-2 py-2 font-bold sticky left-0 z-10 truncate max-w-[6rem] whitespace-nowrap ${isDark ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-100 text-zinc-700'}`}>
                                 Día
                             </th>
                             {Array.from({ length: maxHour - minHour }).map((_, i) => {
@@ -77,7 +77,7 @@ const AveragesTableWidget: React.FC = () => {
                                 return (
                                     <th
                                         key={hour}
-                                        className={`px-2 py-2 font-bold text-center ${
+                                        className={`px-2 py-2 font-bold text-center truncate max-w-[4.5rem] ${
                                             isDark ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-100 text-zinc-700'
                                         }`}
                                     >
@@ -109,7 +109,7 @@ const AveragesTableWidget: React.FC = () => {
                                     }`}
                                     onClick={() => setExpandedDay(expandedDay === dayData.day ? null : dayData.day)}
                                 >
-                                    <td className={`px-2 py-2 font-bold sticky left-0 z-10 ${
+                                    <td className={`px-2 py-2 font-bold sticky left-0 z-10 truncate max-w-[6rem] whitespace-nowrap ${
                                         isToday ? (isDark ? 'bg-indigo-900/30' : 'bg-indigo-50') : (isDark ? 'bg-zinc-900' : 'bg-white')
                                     }`}>
                                         {dayData.dayName} {isToday ? '📍' : ''}
@@ -123,7 +123,7 @@ const AveragesTableWidget: React.FC = () => {
                                         return (
                                             <td
                                                 key={hour}
-                                                className={`px-2 py-2 text-center font-semibold relative transition ${
+                                                className={`px-2 py-2 text-center font-semibold relative transition truncate max-w-[4.5rem] whitespace-nowrap ${
                                                     !hasData
                                                         ? isDark ? 'bg-zinc-800/30 text-zinc-600' : 'bg-zinc-100/30 text-zinc-400'
                                                         : isDark ? 'text-zinc-100' : 'text-zinc-900'
@@ -180,7 +180,7 @@ const AveragesTableWidget: React.FC = () => {
                                                 : 'bg-white border-zinc-200 text-zinc-900'
                                         }`}
                                     >
-                                        <div className="text-xs font-bold text-zinc-500 mb-1">Hasta {h.hour + 1}:00</div>
+                                        <div className="text-xs font-bold text-zinc-500 mb-1 truncate">Hasta {h.hour + 1}:00</div>
                                         <div className="font-black text-sm">{formatCurrency(h.average)}</div>
                                         <div className="text-[10px] text-zinc-400">({h.count} turnos)</div>
                                     </div>
