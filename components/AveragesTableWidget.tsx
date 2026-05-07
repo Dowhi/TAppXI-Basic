@@ -49,7 +49,7 @@ const AveragesTableWidget: React.FC = () => {
         return null;
     }
 
-    const minHour = Math.max(0, Math.min(...activeHours) - 1);
+    const minHour = Math.min(...activeHours);
     const maxHour = Math.min(24, Math.max(...activeHours) + 1);
 
     return (
@@ -81,7 +81,7 @@ const AveragesTableWidget: React.FC = () => {
                                             isDark ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-100 text-zinc-700'
                                         }`}
                                     >
-                                        {hour}:00
+                                        {hour + 1}:00
                                     </th>
                                 );
                             })}
@@ -177,7 +177,7 @@ const AveragesTableWidget: React.FC = () => {
                                             : 'bg-white border-zinc-200 text-zinc-900'
                                     }`}
                                 >
-                                    <div className="text-xs font-bold text-zinc-500 mb-1">Hasta {h.hour}:00</div>
+                                    <div className="text-xs font-bold text-zinc-500 mb-1">Hasta {h.hour + 1}:00</div>
                                     <div className="font-black text-sm">{formatCurrency(h.average)}</div>
                                     <div className="text-[10px] text-zinc-400">({h.count} turnos)</div>
                                 </div>
