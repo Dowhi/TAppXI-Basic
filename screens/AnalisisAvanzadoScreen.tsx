@@ -13,7 +13,7 @@ import {
     getHorasByMonthYear,
     getHorasByYearTotal,
     getAjustes,
-    getWorkingDays,
+    isRestDay,
 } from '../services/api';
 
 interface AnalisisAvanzadoScreenProps {
@@ -158,9 +158,18 @@ const AnalisisAvanzadoScreen: React.FC<AnalisisAvanzadoScreenProps> = ({ navigat
                 const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
                 const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
                 
-                const diasTrabajados = await getWorkingDays(startOfMonth, endOfMonth);
-                const diasTrabajadosHastaAhora = diasTrabajados.filter(d => d <= now).length;
-                const totalDiasTrabajadosMes = diasTrabajados.length;
+                // Total días laborables del mes (excluyendo descansos del calendario)
+                const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+                let totalDiasTrabajadosMes = 0;
+                let diasTrabajadosHastaAhora = 0;
+                for (let day = 1; day <= lastDay; day++) {
+                    const d = new Date(now.getFullYear(), now.getMonth(), day);
+                    const rest = await isRestDay(d);
+                    if (!rest) {
+                        totalDiasTrabajadosMes++;
+                        if (d <= now) diasTrabajadosHastaAhora++;
+                    }
+                }
                 
                 const objetivoDiarioValue = Number(ajustes?.objetivoDiario) || 100;
                 const objetivoMensual = objetivoDiarioValue * totalDiasTrabajadosMes;
@@ -171,9 +180,11 @@ const AnalisisAvanzadoScreen: React.FC<AnalisisAvanzadoScreenProps> = ({ navigat
                     ? (ingresosHastaAhora / objetivoHastaAhora) * 100 
                     : 0;
                 
-                const proyeccionMensual = diasTrabajadosHastaAhora > 0 
-                    ? (ingresosHastaAhora / diasTrabajadosHastaAhora) * totalDiasTrabajadosMes 
+                const diasRestantesLaborables = Math.max(0, totalDiasTrabajadosMes - diasTrabajadosHastaAhora);
+                const promedioDiarioActual = diasTrabajadosHastaAhora > 0
+                    ? ingresosHastaAhora / diasTrabajadosHastaAhora
                     : 0;
+                const proyeccionMensual = ingresosHastaAhora + (promedioDiarioActual * diasRestantesLaborables);
 
                 setMetasVsLogros({
                     objetivoMensual,

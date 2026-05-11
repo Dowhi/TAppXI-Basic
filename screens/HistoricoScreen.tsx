@@ -165,9 +165,17 @@ const HistoricoScreen: React.FC<HistoricoScreenProps> = ({ navigateTo }) => {
                                                             Fin: {formatDateTime(turno.fechaFin)}
                                                         </p>
                                                     )}
-                                                    <div className="grid grid-cols-2 gap-2 mt-2">
-                                                        <div>
-                                                            <p className="text-zinc-500 text-xs">Kms</p>
+                                                </div>
+                                                <button 
+                                                    onClick={() => navigateTo(Seccion.EditarTurno, turno.id)}
+                                                    className="text-xs text-blue-400 hover:text-blue-300"
+                                                >
+                                                    ✎
+                                                </button>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2 mt-2">
+                                                <div>
+                                                    <p className="text-zinc-500 text-xs">Kms</p>
                                                             <p className="text-zinc-300 text-sm font-medium">
                                                                 {turno.kilometrosInicio} {turno.kilometrosFin ? `→ ${turno.kilometrosFin}` : ''}
                                                             </p>
@@ -196,8 +204,6 @@ const HistoricoScreen: React.FC<HistoricoScreenProps> = ({ navigateTo }) => {
                                                             </p>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            </div>
                                         </Card>
                                     );
                                 })
@@ -229,6 +235,14 @@ const HistoricoScreen: React.FC<HistoricoScreenProps> = ({ navigateTo }) => {
                                                     <p className="font-semibold text-zinc-100 mb-1">
                                                         {fechaHora}
                                                     </p>
+                                                </div>
+                                                <button 
+                                                    onClick={() => navigateTo(Seccion.EditarCarrera, carrera.id)}
+                                                    className="text-xs text-blue-400 hover:text-blue-300"
+                                                >
+                                                    ✎
+                                                </button>
+                                            </div>
                                                     <div className="flex gap-4 mt-2">
                                                         <div>
                                                             <p className="text-zinc-500 text-xs">Taxímetro</p>
@@ -270,8 +284,6 @@ const HistoricoScreen: React.FC<HistoricoScreenProps> = ({ navigateTo }) => {
                                                             </span>
                                                         )}
                                                     </div>
-                                                </div>
-                                            </div>
                                         </Card>
                                     );
                                 })
@@ -320,6 +332,12 @@ const HistoricoScreen: React.FC<HistoricoScreenProps> = ({ navigateTo }) => {
                                                             {gasto.formaPago}
                                                         </p>
                                                     )}
+                                                    <button 
+                                                        onClick={() => navigateTo(Seccion.EditarGasto, gasto.id)}
+                                                        className="text-xs text-blue-400 hover:text-blue-300 mt-1"
+                                                    >
+                                                        ✎
+                                                    </button>
                                                 </div>
                                             </div>
                                         </Card>

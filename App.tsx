@@ -131,6 +131,12 @@ const App: React.FC = () => {
         if (page === Seccion.EditarTurno && id) {
             setEditingTurnoId(id);
         }
+        if (page === Seccion.EditarCarrera && id) {
+            setEditingRaceId(id);
+        }
+        if (page === Seccion.EditarGasto && id) {
+            setEditingGastoId(id);
+        }
         // Si se navega de vuelta a ResumenGastosMensual, forzar recarga
         if (page === Seccion.ResumenGastosMensual) {
             setRefreshGastosKey(prev => prev + 1);

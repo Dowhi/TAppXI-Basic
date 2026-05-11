@@ -22,9 +22,23 @@ export interface HourlyAverages {
     }[];
 }
 
-export const calculateHourlyAveragesByDay = async (): Promise<HourlyAverages[]> => {
+export const calculateHourlyAveragesByDay = async (year?: number, month?: number): Promise<HourlyAverages[]> => {
     try {
-        const carreras = await getCarreras();
+        let carreras = await getCarreras();
+        
+        if (year !== undefined) {
+            carreras = carreras.filter(c => {
+                const date = c.fechaHora instanceof Date ? c.fechaHora : new Date(c.fechaHora);
+                return date.getFullYear() === year;
+            });
+        }
+        
+        if (month !== undefined) {
+            carreras = carreras.filter(c => {
+                const date = c.fechaHora instanceof Date ? c.fechaHora : new Date(c.fechaHora);
+                return date.getMonth() === month;
+            });
+        }
         
         // Agrupar carreras por día de la semana y turno
         // Estructura: [día][turnoId] = array de carreras ordenadas por hora
