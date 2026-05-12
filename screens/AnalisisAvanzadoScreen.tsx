@@ -154,9 +154,11 @@ const AnalisisAvanzadoScreen: React.FC<AnalisisAvanzadoScreenProps> = ({ navigat
                     setObjetivoDiario(Number(ajustes.objetivoDiario));
                 }
 
-                // Calcular metas vs logros (solo días trabajados)
+// Calcular metas vs logros (solo días trabajados)
                 const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
                 const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+                const todayDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
                 
                 // Total días laborables del mes (excluyendo descansos del calendario)
                 const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -167,7 +169,7 @@ const AnalisisAvanzadoScreen: React.FC<AnalisisAvanzadoScreenProps> = ({ navigat
                     const rest = await isRestDay(d);
                     if (!rest) {
                         totalDiasTrabajadosMes++;
-                        if (d <= now) diasTrabajadosHastaAhora++;
+                        if (d <= todayDateOnly) diasTrabajadosHastaAhora++;
                     }
                 }
                 
