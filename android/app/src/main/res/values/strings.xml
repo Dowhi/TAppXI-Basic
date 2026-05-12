@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">TAppXI</string>
+    <string name="title_activity_main">TAppXI</string>
+    <string name="package_name">com.tappxi.app</string>
+    <string name="custom_url_scheme">com.tappxi.app</string>
+</resources>

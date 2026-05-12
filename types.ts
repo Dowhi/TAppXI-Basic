@@ -220,3 +220,11 @@ export interface Excepcion {
     nuevaLetra?: string;
 }
 
+export interface MaintenanceIntervals {
+    aceite: number;
+    ruedas: number;
+    filtros: number;
+    frenos: number;
+    inspeccion: number;
+}
+

@@ -13,7 +13,7 @@ import IncomeScreen from './screens/IncomeScreen';
 import AddEditRaceScreen from './screens/AddEditRaceScreen';
 import ExpensesScreen from './screens/ExpensesScreen';
 import { getCurrentMinimaRate, getCurrentAeropuertoRate } from './services/tariffs';
-import { getActiveTurno } from './services/api';
+import { getActiveTurno, isRestDay } from './services/api';
 import { useToast } from './components/Toast';
 import ShiftsScreen from './screens/ShiftsScreen';
 import CloseTurnScreen from './screens/CloseTurnScreen';
@@ -113,12 +113,37 @@ const App: React.FC = () => {
         };
     }, []);
 
+    // Verificación de día de descanso al iniciar la app (sin alerta intrusiva)
+    useEffect(() => {
+        const checkRestDay = async () => {
+            try {
+                const today = new Date();
+                const todayStr = today.toISOString().split('T')[0];
+                const lastCheck = localStorage.getItem('lastRestDayAlert');
+
+                if (lastCheck === todayStr) return;
+
+                const restDay = await isRestDay(today);
+                if (restDay) {
+                    localStorage.setItem('lastRestDayAlert', todayStr);
+                }
+            } catch (err) {
+                console.error("Error checking rest day alert:", err);
+            }
+        };
+
+        if (setupComplete && isActivated) {
+            checkRestDay();
+        }
+    }, [setupComplete, isActivated]);
+
     // Scroll to top whenever page changes
     useEffect(() => {
         window.scrollTo(0, 0);
     }, [currentPage]);
 
     const navigateTo = useCallback((page: Seccion, id?: string) => {
+        console.log(`App: navigateTo(${page}${id ? `, ${id}` : ''})`);
         if (page === Seccion.IntroducirCarrera) {
             setEditingRaceId(null);
             // Don't reset initialRaceData here immediately if we just set it?

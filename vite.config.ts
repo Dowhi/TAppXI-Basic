@@ -10,7 +10,9 @@ export default defineConfig(({ mode }) => {
   // la base debe ser "/tappxi-web-replica/". Si está en la raíz del usuario (usuario.github.io), usar "/"
   // Se puede configurar con la variable VITE_BASE_PATH
   // En desarrollo local: usar "/", en producción/deploy: usar "/TAppXI-Basic/"
-  const base = mode === 'development' ? '/' : '/TAppXI-Basic/';
+  // Para Capacitor y despliegues locales, la base debe ser './' o '/'
+  // Para GitHub Pages se usaba '/TAppXI-Basic/'
+  const base = './';
 
   return {
     base: base,

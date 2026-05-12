@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Card from '../components/NeumorphicCard';
 import ScreenTopBar from '../components/ScreenTopBar';
 import { Seccion, Turno } from '../types';
-import { getActiveTurno, addTurno, subscribeToActiveTurno, getRecentTurnos, deleteTurno, getMaintenanceIntervals, getGastos, reopenTurno, startBreak, endBreak } from '../services/api';
+import { getActiveTurno, addTurno, subscribeToActiveTurno, getRecentTurnos, deleteTurno, getMaintenanceIntervals, getGastos, reopenTurno, startBreak, endBreak, isRestDay } from '../services/api';
 import { useToast } from '../components/Toast';
 import { useTheme } from '../contexts/ThemeContext';
 import { ErrorHandler } from '../services/errorHandler';
@@ -45,6 +45,12 @@ const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
     const [error, setError] = useState<string | null>(null);
     const [isCreating, setIsCreating] = useState(false);
     const [showBreakModal, setShowBreakModal] = useState(false);
+    const [showRestDayConfirm, setShowRestDayConfirm] = useState(false);
+    const [showMaintenanceConfirm, setShowMaintenanceConfirm] = useState(false);
+    const [maintenanceAlerts, setMaintenanceAlerts] = useState<string[]>([]);
+    const [pendingKms, setPendingKms] = useState<number | null>(null);
+    const [pendingReopenId, setPendingReopenId] = useState<string | null>(null);
+    const [modalOpenTime, setModalOpenTime] = useState<number>(0);
     const [kmsBreak, setKmsBreak] = useState('');
     const [isStartingBreak, setIsStartingBreak] = useState(true); // true for start, false for end
 
@@ -136,6 +142,9 @@ const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
     }, [loadTurnosRecientes]);
 
     const handleStartTurno = async () => {
+        if (isCreating) return;
+        setError(null);
+
         if (!kmsIniciales) {
             setError("Por favor, ingresa los kilómetros iniciales");
             return;
@@ -153,7 +162,37 @@ const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
             return;
         }
 
-        // Verificación de mantenimiento inteligente
+        setIsCreating(true);
+        setPendingKms(kmsInicio);
+        console.log("handleStartTurno: checking rest day...");
+
+        // 1. Verificar si es día de descanso
+        try {
+            const restDay = await isRestDay(new Date());
+            console.log("handleStartTurno: isRestDay result =", restDay);
+            if (restDay) {
+                console.log("handleStartTurno: detected rest day, showing modal");
+                setShowRestDayConfirm(true);
+                setModalOpenTime(Date.now()); // Para evitar confirmación accidental por doble click
+                setIsCreating(false);
+                return;
+            }
+        } catch (err) {
+            console.error("Error checking rest day:", err);
+            // Si hay error en la comprobación, por seguridad preguntamos igual o paramos
+            setIsCreating(false);
+            setError("No se pudo verificar el calendario de descansos. Reintenta.");
+            return;
+        }
+
+        console.log("handleStartTurno: proceeding to checkMaintenance...");
+        // Si no es día de descanso, proceder al siguiente paso
+        await checkMaintenance(kmsInicio);
+    };
+
+    const checkMaintenance = async (kmsInicio: number) => {
+        setIsCreating(true);
+        console.log("checkMaintenance: starting check for kms =", kmsInicio);
         try {
             const intervals = await getMaintenanceIntervals();
             const allGastos = await getGastos();
@@ -166,11 +205,9 @@ const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
                 (g.concepto || '').toLowerCase().includes('freno')
             );
 
-            // Mantenimientos críticos detectados
             const alertas: string[] = [];
             const margin = 100;
 
-            // Revisar cada tipo
             const check = (keywords: string[], limit: number, label: string) => {
                 const latest = maintenanceGastos
                     .filter(g => keywords.some(k => (g.concepto || '').toLowerCase().includes(k)))
@@ -179,7 +216,7 @@ const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
                 if (latest && latest.kilometrosVehiculo) {
                     const nextChange = latest.kilometrosVehiculo + limit;
                     if (kmsInicio >= (nextChange - margin)) {
-                        alertas.push(`¡OJO! ${label} toca pronto (Límite: ${nextChange} km)`);
+                        alertas.push(`${label}: toca pronto (${nextChange} km)`);
                     }
                 }
             };
@@ -189,40 +226,78 @@ const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
             check(['filtro'], intervals.filtros, 'Filtros');
             check(['pastilla', 'freno'], intervals.frenos, 'Frenos');
 
+            console.log("checkMaintenance: alertas found =", alertas.length);
             if (alertas.length > 0) {
-                if (!window.confirm(`${alertas.join('\n')}\n\n¿Quieres iniciar el turno de todas formas?`)) {
-                    return;
-                }
+                setMaintenanceAlerts(alertas);
+                setShowMaintenanceConfirm(true);
+                setModalOpenTime(Date.now());
+                setIsCreating(false);
+                return;
             }
         } catch (err) {
             console.error("Error checking maintenance:", err);
         }
 
-        setIsCreating(true);
-        setError(null);
+        console.log("checkMaintenance: no alerts, calling proceedWithCreate...");
+        // Si no hay alertas de mantenimiento, proceder a crear
+        await proceedWithCreate(kmsInicio);
+    };
 
+    const proceedWithCreate = async (kms: number) => {
+        setIsCreating(true);
+        console.log("proceedWithCreate: starting addTurno with kms =", kms);
         try {
             await addTurno({
                 fechaInicio: new Date(),
-                kilometrosInicio: kmsInicio
+                kilometrosInicio: kms
             });
+            console.log("proceedWithCreate: addTurno success, clearing state and navigating...");
             setKmsIniciales('');
-            // La suscripción actualizará automáticamente el estado
             navigateTo(Seccion.VistaCarreras);
         } catch (err) {
             console.error("Error creating turno:", err);
             setError("Error al crear el turno. Por favor, inténtalo de nuevo.");
         } finally {
+            console.log("proceedWithCreate: resetting isCreating and pendingKms");
             setIsCreating(false);
+            setPendingKms(null);
         }
-    }
+    };
 
     const handleReopenTurno = async (id: string) => {
+        if (isCreating) return;
+        setIsCreating(true);
+        console.log("handleReopenTurno: checking rest day for id =", id);
+        
+        try {
+            const restDay = await isRestDay(new Date());
+            console.log("handleReopenTurno: isRestDay =", restDay);
+            if (restDay) {
+                setPendingReopenId(id);
+                setShowRestDayConfirm(true);
+                setModalOpenTime(Date.now());
+                setIsCreating(false);
+                return;
+            }
+        } catch (err) {
+            console.error("Error checking rest day during reopen:", err);
+        }
+
+        console.log("handleReopenTurno: proceeding to reopen...");
+        await proceedWithReopen(id);
+        setIsCreating(false);
+    };
+
+    const proceedWithReopen = async (id: string) => {
         try {
             await reopenTurno(id);
+            loadTurnosRecientes();
             showToast("Turno reabierto con éxito", "success");
         } catch (err) {
+            console.error("Error reopening turno:", err);
             showToast("Error al reabrir el turno", "error");
+        } finally {
+            setPendingReopenId(null);
         }
     };
 
@@ -456,6 +531,101 @@ const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ navigateTo }) => {
                     </div>
                 )}
             </div>
+
+            {/* Modal de Confirmación de Día de Descanso */}
+            {showRestDayConfirm && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+                    <Card className="w-full max-w-xs p-6 text-center space-y-6 border-zinc-700 shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="mx-auto w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center border border-amber-500/20">
+                            <span className="text-3xl">⚠️</span>
+                        </div>
+                        <div className="space-y-2">
+                            <h3 className="text-xl font-black text-zinc-100">Día de Descanso</h3>
+                            <p className="text-zinc-400 text-sm">Hoy estás libre según el calendario. ¿Quieres trabajar de todas formas?</p>
+                        </div>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => {
+                                    console.log("RestDayModal: CANCEL clicked");
+                                    setShowRestDayConfirm(false);
+                                    setPendingKms(null);
+                                }}
+                                className="flex-1 py-3 rounded-xl font-bold bg-zinc-800 text-zinc-400 hover:bg-zinc-700 transition-colors"
+                            >
+                                CANCELAR
+                            </button>
+                            <button
+                                onClick={() => {
+                                    // Seguridad: No permitir click si el modal se abrió hace menos de 500ms
+                                    if (Date.now() - modalOpenTime < 500) {
+                                        console.log("RestDayModal: safety block (too fast)");
+                                        return;
+                                    }
+                                    console.log("RestDayModal: YES clicked, pendingKms =", pendingKms);
+                                    setShowRestDayConfirm(false);
+                                    if (pendingKms) {
+                                        checkMaintenance(pendingKms);
+                                    } else if (pendingReopenId) {
+                                        proceedWithReopen(pendingReopenId);
+                                    }
+                                }}
+                                className="flex-1 py-3 rounded-xl font-bold bg-amber-500 text-black hover:bg-amber-400 transition-colors shadow-lg shadow-amber-500/20"
+                            >
+                                SÍ, PROCEDER
+                            </button>
+                        </div>
+                    </Card>
+                </div>
+            )}
+
+            {/* Modal de Mantenimiento */}
+            {showMaintenanceConfirm && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+                    <Card className="w-full max-w-xs p-6 text-center space-y-6 border-zinc-700 shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="mx-auto w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center border border-blue-500/20">
+                            <span className="text-3xl">🛠️</span>
+                        </div>
+                        <div className="space-y-2 text-left">
+                            <h3 className="text-xl font-black text-zinc-100 text-center">Mantenimiento</h3>
+                            <div className="bg-zinc-900/50 p-3 rounded-xl border border-zinc-800/50">
+                                {maintenanceAlerts.map((a, i) => (
+                                    <p key={i} className="text-blue-400 text-xs font-bold flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                        {a}
+                                    </p>
+                                ))}
+                            </div>
+                            <p className="text-zinc-400 text-sm text-center">¿Deseas iniciar el turno de todas formas?</p>
+                        </div>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => {
+                                    console.log("MaintenanceModal: CANCEL clicked");
+                                    setShowMaintenanceConfirm(false);
+                                    setPendingKms(null);
+                                }}
+                                className="flex-1 py-3 rounded-xl font-bold bg-zinc-800 text-zinc-400 hover:bg-zinc-700 transition-colors"
+                            >
+                                CANCELAR
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (Date.now() - modalOpenTime < 500) {
+                                        console.log("MaintenanceModal: safety block (too fast)");
+                                        return;
+                                    }
+                                    console.log("MaintenanceModal: CONFIRM clicked, pendingKms =", pendingKms);
+                                    setShowMaintenanceConfirm(false);
+                                    if (pendingKms) proceedWithCreate(pendingKms);
+                                }}
+                                className="flex-1 py-3 rounded-xl font-bold bg-blue-600 text-white hover:bg-blue-500 transition-colors shadow-lg shadow-blue-600/20"
+                            >
+                                CONFIRMAR
+                            </button>
+                        </div>
+                    </Card>
+                </div>
+            )}
 
             {/* Modal de Kilómetros para Pausa/Reanudación */}
             {showBreakModal && (

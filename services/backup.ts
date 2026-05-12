@@ -943,8 +943,6 @@ const normalizeHeader = (header: string): string => {
         'tipo de gasto': 'tipo',
         'tipo de carrera': 'tipoCarrera',
         'tipo carrera': 'tipoCarrera',
-        'categoría': 'categoria',
-        'categoria': 'categoria',
         'dirección_vales': 'Vales',
         'plantillas_gastos': 'Plantillas_Gastos',
         'informes_personalizados': 'CustomReports',

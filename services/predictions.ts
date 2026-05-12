@@ -150,60 +150,72 @@ export const analyzeShiftPatterns = async (targetWeekday: number = new Date().ge
 
         if (sameDayShifts.length < 2) return null;
 
-        let totalEarnings = 0;
-        let totalDurationHours = 0;
-        let totalKms = 0;
-        const startHours: number[] = [];
-        const breakStartHours: number[] = [];
-
+        // Agrupar turnos por día (Fecha YYYY-MM-DD)
+        const dayStats: Record<string, { earnings: number; duration: number; kms: number; starts: number[]; breaks: number[] }> = {};
+        
         sameDayShifts.forEach(t => {
-            // Duration
-            const times = calculateTurnoTimes(t);
-            totalDurationHours += times.horasBrutasMs / (1000 * 60 * 60);
-
-            // Earnings for this shift
+            const date = new Date(t.fechaInicio);
+            const dateKey = date.toISOString().split('T')[0];
+            
+            if (!dayStats[dateKey]) {
+                dayStats[dateKey] = { earnings: 0, duration: 0, kms: 0, starts: [], breaks: [] };
+            }
+            
+            // Earnings
             const shiftCarreras = allCarreras.filter(c => c.turnoId === t.id);
             const shiftEarnings = shiftCarreras.reduce((sum, c) => sum + (c.cobrado || 0), 0);
-            totalEarnings += shiftEarnings;
-
-            // Kilometers
+            dayStats[dateKey].earnings += shiftEarnings;
+            
+            // Duration
+            const times = calculateTurnoTimes(t);
+            dayStats[dateKey].duration += times.horasBrutasMs / (1000 * 60 * 60);
+            
+            // Kms
             if (t.kilometrosFin && t.kilometrosInicio) {
-                totalKms += (t.kilometrosFin - t.kilometrosInicio);
+                dayStats[dateKey].kms += (t.kilometrosFin - t.kilometrosInicio);
             }
-
-            // Start Hour
-            startHours.push(new Date(t.fechaInicio).getHours());
-
-            // Breaks
-            if (t.descansos && t.descansos.length > 0) {
-                t.descansos.forEach(d => {
-                    breakStartHours.push(new Date(d.fechaInicio).getHours());
-                });
+            
+            // Collect start hours and breaks for mode calculation
+            dayStats[dateKey].starts.push(date.getHours());
+            if (t.descansos) {
+                t.descansos.forEach(d => dayStats[dateKey].breaks.push(new Date(d.fechaInicio).getHours()));
             }
         });
 
-        const count = sameDayShifts.length;
+        const dayKeys = Object.keys(dayStats);
+        const dayCount = dayKeys.length;
         
-        // Find Mode for Start Hour
+        if (dayCount === 0) return null;
+
+        // Averages per day
+        const totalDailyEarnings = dayKeys.reduce((sum, key) => sum + dayStats[key].earnings, 0);
+        const totalDailyDuration = dayKeys.reduce((sum, key) => sum + dayStats[key].duration, 0);
+        const totalDailyKms = dayKeys.reduce((sum, key) => sum + dayStats[key].kms, 0);
+
+        // All starts and breaks for mode
+        const allStarts = Object.values(dayStats).flatMap(d => d.starts);
+        const allBreaks = Object.values(dayStats).flatMap(d => d.breaks);
+
         const getMode = (arr: number[]) => {
+            if (arr.length === 0) return '-1';
             const counts: Record<number, number> = {};
             arr.forEach(h => counts[h] = (counts[h] || 0) + 1);
             return Object.entries(counts).reduce((a, b) => b[1] > a[1] ? b : a, ['-1', 0])[0];
         };
 
-        const bestStartHour = parseInt(getMode(startHours));
-        const bestBreakHour = breakStartHours.length > 0 ? parseInt(getMode(breakStartHours)) : undefined;
+        const bestStartHour = parseInt(getMode(allStarts));
+        const bestBreakHour = allBreaks.length > 0 ? parseInt(getMode(allBreaks)) : undefined;
 
         const dayNames = ['domingos', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábados'];
 
         return {
-            suggestedStart: `${bestStartHour.toString().padStart(2, '0')}:00`,
-            suggestedDuration: totalDurationHours / count,
-            projectedEarnings: totalEarnings / count,
-            projectedKms: totalKms / count,
+            suggestedStart: bestStartHour >= 0 ? `${bestStartHour.toString().padStart(2, '0')}:00` : "08:00",
+            suggestedDuration: totalDailyDuration / dayCount,
+            projectedEarnings: totalDailyEarnings / dayCount,
+            projectedKms: totalDailyKms / dayCount,
             optimalBreakTime: bestBreakHour !== undefined ? `${bestBreakHour.toString().padStart(2, '0')}:00` : undefined,
-            reason: `Basado en tus últimos ${count} ${dayNames[targetWeekday]}`,
-            confidence: count > 8 ? 'high' : count > 4 ? 'medium' : 'low'
+            reason: `Basado en tus últimos ${dayCount} ${dayNames[targetWeekday]} trabajados`,
+            confidence: dayCount > 6 ? 'high' : dayCount > 3 ? 'medium' : 'low'
         };
 
     } catch (error) {

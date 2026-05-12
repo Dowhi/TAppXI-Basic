@@ -14,6 +14,7 @@ import {
     getHorasByYearTotal,
     getAjustes,
     isRestDay,
+    getWorkingDays,
 } from '../services/api';
 
 interface AnalisisAvanzadoScreenProps {
@@ -41,6 +42,7 @@ const AnalisisAvanzadoScreen: React.FC<AnalisisAvanzadoScreenProps> = ({ navigat
         proyeccionMensual: 0,
         diferencia: 0,
         diasTrabajadosHastaAhora: 0,
+        realesDiasTrabajados: 0,
         totalDiasTrabajadosMes: 0,
     });
 
@@ -154,7 +156,7 @@ const AnalisisAvanzadoScreen: React.FC<AnalisisAvanzadoScreenProps> = ({ navigat
                     setObjetivoDiario(Number(ajustes.objetivoDiario));
                 }
 
-// Calcular metas vs logros (solo días trabajados)
+                // Calcular metas vs logros (solo días trabajados)
                 const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
                 const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
@@ -173,6 +175,11 @@ const AnalisisAvanzadoScreen: React.FC<AnalisisAvanzadoScreenProps> = ({ navigat
                     }
                 }
                 
+                // Días reales trabajados (con actividad)
+                const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+                const realesTrabajados = await getWorkingDays(startOfMonth, endOfToday);
+                const realesDiasTrabajados = realesTrabajados.length;
+                
                 const objetivoDiarioValue = Number(ajustes?.objetivoDiario) || 100;
                 const objetivoMensual = objetivoDiarioValue * totalDiasTrabajadosMes;
                 const objetivoHastaAhora = objetivoDiarioValue * diasTrabajadosHastaAhora;
@@ -183,8 +190,8 @@ const AnalisisAvanzadoScreen: React.FC<AnalisisAvanzadoScreenProps> = ({ navigat
                     : 0;
                 
                 const diasRestantesLaborables = Math.max(0, totalDiasTrabajadosMes - diasTrabajadosHastaAhora);
-                const promedioDiarioActual = diasTrabajadosHastaAhora > 0
-                    ? ingresosHastaAhora / diasTrabajadosHastaAhora
+                const promedioDiarioActual = realesDiasTrabajados > 0
+                    ? ingresosHastaAhora / realesDiasTrabajados
                     : 0;
                 const proyeccionMensual = ingresosHastaAhora + (promedioDiarioActual * diasRestantesLaborables);
 
@@ -196,6 +203,7 @@ const AnalisisAvanzadoScreen: React.FC<AnalisisAvanzadoScreenProps> = ({ navigat
                     proyeccionMensual,
                     diferencia: ingresosHastaAhora - objetivoHastaAhora,
                     diasTrabajadosHastaAhora,
+                    realesDiasTrabajados,
                     totalDiasTrabajadosMes,
                 });
             } catch (error) {
@@ -684,8 +692,11 @@ const AnalisisAvanzadoScreen: React.FC<AnalisisAvanzadoScreenProps> = ({ navigat
                         {/* Metas vs Logros */}
                         <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
                             <h2 className="text-cyan-400 text-lg font-bold mb-4">Metas vs Logros</h2>
-                            <p className="text-xs text-zinc-500 mb-4 text-center">
-                                Objetivos calculados sobre {metasVsLogros.totalDiasTrabajadosMes} días trabajados del mes
+                            <p className="text-xs text-zinc-500 mb-1 text-center">
+                                Objetivos calculados sobre {metasVsLogros.totalDiasTrabajadosMes} días laborables del mes
+                            </p>
+                            <p className="text-xs text-cyan-400 mb-4 text-center font-semibold">
+                                Has trabajado {metasVsLogros.realesDiasTrabajados} de {metasVsLogros.diasTrabajadosHastaAhora} días previstos hoy
                             </p>
                             <div className="space-y-3">
                                 <div className="bg-zinc-800 rounded-lg p-3">
@@ -734,4 +745,3 @@ const AnalisisAvanzadoScreen: React.FC<AnalisisAvanzadoScreenProps> = ({ navigat
 };
 
 export default AnalisisAvanzadoScreen;
-
