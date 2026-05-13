@@ -792,95 +792,91 @@ export async function isRestDay(date: Date): Promise<boolean> {
         const targetDate = new Date(date);
         targetDate.setHours(0, 0, 0, 0);
 
-        // Check for explicit "Descanso" exceptions (in case any exist)
-        const hasDescansoException = excepciones.some((e: any) => {
-            if (e.tipo !== 'Descanso') return false;
+        // 1. Buscar excepciones que afecten a esta fecha
+        const activeException = excepciones.find((e: any) => {
             try {
-                const start = e.fechaDesde instanceof Date ? e.fechaDesde : new Date(e.fechaDesde);
-                const end = e.fechaHasta instanceof Date ? e.fechaHasta : new Date(e.fechaHasta);
-                
-                const s = new Date(start); s.setHours(0, 0, 0, 0);
-                const en = new Date(end); en.setHours(23, 59, 59, 999);
-                
-                return targetDate.getTime() >= s.getTime() && targetDate.getTime() <= en.getTime();
+                const start = new Date(e.fechaDesde); start.setHours(0, 0, 0, 0);
+                const end = new Date(e.fechaHasta); end.setHours(23, 59, 59, 999);
+                return targetDate.getTime() >= start.getTime() && targetDate.getTime() <= end.getTime();
             } catch {
                 return false;
             }
         });
 
-        if (hasDescansoException) return true;
+        // 2. Prioridad máxima: Excepciones de trabajo/descanso explícito
+        if (activeException) {
+            if (activeException.tipo === 'Festivo (sin descanso)' || activeException.tipo === 'Liberacion Especial') {
+                return false; // Se trabaja aunque toque descanso por letra
+            }
+            if (['Descanso', 'Vacaciones', 'Enfermedad', 'Otro'].includes(activeException.tipo)) {
+                return true; // Es día de descanso explícito
+            }
+        }
 
-        // Check if it's a rest day by comparing taxi letters with user break letter
+        // 3. Cálculo de la letra (considerando "Cambio de Letra")
         try {
             const breakConfig = await getBreakConfiguration();
             if (!breakConfig || !breakConfig.startDate || !breakConfig.userBreakLetter) {
                 return false;
             }
 
-            // Parse start date
-            const [ds, ms, ys] = breakConfig.startDate.split('/');
-            const startDate = new Date(parseInt(ys), parseInt(ms) - 1, parseInt(ds));
-            startDate.setHours(0, 0, 0, 0);
-
-            // Calculate taxi letter for this date
-            const lettersArray = ['A', 'B', 'C', 'D'];
-            const diffTime = targetDate.getTime() - startDate.getTime();
-            const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-
             let taxiLetter = '';
-            if (diffDays >= 0) {
-                const startLetter = breakConfig.startDayLetter || breakConfig.initialBreakLetter || 'A';
-                const startIdx = lettersArray.indexOf(startLetter);
-                const startDow = startDate.getDay();
-                const startWd = startDow === 0 ? 6 : startDow - 1;
-                const mod = (v: number, d: number) => ((v % d) + d) % d;
-                const startWkMondayIdx = mod(startIdx - startWd, 4);
 
-                const dow = targetDate.getDay();
-                const isSat = dow === 6;
-                const isSun = dow === 0;
+            // Si hay un cambio de letra hoy, usamos esa letra
+            if (activeException && activeException.tipo === 'Cambio de Letra' && activeException.nuevaLetra) {
+                taxiLetter = activeException.nuevaLetra;
+            } else {
+                // Cálculo estándar del ciclo
+                const [ds, ms, ys] = breakConfig.startDate.split('/');
+                const startDate = new Date(parseInt(ys), parseInt(ms) - 1, parseInt(ds));
+                startDate.setHours(0, 0, 0, 0);
 
-                if (isSat || isSun) {
-                    // Weekend - parse weekend pattern
-                    const weekendPatternStr = breakConfig.weekendPattern || '';
-                    const normalizedPattern = weekendPatternStr
-                        .normalize('NFD')
-                        .replace(/[\u0300-\u036f]/g, '')
-                        .toLowerCase();
+                const lettersArray = ['A', 'B', 'C', 'D'];
+                const diffTime = targetDate.getTime() - startDate.getTime();
+                const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
-                    const saturdayMatch = normalizedPattern.match(/sabado\s*:\s*([a-z]+)/);
-                    const sundayMatch = normalizedPattern.match(/domingo\s*:\s*([a-z]+)/);
+                if (diffDays >= 0) {
+                    const startLetter = breakConfig.startDayLetter || breakConfig.initialBreakLetter || 'A';
+                    const startIdx = lettersArray.indexOf(startLetter);
+                    const startDow = startDate.getDay();
+                    const startWd = startDow === 0 ? 6 : startDow - 1;
+                    const mod = (v: number, d: number) => ((v % d) + d) % d;
+                    const startWkMondayIdx = mod(startIdx - startWd, 4);
 
-                    const saturdayLetter = (saturdayMatch?.[1] ?? 'ac').toUpperCase();
-                    const sundayLetter = (sundayMatch?.[1] ?? 'bd').toUpperCase();
-                    
-                    const weekNum = Math.floor((diffDays + startWd) / 7);
-                    const swap = weekNum % 2 === 1;
-                    taxiLetter = isSat
-                        ? (swap ? sundayLetter : saturdayLetter)
-                        : (swap ? saturdayLetter : sundayLetter);
-                } else {
-                    // Weekday
-                    const weekNum = Math.floor((diffDays + startWd) / 7);
-                    const wd = dow === 0 ? 6 : dow - 1;
-                    const mondayIdx = mod(startWkMondayIdx + weekNum, 4);
-                    const finalIdx = mod(mondayIdx + wd, 4);
-                    taxiLetter = lettersArray[finalIdx];
+                    const dow = targetDate.getDay();
+                    const isSat = dow === 6;
+                    const isSun = dow === 0;
+
+                    if (isSat || isSun) {
+                        const weekendPatternStr = breakConfig.weekendPattern || '';
+                        const normalizedPattern = weekendPatternStr.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+                        const saturdayMatch = normalizedPattern.match(/sabado\s*:\s*([a-z]+)/);
+                        const sundayMatch = normalizedPattern.match(/domingo\s*:\s*([a-z]+)/);
+                        const saturdayLetter = (saturdayMatch?.[1] ?? 'ac').toUpperCase();
+                        const sundayLetter = (sundayMatch?.[1] ?? 'bd').toUpperCase();
+                        const weekNum = Math.floor((diffDays + startWd) / 7);
+                        const swap = weekNum % 2 === 1;
+                        taxiLetter = isSat ? (swap ? sundayLetter : saturdayLetter) : (swap ? saturdayLetter : sundayLetter);
+                    } else {
+                        const weekNum = Math.floor((diffDays + startWd) / 7);
+                        const wd = dow === 0 ? 6 : dow - 1;
+                        const mondayIdx = mod(startWkMondayIdx + weekNum, 4);
+                        const finalIdx = mod(mondayIdx + wd, 4);
+                        taxiLetter = lettersArray[finalIdx];
+                    }
                 }
             }
 
-            // Compare taxi letter with user break letter
             if (!taxiLetter) return false;
 
             const userLetter = breakConfig.userBreakLetter.toUpperCase();
             const tl = taxiLetter.toUpperCase();
 
-            // Check if taxi letter matches user break letter
-            const isRest = tl === userLetter ||
+            // 4. Comparar si la letra de hoy coincide con la letra de descanso del usuario
+            return tl === userLetter ||
                 (tl === 'AC' && (userLetter === 'A' || userLetter === 'C')) ||
                 (tl === 'BD' && (userLetter === 'B' || userLetter === 'D'));
 
-            return isRest;
         } catch (error) {
             console.error('Error calculating rest day by letter:', error);
             return false;
