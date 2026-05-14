@@ -58,14 +58,20 @@ const HistoricoScreen: React.FC<HistoricoScreenProps> = ({ navigateTo }) => {
     const [gastos, setGastos] = useState<Gasto[]>([]);
     const [loading, setLoading] = useState(true);
 
+    // Filtros para Gastos
+    const [filterConcepto, setFilterConcepto] = useState('');
+    const [filterProveedor, setFilterProveedor] = useState('');
+    const [filterFechaDesde, setFilterFechaDesde] = useState('');
+    const [filterFechaHasta, setFilterFechaHasta] = useState('');
+
     useEffect(() => {
         const loadData = async () => {
             try {
                 setLoading(true);
                 const [turnosData, carrerasData, gastosData] = await Promise.all([
-                    getRecentTurnos(50), // Obtener últimos 50 turnos
-                    getRecentCarreras(300), // Obtener últimas carreras (paginadas)
-                    getGastos() // Obtener todos los gastos
+                    getRecentTurnos(50),
+                    getRecentCarreras(300),
+                    getGastos()
                 ]);
                 setTurnos(turnosData || []);
                 setCarreras(carrerasData || []);
@@ -95,6 +101,21 @@ const HistoricoScreen: React.FC<HistoricoScreenProps> = ({ navigateTo }) => {
         });
         return grouped;
     }, [carreras]);
+
+    // Filtrar Gastos
+    const filteredGastos = React.useMemo(() => {
+        return gastos.filter(g => {
+            const matchConcepto = !filterConcepto || (g.concepto || '').toLowerCase().includes(filterConcepto.toLowerCase());
+            const matchProveedor = !filterProveedor || (g.proveedor || '').toLowerCase().includes(filterProveedor.toLowerCase());
+            
+            const gDate = parseSafeDate(g.fecha);
+            // Normalizar fechas para comparación (solo fecha, sin hora si es necesario, pero aquí usaremos el día completo)
+            const matchDesde = !filterFechaDesde || gDate >= new Date(filterFechaDesde + 'T00:00:00');
+            const matchHasta = !filterFechaHasta || gDate <= new Date(filterFechaHasta + 'T23:59:59');
+
+            return matchConcepto && matchProveedor && matchDesde && matchHasta;
+        }).sort((a, b) => parseSafeDate(b.fecha).getTime() - parseSafeDate(a.fecha).getTime());
+    }, [gastos, filterConcepto, filterProveedor, filterFechaDesde, filterFechaHasta]);
 
     // Calcular total de carreras por turno
     const calcularTotalTurno = (turnoId: string): number => {
@@ -128,6 +149,67 @@ const HistoricoScreen: React.FC<HistoricoScreenProps> = ({ navigateTo }) => {
                 ))}
             </div>
 
+            {/* Sección de Filtros para Gastos */}
+            {activeTab === 'gastos' && (
+                <Card className="p-3 bg-zinc-900/50 border-zinc-800">
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                        <div className="flex flex-col gap-1">
+                            <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1">Concepto</label>
+                            <input
+                                type="text"
+                                value={filterConcepto}
+                                onChange={(e) => setFilterConcepto(e.target.value)}
+                                placeholder="Buscar concepto..."
+                                className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-blue-500"
+                            />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                            <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1">Proveedor / Empresa</label>
+                            <input
+                                type="text"
+                                value={filterProveedor}
+                                onChange={(e) => setFilterProveedor(e.target.value)}
+                                placeholder="Buscar proveedor..."
+                                className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-blue-500"
+                            />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-1">
+                            <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1">Desde</label>
+                            <input
+                                type="date"
+                                value={filterFechaDesde}
+                                onChange={(e) => setFilterFechaDesde(e.target.value)}
+                                className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-blue-500"
+                            />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                            <label className="text-[10px] font-bold text-zinc-500 uppercase ml-1">Hasta</label>
+                            <input
+                                type="date"
+                                value={filterFechaHasta}
+                                onChange={(e) => setFilterFechaHasta(e.target.value)}
+                                className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-blue-500"
+                            />
+                        </div>
+                    </div>
+                    {(filterConcepto || filterProveedor || filterFechaDesde || filterFechaHasta) && (
+                        <button
+                            onClick={() => {
+                                setFilterConcepto('');
+                                setFilterProveedor('');
+                                setFilterFechaDesde('');
+                                setFilterFechaHasta('');
+                            }}
+                            className="mt-3 w-full text-[10px] text-blue-400 font-bold uppercase tracking-wider text-center"
+                        >
+                            Limpiar Filtros
+                        </button>
+                    )}
+                </Card>
+            )}
+
             {loading ? (
                 <div className="space-y-2">
                     {[1, 2, 3].map((i) => (
@@ -139,7 +221,7 @@ const HistoricoScreen: React.FC<HistoricoScreenProps> = ({ navigateTo }) => {
                     ))}
                 </div>
             ) : (
-                <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+                <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
                     {activeTab === 'turnos' && (
                         <>
                             {turnos.length === 0 ? (
@@ -293,12 +375,12 @@ const HistoricoScreen: React.FC<HistoricoScreenProps> = ({ navigateTo }) => {
 
                     {activeTab === 'gastos' && (
                         <>
-                            {gastos.length === 0 ? (
+                            {filteredGastos.length === 0 ? (
                                 <Card className="p-4 text-center text-zinc-400">
-                                    No hay gastos en el histórico
+                                    No se encontraron gastos con estos filtros
                                 </Card>
                             ) : (
-                                gastos.slice(0, 100).map(gasto => {
+                                filteredGastos.map(gasto => {
                                     const fecha = parseSafeDate(gasto.fecha).toLocaleDateString('es-ES', {
                                         day: '2-digit',
                                         month: '2-digit',
