@@ -6,21 +6,45 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
-  // Para GitHub Pages: si tu repositorio se llama "tappxi-web-replica", 
-  // la base debe ser "/tappxi-web-replica/". Si está en la raíz del usuario (usuario.github.io), usar "/"
-  // Se puede configurar con la variable VITE_BASE_PATH
-  // En desarrollo local: usar "/", en producción/deploy: usar "/TAppXI-Basic/"
-  // Para Capacitor y despliegues locales, la base debe ser './' o '/'
-  // Para GitHub Pages se usaba '/TAppXI-Basic/'
+  // Base path: './' para compatibilidad con Capacitor y GitHub Pages
   const base = './';
+  const isProd = mode === 'production';
 
   return {
     base: base,
     server: {
       port: 8080,
       strictPort: true,
-      host: '0.0.0.0', // Permite acceso desde la red local (móvil)
+      host: '0.0.0.0',
       open: true,
+    },
+    build: {
+      minify: 'esbuild',
+      target: 'esnext',
+      rollupOptions: {
+        output: {
+          // Code-splitting manual: separa vendor y módulos pesados en chunks cacheables
+          manualChunks(id) {
+            if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
+              return 'vendor-react';
+            }
+            if (id.includes('node_modules/xlsx')) {
+              return 'vendor-xlsx';
+            }
+            if (id.includes('node_modules/jspdf')) {
+              return 'vendor-jspdf';
+            }
+            if (id.includes('node_modules/firebase')) {
+              return 'vendor-firebase';
+            }
+          }
+        }
+      }
+    },
+    // Elimina todos los console.* y debugger en producción a nivel de transpilación
+    // Sin modificar el código fuente — transparente para el desarrollador
+    esbuild: {
+      drop: isProd ? ['console', 'debugger'] : [],
     },
     plugins: [
       react(),
@@ -61,7 +85,8 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-          maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3 MB (el bundle supera el límite de 2 MB por defecto)
+          // 5 MB para cubrir chunks grandes sin romper el precache
+          maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -91,7 +116,7 @@ export default defineConfig(({ mode }) => {
           ]
         },
         devOptions: {
-          enabled: true, // Habilita PWA en desarrollo
+          enabled: false,
           type: 'module'
         }
       })

@@ -18,8 +18,13 @@ android {
     }
     buildTypes {
         release {
+            // Minificación + eliminación de recursos no usados para reducir tamaño del APK
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
 }

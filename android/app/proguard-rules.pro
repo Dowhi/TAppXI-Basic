@@ -1,21 +1,27 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# ProGuard rules para TAppXI — Capacitor + WebView
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# ── Capacitor core ────────────────────────────────────────────────────────────
+-keep class com.getcapacitor.** { *; }
+-keep class com.tappxi.app.** { *; }
+-keepclassmembers class * extends com.getcapacitor.Plugin {
+    @com.getcapacitor.annotation.CapacitorPlugin *;
+    @com.getcapacitor.PluginMethod *;
+}
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# ── WebView JavaScript Interface ──────────────────────────────────────────────
+# Necesario porque el WebView invoca métodos Java por nombre (reflexión)
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# ── AndroidX / AppCompat ──────────────────────────────────────────────────────
+-keep class androidx.appcompat.** { *; }
+-dontwarn androidx.**
+
+# ── Kotlin (requerido por Capacitor) ─────────────────────────────────────────
+-keep class kotlin.** { *; }
+-dontwarn kotlin.**
+
+# ── Conservar información de stack trace en crashes ──────────────────────────
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
