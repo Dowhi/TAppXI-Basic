@@ -16,9 +16,29 @@ export const extractGapiErrorMessage = (e: any): string => {
     try { return JSON.stringify(e); } catch { return String(e); }
 };
 
-// Credenciales desde variables de entorno
-const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
-const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || "";
+// Obtener credenciales (primero de localStorage, luego de variables de entorno)
+const getGoogleConfig = () => {
+    let storedClient = localStorage.getItem('tappxi_google_client_id');
+    let storedKey = localStorage.getItem('tappxi_google_api_key');
+
+    // Migración automática: si el ID es el antiguo que daba error, limpiamos para usar el del .env
+    const OLD_BAD_CLIENT_ID = "673476741503-qha4fmofh20b9suk4a8tp2kpjptgj4gg.apps.googleusercontent.com";
+    if (storedClient === OLD_BAD_CLIENT_ID) {
+        localStorage.removeItem('tappxi_google_client_id');
+        localStorage.removeItem('tappxi_google_api_key');
+        storedClient = null;
+        storedKey = null;
+    }
+
+    return {
+        clientId: storedClient || import.meta.env.VITE_GOOGLE_CLIENT_ID || "",
+        apiKey: storedKey || import.meta.env.VITE_GOOGLE_API_KEY || ""
+    };
+};
+
+// Estado global de credenciales
+let CLIENT_ID = getGoogleConfig().clientId;
+let API_KEY = getGoogleConfig().apiKey;
 
 const DISCOVERY_DOCS = [
     "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest",
@@ -169,6 +189,11 @@ const loadGis = (): Promise<void> => {
  * Inicializa los clientes de Google (gapi y GIS)
  */
 export const initGoogleClient = async (): Promise<void> => {
+    // Refrescar de storage por si cambiaron en Ajustes
+    const config = getGoogleConfig();
+    CLIENT_ID = config.clientId;
+    API_KEY = config.apiKey;
+
     if (!CLIENT_ID || !API_KEY) {
         console.warn("Google configuration missing. Cloud features will be unavailable.");
         return;
