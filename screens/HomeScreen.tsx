@@ -187,9 +187,11 @@ const MoreIcon = () => (
 interface HomeScreenProps {
   navigateTo: (page: Seccion, id?: string) => void;
   onQuickAction?: (action: string) => void;
+  daysLeft: number;
 }
 
-const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction }) => {
+const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction, daysLeft }) => {
+
 
   const parseSafeDate = (dateAny: any): Date => {
     if (!dateAny) return new Date();
@@ -444,7 +446,18 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigateTo, onQuickAction }) =>
         </div>
       ) : (
         <div className="space-y-3 max-w-xl mx-auto">
+          {/* Banner de Suscripción / Demo */}
+          {daysLeft <= 15 && daysLeft > 0 && (
+            <div className={`p-2 rounded-xl text-center text-xs font-bold shadow-lg animate-pulse ${
+              isDark ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'bg-blue-100 text-blue-700 border border-blue-200'
+            }`}>
+              🚀 Periodo de prueba: te quedan {daysLeft} días
+            </div>
+          )}
+
           {/* Header */}
+
+
           <div className="flex items-center justify-between">
             <div className={`flex items-center gap-2 ${isDark ? 'text-cyan-400' : 'text-blue-600'}`}>
               <span className="block">

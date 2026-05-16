@@ -51,14 +51,13 @@ import { LockScreen } from './screens/LockScreen';
 import { SplashScreen } from './components/SplashScreen';
 
 
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { auth } from './services/firebaseSync';
+import { SubscriptionService } from './services/SubscriptionService';
+
 const App: React.FC = () => {
-    // Check if user has completed initial setup
-    const [setupComplete, setSetupComplete] = useState<boolean>(
-        localStorage.getItem('tappxi_setup_complete') === 'true'
-    );
-
-
-    // Siempre iniciar en HomeScreen
+    const [user, setUser] = useState<User | null>(null);
+    const [setupComplete, setSetupComplete] = useState<boolean>(false);
     const [currentPage, setCurrentPage] = useState<Seccion>(Seccion.Home);
     const [editingRaceId, setEditingRaceId] = useState<string | null>(null);
     const [initialRaceData, setInitialRaceData] = useState<Partial<CarreraVista> | undefined>(undefined);
@@ -66,38 +65,35 @@ const App: React.FC = () => {
     const [editingGastoId, setEditingGastoId] = useState<string | null>(null);
     const [refreshGastosKey, setRefreshGastosKey] = useState(0);
     const { isDark } = useTheme();
-    const [isActivated, setIsActivated] = useState<boolean>(ActivationService.isActivated());
+    const [isActivated, setIsActivated] = useState<boolean>(true); // Por defecto true hasta verificar
     const [isInitializing, setIsInitializing] = useState(true);
+    const [daysLeft, setDaysLeft] = useState<number>(15);
+
+    // Escuchar cambios de autenticación
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+            setUser(firebaseUser);
+            
+            if (firebaseUser) {
+                // Verificar suscripción si hay usuario
+                const status = await SubscriptionService.checkStatus();
+                setIsActivated(status.isAllowed);
+                setDaysLeft(status.daysLeft);
+                setSetupComplete(true);
+            } else {
+                setSetupComplete(false);
+            }
+            
+            setIsInitializing(false);
+        });
+
+        return () => unsubscribe();
+    }, []);
 
     const handleLoginComplete = () => {
-        setSetupComplete(true);
-        localStorage.setItem('tappxi_setup_complete', 'true');
+        // La redirección la maneja el onAuthStateChanged
     };
 
-
-
-
-
-    // Preload Google Scripts (Critical for iOS popup handling)
-    useEffect(() => {
-        let cancelBackup: (() => void) | undefined;
-        const init = async () => {
-            try {
-                await initGoogleClient();
-                // Arrancar backup: al cerrar la app y al abrir si falta el del día anterior
-                cancelBackup = startAutoBackupOnClose();
-            } catch (err) {
-                console.error(err);
-            } finally {
-                // Dar un tiempo mínimo para el splash screen si la carga es muy rápida (3 segundos)
-                setTimeout(() => {
-                    setIsInitializing(false);
-                }, 3000);
-            }
-        };
-        init();
-        return () => cancelBackup?.();
-    }, []);
 
     // Iniciar verificación de sonidos
     useEffect(() => {
@@ -276,10 +272,12 @@ const App: React.FC = () => {
         return <LockScreen onUnlock={() => setIsActivated(true)} />;
     }
 
+
     const renderPage = () => {
         switch (currentPage) {
             case Seccion.Home:
-                return <HomeScreen navigateTo={navigateTo} onQuickAction={handleQuickAction} />;
+                return <HomeScreen navigateTo={navigateTo} onQuickAction={handleQuickAction} daysLeft={daysLeft} />;
+
             case Seccion.VistaCarreras:
                 return <IncomeScreen navigateTo={navigateTo} navigateToEditRace={navigateToEditRace} />;
             case Seccion.IntroducirCarrera:

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { ensureGoogleSignIn } from '../services/google';
+import { auth, firebaseSync } from '../services/firebaseSync';
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { useTheme } from '../contexts/ThemeContext';
+
 
 interface LoginScreenProps {
     onLoginSuccess: () => void;
@@ -17,29 +19,20 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onSkip
         setError(null);
 
         try {
-            await ensureGoogleSignIn();
-            // El token se guarda en memoria en el servicio google.ts
-            // Consideramos el login exitoso
+            const provider = new GoogleAuthProvider();
+            await signInWithPopup(auth, provider);
+            
+            // Aseguramos que el perfil de usuario existe en Firestore (para el periodo de prueba)
+            await firebaseSync.ensureUserProfile();
 
-            // Pequeño delay para asegurar que el popup de Google se ha cerrado completamente
-            // y evitar race conditions al desmontar el componente
-            setTimeout(() => {
-                onLoginSuccess();
-            }, 500);
+            onLoginSuccess();
         } catch (err: any) {
-            console.error('Error en autenticación:', err);
-
-            const errorMsg = err?.message || '';
-            if (errorMsg.includes('VITE_GOOGLE') || errorMsg.includes('archivo .env') || errorMsg.includes('faltante')) {
-                setError('Configuración de Google incompleta. Contacta al administrador.');
-            } else if (errorMsg.includes('popup_closed_by_user')) {
-                setError('Inicio de sesión cancelado.');
-            } else {
-                setError('No se pudo conectar con Google. Inténtalo de nuevo o continúa sin conexión.');
-            }
+            console.error('Error en autenticación Firebase:', err);
+            setError('Error al iniciar sesión con Google. Inténtalo de nuevo.');
             setIsAuthenticating(false);
         }
     };
+
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-br from-slate-50 to-blue-50 dark:from-zinc-950 dark:to-zinc-900 transition-colors duration-300">

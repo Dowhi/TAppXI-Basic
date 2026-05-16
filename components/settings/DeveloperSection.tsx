@@ -41,13 +41,13 @@ const DeveloperSection: React.FC<DeveloperSectionProps> = ({
                 
                 <div className="space-y-4">
                     <div>
-                        <label className={`block text-xs uppercase font-bold mb-1 ${isDark ? 'text-purple-300' : 'text-purple-600'}`}>ID del Terminal</label>
+                        <label className={`block text-xs uppercase font-bold mb-1 ${isDark ? 'text-purple-300' : 'text-purple-600'}`}>ID de Usuario (UID)</label>
                         <input
                             type="text"
                             value={targetDeviceId}
-                            onChange={(e) => onSetTargetDeviceId(e.target.value.toUpperCase())}
-                            placeholder="XXXX-XXXX"
-                            className={`w-full p-3 rounded-lg font-mono text-center tracking-widest text-lg ${isDark ? 'bg-black/40 border-purple-500/30 text-white' : 'bg-white border-purple-200 text-purple-900'}`}
+                            onChange={(e) => onSetTargetDeviceId(e.target.value)}
+                            placeholder="Pegar UID del usuario"
+                            className={`w-full p-3 rounded-lg font-mono text-center tracking-tight text-xs ${isDark ? 'bg-black/40 border-purple-500/30 text-white' : 'bg-white border-purple-200 text-purple-900'}`}
                         />
                     </div>
 

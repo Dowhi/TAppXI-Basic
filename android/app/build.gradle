@@ -16,8 +16,20 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            // Referencia al keystore que acabamos de generar en la raíz del proyecto
+            storeFile file("../../tappxi-release.keystore")
+            storePassword "tappxi123"
+            keyAlias "tappxi"
+            keyPassword "tappxi123"
+        }
+    }
+
     buildTypes {
         release {
+            // Aplicar la firma de producción
+            signingConfig signingConfigs.release
             // Minificación + eliminación de recursos no usados para reducir tamaño del APK
             minifyEnabled true
             shrinkResources true
